@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestion Administrative - Mistral Pans</title>
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/gestion.css">
+  
+  <!-- jsPDF pour génération PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+</head>
+<body>
+  <div class="gestion-app">
+    <!-- Header -->
+    <header class="gestion-header">
+      <a href="index.html" class="gestion-header__logo">Mistral Pans</a>
+      <div class="gestion-header__actions">
+        <button class="admin-btn admin-btn--secondary admin-btn--sm" onclick="GestionUI.exportData()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export
+        </button>
+        <button class="admin-btn admin-btn--secondary admin-btn--sm" onclick="GestionUI.showImportModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Import
+        </button>
+      </div>
+    </header>
+    
+    <!-- Container principal -->
+    <div class="gestion-container">
+      <!-- Navigation -->
+      <nav class="gestion-nav">
+        <button class="gestion-nav__item active" data-section="dashboard">
+          Dashboard
+        </button>
+        <button class="gestion-nav__item" data-section="clients">
+          Clients
+        </button>
+        <button class="gestion-nav__item" data-section="instruments">
+          Instruments
+        </button>
+        <button class="gestion-nav__item" data-section="locations">
+          Locations
+          <span class="gestion-nav__badge" id="badge-locations" style="display: none;">0</span>
+        </button>
+        <button class="gestion-nav__item" data-section="commandes">
+          Commandes
+          <span class="gestion-nav__badge" id="badge-commandes" style="display: none;">0</span>
+        </button>
+        <button class="gestion-nav__item" data-section="factures">
+          Factures
+          <span class="gestion-nav__badge" id="badge-factures" style="display: none;">0</span>
+        </button>
+        <button class="gestion-nav__item" data-section="config">
+          Configuration
+        </button>
+      </nav>
+      
+      <!-- ============================================================
+           SECTION: DASHBOARD
+           ============================================================ -->
+      <section class="gestion-section active" id="section-dashboard">
+        <h2 style="margin-bottom: 1.5rem; font-size: 1.5rem;">Tableau de bord</h2>
+        
+        <div class="dashboard-grid">
+          <div class="dashboard-card">
+            <div class="dashboard-card__label">Revenus du mois</div>
+            <div class="dashboard-card__value dashboard-card__value--accent" id="stat-revenus">0 €</div>
+          </div>
+          <div class="dashboard-card">
+            <div class="dashboard-card__label">Locations en cours</div>
+            <div class="dashboard-card__value" id="stat-locations">0</div>
+          </div>
+          <div class="dashboard-card">
+            <div class="dashboard-card__label">Commandes en cours</div>
+            <div class="dashboard-card__value" id="stat-commandes">0</div>
+          </div>
+          <div class="dashboard-card">
+            <div class="dashboard-card__label">Factures en attente</div>
+            <div class="dashboard-card__value dashboard-card__value--warning" id="stat-factures">0</div>
+          </div>
+        </div>
+        
+        <div class="dashboard-alerts" id="dashboard-alerts">
+          <!-- Alertes dynamiques -->
+        </div>
+      </section>
+      
+      <!-- ============================================================
+           SECTION: CLIENTS
+           ============================================================ -->
+      <section class="gestion-section" id="section-clients">
+        <div class="gestion-toolbar">
+          <div class="gestion-search">
+            <svg class="gestion-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" class="gestion-search__input" placeholder="Rechercher un client..." id="search-clients">
+          </div>
+          <button class="admin-btn admin-btn--primary" onclick="GestionUI.showClientModal()">
+            + Nouveau client
+          </button>
+        </div>
+        
+        <div class="gestion-table-container">
+          <table class="gestion-table">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Email</th>
+                <th>Téléphone</th>
+                <th>Locations</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-clients">
+              <!-- Contenu dynamique -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="gestion-empty" id="empty-clients" style="display: none;">
+          <svg class="gestion-empty__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <div class="gestion-empty__title">Aucun client</div>
+          <p>Commencez par ajouter votre premier client</p>
+        </div>
+      </section>
+      
+      <!-- ============================================================
+           SECTION: INSTRUMENTS
+           ============================================================ -->
+      <section class="gestion-section" id="section-instruments">
+        <div class="gestion-toolbar">
+          <div class="gestion-search">
+            <svg class="gestion-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" class="gestion-search__input" placeholder="Rechercher un instrument..." id="search-instruments">
+          </div>
+          <button class="admin-btn admin-btn--primary" onclick="GestionUI.showInstrumentModal()">
+            + Nouvel instrument
+          </button>
+        </div>
+        
+        <div class="gestion-table-container">
+          <table class="gestion-table">
+            <thead>
+              <tr>
+                <th>Référence</th>
+                <th>Nom</th>
+                <th>Gamme</th>
+                <th>Statut</th>
+                <th>Prix vente</th>
+                <th>Loyer</th>
+                <th>Boutique</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-instruments">
+              <!-- Contenu dynamique -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="gestion-empty" id="empty-instruments" style="display: none;">
+          <svg class="gestion-empty__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          <div class="gestion-empty__title">Aucun instrument</div>
+          <p>Ajoutez vos handpans au parc instrumental</p>
+        </div>
+      </section>
+      
+      <!-- ============================================================
+           SECTION: LOCATIONS
+           ============================================================ -->
+      <section class="gestion-section" id="section-locations">
+        <div class="gestion-toolbar">
+          <div class="gestion-search">
+            <svg class="gestion-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" class="gestion-search__input" placeholder="Rechercher une location..." id="search-locations">
+          </div>
+          <button class="admin-btn admin-btn--primary" onclick="GestionUI.showLocationModal()">
+            + Nouvelle location
+          </button>
+        </div>
+        
+        <div class="gestion-table-container">
+          <table class="gestion-table">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Instrument</th>
+                <th>Début</th>
+                <th>Mode</th>
+                <th>Loyer</th>
+                <th>Caution</th>
+                <th>Statut</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-locations">
+              <!-- Contenu dynamique -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="gestion-empty" id="empty-locations" style="display: none;">
+          <svg class="gestion-empty__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <div class="gestion-empty__title">Aucune location</div>
+          <p>Les locations apparaîtront ici</p>
+        </div>
+      </section>
+      
+      <!-- ============================================================
+           SECTION: COMMANDES
+           ============================================================ -->
+      <section class="gestion-section" id="section-commandes">
+        <div class="gestion-toolbar">
+          <div class="gestion-search">
+            <svg class="gestion-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" class="gestion-search__input" placeholder="Rechercher une commande..." id="search-commandes">
+          </div>
+          <button class="admin-btn admin-btn--primary" onclick="GestionUI.showCommandeModal()">
+            + Nouvelle commande
+          </button>
+        </div>
+        
+        <div class="gestion-table-container">
+          <table class="gestion-table">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Description</th>
+                <th>Date</th>
+                <th>Montant</th>
+                <th>Payé</th>
+                <th>Statut</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-commandes">
+              <!-- Contenu dynamique -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="gestion-empty" id="empty-commandes" style="display: none;">
+          <svg class="gestion-empty__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+          <div class="gestion-empty__title">Aucune commande</div>
+          <p>Les commandes de handpans sur-mesure apparaîtront ici</p>
+        </div>
+      </section>
+      
+      <!-- ============================================================
+           SECTION: FACTURES
+           ============================================================ -->
+      <section class="gestion-section" id="section-factures">
+        <div class="gestion-toolbar">
+          <div class="gestion-search">
+            <svg class="gestion-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" class="gestion-search__input" placeholder="Rechercher une facture..." id="search-factures">
+          </div>
+          <button class="admin-btn admin-btn--primary" onclick="GestionUI.showFactureModal()">
+            + Nouvelle facture
+          </button>
+        </div>
+        
+        <div class="gestion-table-container">
+          <table class="gestion-table">
+            <thead>
+              <tr>
+                <th>N°</th>
+                <th>Date</th>
+                <th>Client</th>
+                <th>Type</th>
+                <th>Montant</th>
+                <th>Statut</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-factures">
+              <!-- Contenu dynamique -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="gestion-empty" id="empty-factures" style="display: none;">
+          <svg class="gestion-empty__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+          <div class="gestion-empty__title">Aucune facture</div>
+          <p>Créez votre première facture</p>
+        </div>
+      </section>
+      
+      <!-- ============================================================
+           SECTION: CONFIGURATION
+           ============================================================ -->
+      <section class="gestion-section" id="section-config">
+        <h2 style="margin-bottom: 1.5rem; font-size: 1.5rem;">Configuration</h2>
+        
+        <div class="admin-card" style="margin-bottom: 1.5rem;">
+          <div class="admin-card__header">
+            <h3 class="admin-card__title">Informations entreprise</h3>
+          </div>
+          <div class="admin-card__body">
+            <form id="form-config" class="admin-form">
+              <div class="form-row">
+                <div class="admin-form__group">
+                  <label class="admin-form__label">Nom complet</label>
+                  <input type="text" class="admin-form__input" id="config-nom" placeholder="Adrien Santamaria">
+                </div>
+                <div class="admin-form__group">
+                  <label class="admin-form__label">Marque commerciale</label>
+                  <input type="text" class="admin-form__input" id="config-marque" placeholder="Mistral Pan">
+                </div>
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Adresse</label>
+                <input type="text" class="admin-form__input" id="config-adresse" placeholder="105 rue du bas val Mary">
+              </div>
+              <div class="form-row">
+                <div class="admin-form__group">
+                  <label class="admin-form__label">Code postal</label>
+                  <input type="text" class="admin-form__input" id="config-codePostal" placeholder="95630">
+                </div>
+                <div class="admin-form__group">
+                  <label class="admin-form__label">Ville</label>
+                  <input type="text" class="admin-form__input" id="config-ville" placeholder="Mériel">
+                </div>
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">SIRET</label>
+                <input type="text" class="admin-form__input" id="config-siret" placeholder="889 482 758 00014">
+              </div>
+              <div class="form-row">
+                <div class="admin-form__group">
+                  <label class="admin-form__label">Email</label>
+                  <input type="email" class="admin-form__input" id="config-email" placeholder="adrien.santamaria@gmail.com">
+                </div>
+                <div class="admin-form__group">
+                  <label class="admin-form__label">Téléphone</label>
+                  <input type="tel" class="admin-form__input" id="config-telephone" placeholder="07 62 76 65 30">
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        
+        <div class="admin-card" style="margin-bottom: 1.5rem;">
+          <div class="admin-card__header">
+            <h3 class="admin-card__title">Coordonnées bancaires</h3>
+          </div>
+          <div class="admin-card__body">
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">IBAN</label>
+                <input type="text" class="admin-form__input" id="config-iban" placeholder="FR76 1751 5000 9208 0035 0475 637">
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">BIC</label>
+                <input type="text" class="admin-form__input" id="config-bic" placeholder="CEPAFRPP751">
+              </div>
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Banque</label>
+              <input type="text" class="admin-form__input" id="config-banque" placeholder="Caisse d'Épargne">
+            </div>
+          </div>
+        </div>
+        
+        <div class="admin-card" style="margin-bottom: 1.5rem;">
+          <div class="admin-card__header">
+            <h3 class="admin-card__title">Paramètres de facturation</h3>
+          </div>
+          <div class="admin-card__body">
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Dernier numéro de facture</label>
+                <input type="number" class="admin-form__input" id="config-dernier_numero_facture" placeholder="249">
+                <small style="color: var(--admin-text-muted); font-size: 0.75rem;">Prochain numéro: ce nombre + 1</small>
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Loyer mensuel par défaut</label>
+                <input type="number" class="admin-form__input" id="config-loyerMensuel" placeholder="50">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Montant caution par défaut</label>
+                <input type="number" class="admin-form__input" id="config-montantCaution" placeholder="1150">
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Frais dossier & transport (distance)</label>
+                <input type="number" class="admin-form__input" id="config-fraisDossierTransport" placeholder="100">
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <button class="admin-btn admin-btn--primary" onclick="GestionUI.saveConfig()">
+          Enregistrer la configuration
+        </button>
+      </section>
+      
+    </div>
+    
+    <!-- ============================================================
+         MODALS
+         ============================================================ -->
+    
+    <!-- Modal Client -->
+    <div class="gestion-modal" id="modal-client">
+      <div class="gestion-modal__content">
+        <div class="gestion-modal__header">
+          <h3 class="gestion-modal__title" id="modal-client-title">Nouveau client</h3>
+          <button class="gestion-modal__close" onclick="GestionUI.closeModal('client')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="gestion-modal__body">
+          <form id="form-client" class="admin-form">
+            <input type="hidden" id="client-id">
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Prénom *</label>
+                <input type="text" class="admin-form__input" id="client-prenom" required>
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Nom *</label>
+                <input type="text" class="admin-form__input" id="client-nom" required>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Email *</label>
+                <input type="email" class="admin-form__input" id="client-email" required>
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Téléphone</label>
+                <input type="tel" class="admin-form__input" id="client-telephone">
+              </div>
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Adresse</label>
+              <textarea class="admin-form__textarea" id="client-adresse" rows="3" placeholder="Rue&#10;Code postal Ville"></textarea>
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Notes internes</label>
+              <textarea class="admin-form__textarea" id="client-notes" rows="2"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="gestion-modal__footer">
+          <button class="admin-btn admin-btn--secondary" onclick="GestionUI.closeModal('client')">Annuler</button>
+          <button class="admin-btn admin-btn--primary" onclick="GestionUI.saveClient()">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal Instrument -->
+    <div class="gestion-modal" id="modal-instrument">
+      <div class="gestion-modal__content">
+        <div class="gestion-modal__header">
+          <h3 class="gestion-modal__title" id="modal-instrument-title">Nouvel instrument</h3>
+          <button class="gestion-modal__close" onclick="GestionUI.closeModal('instrument')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="gestion-modal__body">
+          <form id="form-instrument" class="admin-form">
+            <input type="hidden" id="instrument-id">
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Référence *</label>
+                <input type="text" class="admin-form__input" id="instrument-reference" placeholder="MP-HP-NS-D KURD XIII-00085" required>
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Statut</label>
+                <select class="admin-form__select" id="instrument-statut">
+                  <option value="disponible">Disponible</option>
+                  <option value="en_location">En location</option>
+                  <option value="vendu">Vendu</option>
+                  <option value="en_fabrication">En fabrication</option>
+                </select>
+              </div>
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Nom commercial *</label>
+              <input type="text" class="admin-form__input" id="instrument-nom" placeholder="D Kurd 13 notes" required>
+            </div>
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Gamme</label>
+                <input type="text" class="admin-form__input" id="instrument-gamme" placeholder="D Kurd">
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Notes</label>
+                <input type="text" class="admin-form__input" id="instrument-notes" placeholder="D/ A Bb C D E F G A C D E F">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Taille (cm)</label>
+                <input type="number" class="admin-form__input" id="instrument-taille" placeholder="53">
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Accordage (Hz)</label>
+                <select class="admin-form__select" id="instrument-accordage">
+                  <option value="440">440 Hz</option>
+                  <option value="432">432 Hz</option>
+                </select>
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Matériau</label>
+                <input type="text" class="admin-form__input" id="instrument-materiau" placeholder="Acier nitruré">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Prix de vente (€)</label>
+                <input type="number" class="admin-form__input" id="instrument-prix_vente" placeholder="1400">
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Loyer mensuel (€)</label>
+                <input type="number" class="admin-form__input" id="instrument-prix_location_mensuel" placeholder="50">
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Caution (€)</label>
+                <input type="number" class="admin-form__input" id="instrument-montant_caution" placeholder="1150">
+              </div>
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Description</label>
+              <textarea class="admin-form__textarea" id="instrument-description" rows="2"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="gestion-modal__footer">
+          <button class="admin-btn admin-btn--secondary" onclick="GestionUI.closeModal('instrument')">Annuler</button>
+          <button class="admin-btn admin-btn--primary" onclick="GestionUI.saveInstrument()">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal Location -->
+    <div class="gestion-modal" id="modal-location">
+      <div class="gestion-modal__content gestion-modal__content--wide">
+        <div class="gestion-modal__header">
+          <h3 class="gestion-modal__title" id="modal-location-title">Nouvelle location</h3>
+          <button class="gestion-modal__close" onclick="GestionUI.closeModal('location')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="gestion-modal__body">
+          <form id="form-location" class="admin-form">
+            <input type="hidden" id="location-id">
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Client *</label>
+                <div class="searchable-select-container">
+                  <input type="text" class="admin-form__input searchable-input" id="location-client_search" autocomplete="off" required>
+                  <input type="hidden" id="location-client_id">
+                </div>
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Instrument *</label>
+                <div class="searchable-select-container">
+                  <input type="text" class="admin-form__input searchable-input" id="location-instrument_search" autocomplete="off" required>
+                  <input type="hidden" id="location-instrument_id">
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Mode de location *</label>
+                <select class="admin-form__select" id="location-mode_location" onchange="GestionUI.updateLocationMode()">
+                  <option value="local">Local (retrait atelier)</option>
+                  <option value="distance">À distance (expédition)</option>
+                </select>
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Date de début</label>
+                <input type="date" class="admin-form__input" id="location-date_debut">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Loyer mensuel (€)</label>
+                <input type="number" class="admin-form__input" id="location-loyer_mensuel" placeholder="50">
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Caution (€)</label>
+                <input type="number" class="admin-form__input" id="location-montant_caution" placeholder="1150">
+              </div>
+              <div class="admin-form__group" id="group-frais-transport" style="display: none;">
+                <label class="admin-form__label">Frais dossier & transport (€)</label>
+                <input type="number" class="admin-form__input" id="location-frais_dossier_transport" placeholder="100" readonly>
+              </div>
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Accessoires fournis</label>
+              <input type="text" class="admin-form__input" id="location-accessoires" placeholder="Housse de transport, support">
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Notes</label>
+              <textarea class="admin-form__textarea" id="location-notes" rows="2"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="gestion-modal__footer">
+          <button class="admin-btn admin-btn--secondary" onclick="GestionUI.closeModal('location')">Annuler</button>
+          <button class="admin-btn admin-btn--primary" onclick="GestionUI.saveLocation()">Créer la location</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal Facture -->
+    <div class="gestion-modal" id="modal-facture">
+      <div class="gestion-modal__content gestion-modal__content--wide">
+        <div class="gestion-modal__header">
+          <h3 class="gestion-modal__title" id="modal-facture-title">Nouvelle facture</h3>
+          <button class="gestion-modal__close" onclick="GestionUI.closeModal('facture')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="gestion-modal__body">
+          <form id="form-facture" class="admin-form">
+            <input type="hidden" id="facture-id">
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Type de facture *</label>
+                <select class="admin-form__select" id="facture-type" onchange="GestionUI.updateFactureType()">
+                  <option value="vente">Vente</option>
+                  <option value="acompte">Acompte</option>
+                  <option value="solde">Solde</option>
+                  <option value="location">Location</option>
+                  <option value="prestation">Prestation</option>
+                  <option value="avoir">Avoir</option>
+                </select>
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Date</label>
+                <input type="date" class="admin-form__input" id="facture-date">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Client *</label>
+                <div class="searchable-select-container">
+                  <input type="text" class="admin-form__input searchable-input" id="facture-client_search" autocomplete="off" required>
+                  <input type="hidden" id="facture-client_id">
+                </div>
+              </div>
+              <div class="admin-form__group" id="group-commande" style="display: none;">
+                <label class="admin-form__label">Commande liée</label>
+                <select class="admin-form__select" id="facture-commande_id">
+                  <option value="">Sélectionner une commande</option>
+                </select>
+              </div>
+              <div class="admin-form__group" id="group-location" style="display: none;">
+                <label class="admin-form__label">Location liée</label>
+                <select class="admin-form__select" id="facture-location_id">
+                  <option value="">Sélectionner une location</option>
+                </select>
+              </div>
+            </div>
+            
+            <!-- Lignes de facture -->
+            <div class="admin-form__group">
+              <label class="admin-form__label">Lignes de facture</label>
+              <div id="facture-lignes">
+                <!-- Lignes dynamiques -->
+              </div>
+              <button type="button" class="admin-btn admin-btn--secondary admin-btn--sm" onclick="GestionUI.addFactureLigne()" style="margin-top: 0.5rem;">
+                + Ajouter une ligne
+              </button>
+            </div>
+            
+            <!-- Totaux -->
+            <div style="background: var(--admin-bg); padding: 1rem; border-radius: var(--admin-radius-md); margin-top: 1rem;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span>Sous-total</span>
+                <span id="facture-sous-total">0,00 €</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;" id="row-acomptes" style="display: none;">
+                <span>Acomptes déduits</span>
+                <span id="facture-acomptes">- 0,00 €</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.125rem; color: var(--admin-accent);">
+                <span>Total à payer</span>
+                <span id="facture-total">0,00 €</span>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="gestion-modal__footer">
+          <button class="admin-btn admin-btn--secondary" onclick="GestionUI.closeModal('facture')">Annuler</button>
+          <button class="admin-btn admin-btn--secondary" onclick="GestionUI.previewFacture()">Prévisualiser</button>
+          <button class="admin-btn admin-btn--primary" onclick="GestionUI.saveFacture()">Générer la facture</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal Commande -->
+    <div class="gestion-modal" id="modal-commande">
+      <div class="gestion-modal__content">
+        <div class="gestion-modal__header">
+          <h3 class="gestion-modal__title" id="modal-commande-title">Nouvelle commande</h3>
+          <button class="gestion-modal__close" onclick="GestionUI.closeModal('commande')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="gestion-modal__body">
+          <form id="form-commande" class="admin-form">
+            <input type="hidden" id="commande-id">
+            <div class="admin-form__group">
+              <label class="admin-form__label">Client *</label>
+              <div class="searchable-select-container">
+                <input type="text" class="admin-form__input searchable-input" id="commande-client_search" autocomplete="off" required>
+                <input type="hidden" id="commande-client_id">
+              </div>
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Description *</label>
+              <textarea class="admin-form__textarea" id="commande-description" rows="3" placeholder="Handpan D Kurd 13 notes, 53cm, acier nitruré..." required></textarea>
+            </div>
+            <div class="form-row">
+              <div class="admin-form__group">
+                <label class="admin-form__label">Montant total (€) *</label>
+                <input type="number" class="admin-form__input" id="commande-montant_total" placeholder="1400" required>
+              </div>
+              <div class="admin-form__group">
+                <label class="admin-form__label">Statut</label>
+                <select class="admin-form__select" id="commande-statut">
+                  <option value="en_attente">En attente</option>
+                  <option value="en_fabrication">En fabrication</option>
+                  <option value="pret">Prêt</option>
+                  <option value="livre">Livré</option>
+                </select>
+              </div>
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Date de livraison prévue</label>
+              <input type="date" class="admin-form__input" id="commande-date_livraison_prevue">
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Notes</label>
+              <textarea class="admin-form__textarea" id="commande-notes" rows="2"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="gestion-modal__footer">
+          <button class="admin-btn admin-btn--secondary" onclick="GestionUI.closeModal('commande')">Annuler</button>
+          <button class="admin-btn admin-btn--primary" onclick="GestionUI.saveCommande()">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+  
+  <!-- Scripts -->
+  <script src="js/gestion.js"></script>
+  <script src="js/gestion-pdf.js"></script>
+  <script src="js/gestion-boutique.js"></script>
+  <script src="js/gestion-ui.js"></script>
+
+   <script src="js/supabase-sync.js"></script>
+  
+</body>
+</html>

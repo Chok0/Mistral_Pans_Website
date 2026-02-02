@@ -1,0 +1,196 @@
+<!-- ========== CONTACT MODAL ========== -->
+<div id="contact-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal__header">
+      <h3 class="modal__title">Contact</h3>
+      <button class="modal__close" aria-label="Fermer">&times;</button>
+    </div>
+    <div class="modal__body">
+      <form id="contact-form">
+        <!-- Honeypot anti-spam (champ caché) -->
+        <input type="text" name="website" style="display: none;" tabindex="-1" autocomplete="off">
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="contact-firstname">Prénom *</label>
+            <input type="text" id="contact-firstname" name="firstname" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="contact-lastname">Nom *</label>
+            <input type="text" id="contact-lastname" name="lastname" class="form-input" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="contact-email">Email *</label>
+          <input type="email" id="contact-email" name="email" class="form-input" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="contact-phone">Téléphone</label>
+          <input type="tel" id="contact-phone" name="phone" class="form-input">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="contact-message">Votre message *</label>
+          <textarea id="contact-message" name="message" class="form-textarea" rows="4" required></textarea>
+        </div>
+        
+        <!-- Message de statut -->
+        <div id="contact-status" class="form-status" style="display: none;"></div>
+        
+        <button type="submit" id="contact-submit" class="btn btn--primary btn--full">Envoyer</button>
+      </form>
+      
+      <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
+        Ou directement : <a href="mailto:contact@mistralpans.fr">contact@mistralpans.fr</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Attendre que le DOM soit prêt
+  function initContactForm() {
+    const form = document.getElementById('contact-form');
+    if (!form || form.dataset.initialized) return;
+    form.dataset.initialized = 'true';
+    
+    const submitBtn = document.getElementById('contact-submit');
+    const statusDiv = document.getElementById('contact-status');
+    const modal = document.getElementById('contact-modal');
+    const closeBtn = modal ? modal.querySelector('.modal__close') : null;
+    
+    // Gestion de la soumission
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      // Désactiver le bouton
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Envoi en cours...';
+      statusDiv.style.display = 'none';
+      
+      // Récupérer les données
+      const formData = new FormData(form);
+      const data = {
+        firstname: formData.get('firstname'),
+        lastname: formData.get('lastname'),
+        email: formData.get('email'),
+        phone: formData.get('phone') || '',
+        message: formData.get('message'),
+        website: formData.get('website') // honeypot
+      };
+      
+      try {
+        const response = await fetch('/.netlify/functions/send-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          // Succès
+          statusDiv.textContent = '✅ Message envoyé ! Je vous réponds rapidement.';
+          statusDiv.className = 'form-status form-status--success';
+          statusDiv.style.display = 'block';
+          form.reset();
+          
+          // Fermer la modale après 2 secondes
+          setTimeout(function() {
+            if (modal) {
+              modal.classList.remove('open');
+              document.body.style.overflow = '';
+            }
+            statusDiv.style.display = 'none';
+          }, 2000);
+          
+        } else {
+          // Erreur
+          throw new Error(result.error || 'Erreur lors de l\'envoi');
+        }
+        
+      } catch (error) {
+        console.error('Erreur envoi:', error);
+        statusDiv.textContent = '❌ Erreur lors de l\'envoi. Réessayez ou contactez-moi directement par email.';
+        statusDiv.className = 'form-status form-status--error';
+        statusDiv.style.display = 'block';
+      }
+      
+      // Réactiver le bouton
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Envoyer';
+    });
+    
+    // Fermeture de la modale
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() {
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+      });
+    }
+    
+    if (modal) {
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          modal.classList.remove('open');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+  }
+  
+  // Ouverture de la modale
+  document.addEventListener('click', function(e) {
+    const trigger = e.target.closest('[data-modal="contact"]');
+    if (trigger) {
+      e.preventDefault();
+      const modal = document.getElementById('contact-modal');
+      if (modal) {
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        initContactForm();
+      }
+    }
+  });
+  
+  // Fermeture avec Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('contact-modal');
+      if (modal && modal.classList.contains('open')) {
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+    }
+  });
+  
+  // Init si DOM déjà chargé
+  if (document.readyState !== 'loading') {
+    initContactForm();
+  }
+})();
+</script>
+
+<style>
+.form-status {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+}
+.form-status--success {
+  background: rgba(74, 124, 89, 0.1);
+  border: 1px solid #4A7C59;
+  color: #4A7C59;
+}
+.form-status--error {
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
+}
+</style>

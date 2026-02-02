@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Trouvez un professeur de handpan en Île-de-France. Cours particuliers, ateliers découverte, accompagnement personnalisé.">
+  
+  <title>Apprendre le Handpan - Mistral Pans | Professeurs en Île-de-France</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+  
+  <!-- Styles additionnels pour cette page -->
+  <style>
+    /* Style sépia/gris pour la carte Leaflet */
+    .teachers-map {
+      filter: sepia(15%) saturate(80%) brightness(95%);
+    }
+    
+    /* Style pour les tuiles de carte */
+    .leaflet-tile {
+      filter: grayscale(40%) contrast(95%);
+    }
+    
+    /* Formulaire professeur */
+    .form-section-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-text);
+      margin: var(--space-lg) 0 var(--space-md);
+      padding-top: var(--space-md);
+      border-top: 1px solid var(--color-border);
+    }
+    
+    .form-section-title:first-of-type {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+    
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+    
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--color-bg-warm);
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .checkbox-item:hover {
+      background: var(--color-border);
+    }
+    
+    .checkbox-item input {
+      accent-color: var(--color-accent);
+    }
+    
+    .social-input-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-sm);
+    }
+    
+    .social-input-row .social-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-bg-warm);
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
+    }
+    
+    .social-input-row input {
+      flex: 1;
+    }
+    
+    .photo-upload {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      background: var(--color-bg-warm);
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .photo-upload:hover {
+      border-color: var(--color-accent);
+      background: rgba(184, 134, 11, 0.05);
+    }
+    
+    .photo-upload__preview {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    
+    .photo-upload__preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .photo-upload__text {
+      font-size: 0.875rem;
+      color: var(--color-text-light);
+    }
+    
+    .photo-upload__text strong {
+      display: block;
+      color: var(--color-text);
+      margin-bottom: 0.25rem;
+    }
+    
+    /* Modal professeur */
+    .teacher-modal .modal {
+      max-width: 600px;
+    }
+    
+    .teacher-profile {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: var(--space-xl);
+    }
+    
+    @media (max-width: 500px) {
+      .teacher-profile {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+    }
+    
+    .teacher-profile__photo {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: var(--color-bg-warm);
+      overflow: hidden;
+    }
+    
+    .teacher-profile__photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .teacher-profile__name {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      margin-bottom: var(--space-xs);
+    }
+    
+    .teacher-profile__location {
+      color: var(--color-accent);
+      margin-bottom: var(--space-md);
+    }
+    
+    .teacher-profile__bio {
+      color: var(--color-text-light);
+      margin-bottom: var(--space-lg);
+      line-height: 1.6;
+    }
+    
+    .teacher-profile__tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-lg);
+    }
+    
+    .teacher-profile__tag {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      background: var(--color-bg-warm);
+      border-radius: var(--radius-full);
+      color: var(--color-text-light);
+    }
+    
+    .teacher-profile__socials {
+      display: flex;
+      gap: var(--space-md);
+    }
+    
+    .teacher-profile__social {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-bg-warm);
+      border-radius: 50%;
+      color: var(--color-text-light);
+      transition: all 0.2s ease;
+    }
+    
+    .teacher-profile__social:hover {
+      background: var(--color-accent);
+      color: white;
+    }
+    
+    /* ========== ADMIN STYLES ========== */
+    /* Note: Les modals admin utilisent maintenant admin.css */
+    /* Le FAB est géré par admin-core.js */
+    
+    /* Surcharges pour les modals admin de cette page (thème clair) */
+    .admin-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    
+    .admin-modal-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .admin-modal {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 900px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      transform: scale(0.95) translateY(20px);
+      transition: transform 0.2s ease;
+    }
+    
+    .admin-modal-overlay.open .admin-modal {
+      transform: scale(1) translateY(0);
+    }
+    
+    .admin-modal--medium .admin-modal {
+      max-width: 600px;
+    }
+    
+    .admin-modal__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    
+    .admin-modal__title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: var(--color-text, #333);
+    }
+    
+    .admin-modal__close {
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    
+    .admin-modal__close:hover {
+      background: var(--color-border);
+      color: var(--color-text);
+    }
+    
+    .admin-modal__body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .admin-modal__footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+    
+    /* Boutons admin pour thème clair */
+    .admin-btn {
+      padding: 0.625rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+    
+    .admin-btn--secondary {
+      background: var(--color-bg-warm, #f5f5f5);
+      color: var(--color-text, #333);
+      border: 1px solid var(--color-border, #ddd);
+    }
+    
+    .admin-btn--secondary:hover {
+      background: var(--color-border, #ddd);
+    }
+    
+    /* Surcharge des styles admin pour thème clair - priorité haute */
+    .admin-modal-overlay .admin-btn--ghost,
+    .admin-btn--ghost {
+      background: transparent;
+      color: #555 !important;
+    }
+    
+    .admin-modal-overlay .admin-btn--ghost:hover,
+    .admin-btn--ghost:hover {
+      background: var(--color-bg-warm, #f5f5f5);
+      color: #333 !important;
+    }
+    
+    .admin-btn--sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+    }
+    
+    /* Liste admin */
+    .admin-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .admin-list-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem;
+      background: var(--color-bg-warm, #f9f9f9);
+      border-radius: 8px;
+      transition: background 0.2s ease;
+      color: #333; /* Force dark text */
+    }
+    
+    .admin-list-item:hover {
+      background: var(--color-border, #eee);
+    }
+    
+    .admin-list-item__content {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .admin-list-item__title {
+      font-weight: 500;
+      color: #333 !important;
+    }
+    
+    .admin-list-item__subtitle {
+      font-size: 0.875rem;
+      color: #666 !important;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .admin-list-item__actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    
+    /* Forcer les couleurs sombres pour tout texte dans les modals admin */
+    .admin-modal-overlay,
+    .admin-modal-overlay * {
+      --admin-text: #333;
+      --admin-text-muted: #666;
+      --admin-text-light: #888;
+    }
+    
+    .admin-modal__body {
+      color: #333;
+    }
+    
+    .admin-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: 1rem;
+    }
+    
+    .admin-tab {
+      padding: 0.625rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      background: none;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      color: var(--color-text-light);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .admin-tab:hover {
+      border-color: var(--color-text);
+      color: var(--color-text);
+    }
+    
+    .admin-tab.active {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: white;
+    }
+    
+    .admin-tab__badge {
+      background: #e74c3c;
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.125rem 0.5rem;
+      border-radius: 999px;
+      min-width: 20px;
+      text-align: center;
+    }
+    
+    .admin-tab.active .admin-tab__badge {
+      background: white;
+      color: var(--color-accent);
+    }
+    
+    .admin-panel {
+      display: none;
+    }
+    
+    .admin-panel.active {
+      display: block;
+    }
+    
+    .admin-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .admin-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    
+    .admin-item:hover {
+      border-color: var(--color-accent);
+    }
+    
+    .admin-item__photo {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--color-bg-warm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    
+    .admin-item__photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .admin-item__info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .admin-item__name {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    
+    .admin-item__location {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      margin-bottom: 0.25rem;
+    }
+    
+    .admin-item__email {
+      font-size: 0.8125rem;
+      color: var(--color-accent);
+    }
+    
+    .admin-item__actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    
+    .admin-item--expanded {
+      flex-direction: column;
+    }
+    
+    .admin-item--expanded .admin-item__header {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      width: 100%;
+    }
+    
+    .admin-item--expanded .admin-item__details {
+      width: 100%;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--color-border);
+    }
+    
+    .admin-item--expanded dl {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+    
+    .admin-item--expanded dt {
+      color: var(--color-text-muted);
+    }
+    
+    .admin-item--expanded dd {
+      color: var(--color-text);
+    }
+    
+    .admin-btn {
+      padding: 0.5rem 0.875rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    
+    .admin-btn--primary {
+      background: var(--color-accent);
+      color: white;
+    }
+    
+    .admin-btn--primary:hover {
+      background: #095456;
+    }
+    
+    .admin-btn--success {
+      background: var(--color-success);
+      color: white;
+    }
+    
+    .admin-btn--success:hover {
+      background: #3d6a4a;
+    }
+    
+    .admin-btn--danger {
+      background: #e74c3c;
+      color: white;
+    }
+    
+    .admin-btn--danger:hover {
+      background: #c0392b;
+    }
+    
+    .admin-btn--secondary {
+      background: var(--color-bg-warm);
+      color: var(--color-text);
+      border: 1px solid var(--color-border);
+    }
+    
+    .admin-btn--secondary:hover {
+      border-color: var(--color-text);
+    }
+    
+    .admin-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    
+    .admin-form__group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+    
+    .admin-form__group.full-width {
+      grid-column: 1 / -1;
+    }
+    
+    .admin-form__label {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--color-text-muted);
+    }
+    
+    .admin-form__input,
+    .admin-form__textarea {
+      padding: 0.625rem 0.875rem;
+      font-family: var(--font-body);
+      font-size: 0.9375rem;
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      color: var(--color-text);
+    }
+    
+    .admin-form__input:focus,
+    .admin-form__textarea:focus {
+      outline: none;
+      border-color: var(--color-accent);
+    }
+    
+    .admin-form__textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+    
+    .admin-form__btn {
+      grid-column: 1 / -1;
+      padding: 0.75rem;
+      font-family: var(--font-body);
+      font-size: 0.9375rem;
+      font-weight: 500;
+      background: var(--color-accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 0.5rem;
+    }
+    
+    .admin-form__btn:hover {
+      background: #095456;
+    }
+    
+    .admin-form__actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--color-border);
+    }
+    
+    .admin-checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    
+    .admin-checkbox {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.375rem 0.75rem;
+      background: var(--color-bg-warm);
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .admin-checkbox:hover {
+      background: var(--color-border);
+    }
+    
+    .admin-checkbox input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--color-accent);
+    }
+    
+    .admin-checkbox input[type="checkbox"]:checked + span,
+    .admin-checkbox:has(input:checked) {
+      color: var(--color-accent);
+      font-weight: 500;
+    }
+    
+    .admin-photo-upload {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .admin-photo-preview {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--color-bg-warm);
+      border: 2px dashed var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      color: var(--color-text-muted);
+    }
+    
+    .admin-photo-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .admin-photo-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .admin-photo-actions label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+    
+    .admin-photo-hint {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+    
+    .admin-empty {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--color-text-muted);
+      background: var(--color-bg-warm);
+      border-radius: 8px;
+    }
+    
+    .admin-empty__icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+      opacity: 0.6;
+    }
+    
+    .admin-empty p {
+      margin: 0;
+      font-size: 0.9375rem;
+    }
+    
+    .admin-pending-item,
+    .admin-teacher-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--color-bg-warm);
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+    }
+    
+    .admin-pending-item__avatar,
+    .admin-teacher-item__avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--color-accent);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    
+    .admin-pending-item__avatar img,
+    .admin-teacher-item__avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .admin-pending-item__info,
+    .admin-teacher-item__info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .admin-pending-item__name,
+    .admin-teacher-item__name {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    
+    .admin-pending-item__location,
+    .admin-teacher-item__location {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      margin-bottom: 0.25rem;
+    }
+    
+    .admin-pending-item__meta {
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      margin-bottom: 0.5rem;
+    }
+    
+    .admin-pending-item__bio {
+      font-size: 0.875rem;
+      color: var(--color-text-light);
+      line-height: 1.4;
+    }
+    
+    .admin-pending-item__actions,
+    .admin-teacher-item__actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    
+    .admin-btn--approve {
+      background: var(--color-success);
+      color: white;
+    }
+    
+    .admin-btn--approve:hover {
+      background: #3d8b4d;
+    }
+    
+    .admin-btn--reject {
+      background: transparent;
+      color: #e74c3c;
+      border: 1px solid #e74c3c;
+    }
+    
+    .admin-btn--reject:hover {
+      background: #e74c3c;
+      color: white;
+    }
+    
+    .admin-btn--edit {
+      background: var(--color-accent);
+      color: white;
+    }
+    
+    .admin-btn--edit:hover {
+      background: #095456;
+    }
+    
+    .admin-btn--delete {
+      background: transparent;
+      color: #e74c3c;
+      border: 1px solid #e74c3c;
+    }
+    
+    .admin-btn--delete:hover {
+      background: #e74c3c;
+      color: white;
+    }
+    
+    @media (max-width: 600px) {
+      .admin-pending-item,
+      .admin-teacher-item {
+        flex-direction: column;
+      }
+      
+      .admin-pending-item__actions,
+      .admin-teacher-item__actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 0.75rem;
+      }
+    }
+    
+    .admin-logout {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      background: transparent;
+      color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 1.5rem;
+    }
+    
+    .admin-logout:hover {
+      border-color: #e74c3c;
+      color: #e74c3c;
+    }
+    
+    @media (max-width: 600px) {
+      .admin-tabs {
+        flex-wrap: wrap;
+      }
+      
+      .admin-form {
+        grid-template-columns: 1fr;
+      }
+      
+      .admin-item {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .admin-item__actions {
+        margin-top: 0.75rem;
+        justify-content: flex-end;
+      }
+      
+      .admin-item--expanded dl {
+        grid-template-columns: 1fr;
+      }
+      
+      .admin-item--expanded dt {
+        font-weight: 600;
+        margin-top: 0.5rem;
+      }
+    }
+  </style>
+  
+  <!-- Admin Styles -->
+  <!-- Admin styles are included inline above -->
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230D7377'/></svg>">
+</head>
+<body>
+  
+  <!-- ========== HEADER ========== -->
+<header class="header">
+  <div class="header__inner">
+    <a href="index.html" class="logo">
+      <img src="ressources/images/Mistral_logov3_ball_black.png" alt="Mistral Pans" class="logo__img">
+      <span class="logo__text">Mistral Pans</span>
+    </a>
+    
+    <nav class="nav">
+      <ul class="nav__list">
+        <li><a href="boutique.html" class="nav__link ">Boutique</a></li>
+        <li><a href="location.html" class="nav__link ">Location</a></li>
+        <li><a href="apprendre.html" class="nav__link active">Apprendre</a></li>
+        <li><a href="galerie.html" class="nav__link ">Galerie</a></li>
+        <li><a href="blog.html" class="nav__link ">Blog</a></li>
+        <li><a href="#" class="nav__link" data-modal="contact">Contact</a></li>
+      </ul>
+      
+      <button class="nav__toggle" aria-label="Menu" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+
+  <!-- ========== HERO ========== -->
+  <section class="hero hero--slim" style="background-image: url('ressources/images/20240315_162320.jpg'); min-height: 60vh;">
+    <div class="hero__overlay"></div>
+    <div class="container">
+      <div class="hero__content hero__content--centered">
+        <p class="eyebrow hero__tagline">Réseau partenaire</p>
+        <h1 class="hero__title">Apprendre le <em>handpan</em></h1>
+        <p class="hero__description">
+          Trouvez un professeur près de chez vous pour accompagner vos premiers pas 
+          ou perfectionner votre technique.
+        </p>
+      </div>
+    </div>
+  </section>
+  
+  <!-- ========== TEACHERS SECTION ========== -->
+  <section id="professeurs" class="section">
+    <div class="container">
+      <div class="text-center" style="margin-bottom: var(--space-2xl);">
+        <h2>Professeurs en Île-de-France</h2>
+      </div>
+      
+      <div class="teachers-grid">
+        <!-- Map -->
+        <div class="teachers-map" id="teachers-map">
+          <div class="teachers-map__placeholder">
+            Carte interactive des professeurs
+          </div>
+        </div>
+        
+        <!-- List -->
+        <div class="teachers-list" id="teachers-list">
+          <!-- Chargé dynamiquement par apprendre-admin.js -->
+          <div class="teachers-loading" style="text-align:center;padding:2rem;color:var(--color-text-muted);">
+            Chargement des professeurs...
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </section>
+  
+  <!-- ========== PARTNER BENEFITS ========== -->
+  <section class="section" style="background: var(--color-bg-warm);">
+    <div class="container container--narrow">
+      <div class="text-center" style="margin-bottom: var(--space-2xl);">
+        <p class="eyebrow">Avantages exclusifs</p>
+        <h2>Progresser en solo</h2>
+        <p style="color: var(--color-text-light); max-width: 500px; margin: var(--space-md) auto 0;">
+          En achetant un Mistral Pan, bénéficiez de réductions chez nos partenaires.
+        </p>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-xl);">
+        
+        <!-- Master the Handpan -->
+        <a href="https://www.masterthehandpan.com/fr?via=mistralpans" target="_blank" rel="noopener" class="partner-card" style="background: var(--color-white); padding: var(--space-xl) var(--space-lg); border-radius: var(--radius-lg); border: 1px solid var(--color-border); text-decoration: none; color: var(--color-text); display: block; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+          <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-lg);">
+            <img src="ressources/images/masterthehandpan_62u47pwhite.svg" alt="Master the Handpan" style="height: 60px; width: auto; filter: brightness(0) saturate(100%);">
+            <span style="font-size: 0.8125rem; font-weight: 600; color: var(--color-white); background: var(--color-accent); padding: 0.375rem 0.75rem; border-radius: 6px;">-10%</span>
+          </div>
+          <p style="color: var(--color-text-light); font-size: 1rem; line-height: 1.6; margin-bottom: var(--space-md);">
+            La référence des cours en ligne. Des centaines de leçons vidéo pour progresser à votre rythme, du débutant au niveau avancé.
+          </p>
+          <span style="color: var(--color-accent); font-size: 0.9375rem; font-weight: 500;">Découvrir â†'</span>
+        </a>
+        
+        <!-- Notepan -->
+        <a href="https://www.notepan.fr/" target="_blank" rel="noopener" class="partner-card" style="background: var(--color-white); padding: var(--space-xl) var(--space-lg); border-radius: var(--radius-lg); border: 1px solid var(--color-border); text-decoration: none; color: var(--color-text); display: block; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+          <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-lg);">
+            <img src="ressources/images/notepan_small_blanc.png" alt="Notepan" style="height: 48px; width: auto; filter: brightness(0) saturate(100%);">
+            <span style="font-size: 0.8125rem; font-weight: 600; color: var(--color-white); background: var(--color-accent); padding: 0.375rem 0.75rem; border-radius: 6px;">-20€</span>
+          </div>
+          <p style="color: var(--color-text-light); font-size: 1rem; line-height: 1.6; margin-bottom: var(--space-md);">
+            Partitions et tablatures spécialement conçues pour le handpan. Apprenez vos morceaux préférés avec des supports adaptés.
+          </p>
+          <span style="color: var(--color-accent); font-size: 0.9375rem; font-weight: 500;">Découvrir â†'</span>
+        </a>
+        
+      </div>
+    </div>
+  </section>
+  
+  <!-- ========== CTA ========== -->
+  <section class="section">
+    <div class="container container--narrow text-center">
+      <h2 style="margin-bottom: var(--space-md);">Pas encore d'instrument ?</h2>
+      <p style="color: var(--color-text-light); margin-bottom: var(--space-xl);">
+        Louez un handpan pour commencer vos cours sans investissement initial.
+      </p>
+      <div style="display: flex; gap: var(--space-md); justify-content: center; flex-wrap: wrap;">
+        <a href="boutique.html" class="btn btn--primary btn--lg">Voir les instruments</a>
+        <a href="location.html" class="btn btn--secondary btn--lg">Louer un handpan</a>
+      </div>
+    </div>
+  </section>
+  
+  <!-- ========== FOOTER ========== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div class="footer__brand">
+        <p class="footer__logo">Mistral Pans</p>
+        <p class="footer__description">
+          Handpans d'exception fabriqués artisanalement 
+          en Île-de-France depuis 2022.
+        </p>
+      </div>
+      
+      <div>
+        <p class="footer__title">Navigation</p>
+        <ul class="footer__links">
+          <li><a href="boutique.html" class="footer__link">Boutique</a></li>
+          <li><a href="location.html" class="footer__link">Location</a></li>
+          <li><a href="apprendre.html" class="footer__link">Apprendre</a></li>
+          <li><a href="galerie.html" class="footer__link">Galerie</a></li>
+        </ul>
+      </div>
+      
+      <div>
+        <p class="footer__title">Ressources</p>
+        <ul class="footer__links">
+          <li><a href="blog.html" class="footer__link">Blog</a></li>
+          <li><a href="#" class="footer__link" data-modal="contact">Contact</a></li>
+          <li><a href="mentions-legales.html" class="footer__link">Mentions légales</a></li>
+          <li><a href="cgv.html" class="footer__link">CGV</a></li>
+        </ul>
+      </div>
+      
+      <div>
+        <p class="footer__title">Contact</p>
+        <ul class="footer__links">
+          <li><span class="footer__link">Île-de-France, France</span></li>
+          <li><a href="mailto:contact@mistralpans.fr" class="footer__link">contact@mistralpans.fr</a></li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="footer__bottom">
+      <p>© 2026 Mistral Pans. Tous droits réservés.</p>
+      <div class="footer__social">
+        <a href="#" aria-label="Instagram">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="20" rx="5"/>
+            <circle cx="12" cy="12" r="4"/>
+            <circle cx="18" cy="6" r="1"/>
+          </svg>
+        </a>
+        <a href="#" aria-label="YouTube">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="4"/>
+            <polygon points="10,8 16,12 10,16"/>
+          </svg>
+        </a>
+        <a href="#" aria-label="Facebook">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+<!-- ========== CONTACT MODAL ========== -->
+<div id="contact-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal__header">
+      <h3 class="modal__title">Contact</h3>
+      <button class="modal__close" onclick="closeContactModal()" aria-label="Fermer">&times;</button>
+    </div>
+    <div class="modal__body">
+      <form id="contact-form" onsubmit="submitContactForm(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="contact-firstname">Prénom *</label>
+            <input type="text" id="contact-firstname" name="firstname" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="contact-lastname">Nom *</label>
+            <input type="text" id="contact-lastname" name="lastname" class="form-input" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="contact-email">Email *</label>
+          <input type="email" id="contact-email" name="email" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="contact-phone">Téléphone</label>
+          <input type="tel" id="contact-phone" name="phone" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="contact-message">Votre message *</label>
+          <textarea id="contact-message" name="message" class="form-textarea" rows="4" required></textarea>
+        </div>
+        <button type="submit" class="btn btn--primary btn--full">Envoyer</button>
+      </form>
+      <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
+        Ou directement : <a href="mailto:contact@mistralpans.fr">contact@mistralpans.fr</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+function openContactModal() {
+  document.getElementById('contact-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeContactModal() {
+  document.getElementById('contact-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function submitContactForm(e) {
+  e.preventDefault();
+  var f = e.target;
+  var firstname = f.querySelector('[name="firstname"]').value.trim();
+  var lastname = f.querySelector('[name="lastname"]').value.trim();
+  var email = f.querySelector('[name="email"]').value.trim();
+  var phone = f.querySelector('[name="phone"]').value.trim() || 'Non renseigné';
+  var message = f.querySelector('[name="message"]').value.trim();
+  var subject = '[Mistral Pans] Message de ' + firstname + ' ' + lastname;
+  var body = 'Nom: ' + firstname + ' ' + lastname + '\nEmail: ' + email + '\nTéléphone: ' + phone + '\n\nMessage:\n' + message;
+  window.location.href = 'mailto:contact@mistralpans.fr?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  setTimeout(function() { closeContactModal(); f.reset(); }, 300);
+}
+document.addEventListener('click', function(e) {
+  var contactTrigger = e.target.closest('[data-modal="contact"]');
+  if (contactTrigger) {
+    e.preventDefault();
+    openContactModal();
+  }
+  if (e.target.id === 'contact-modal') {
+    closeContactModal();
+  }
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeContactModal();
+});
+</script>
+
+  <!-- ========== TEACHER SIGNUP MODAL ========== -->
+  <div id="teacher-signup" class="modal-overlay">
+    <div class="modal" style="max-width: 600px;">
+      <div class="modal__header">
+        <h3 class="modal__title">Rejoindre le réseau</h3>
+        <button class="modal__close" aria-label="Fermer">&times;</button>
+      </div>
+      <div class="modal__body" style="max-height: 70vh; overflow-y: auto;">
+        <p style="margin-bottom: var(--space-lg); color: var(--color-text-light);">
+          Vous enseignez le handpan en Île-de-France ? Remplissez ce formulaire 
+          pour apparaître sur notre carte. Votre demande sera examinée sous 48h.
+        </p>
+        <form id="teacher-form">
+          
+          <!-- Photo -->
+          <div class="form-group">
+            <label class="form-label">Photo de profil</label>
+            <label class="photo-upload" for="teacher-photo">
+              <div class="photo-upload__preview" id="photo-preview">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              <div class="photo-upload__text">
+                <strong>Ajouter une photo</strong>
+                Recommandé : 300x300px, format carré
+              </div>
+            </label>
+            <input type="file" id="teacher-photo" name="photo" accept="image/*" style="display: none;">
+          </div>
+          
+          <!-- Informations personnelles -->
+          <p class="form-section-title">Informations personnelles</p>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="teacher-firstname">Prénom *</label>
+              <input type="text" id="teacher-firstname" name="firstname" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="teacher-lastname">Nom *</label>
+              <input type="text" id="teacher-lastname" name="lastname" class="form-input" required>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="teacher-email">Email *</label>
+              <input type="email" id="teacher-email" name="email" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="teacher-phone">Téléphone</label>
+              <input type="tel" id="teacher-phone" name="phone" class="form-input" placeholder="06 12 34 56 78">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group" style="flex: 0 0 120px;">
+              <label class="form-label" for="teacher-postalcode">Code postal *</label>
+              <input type="text" id="teacher-postalcode" name="postalcode" class="form-input" placeholder="75011" required pattern="[0-9]{5}" maxlength="5">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="teacher-city">Ville *</label>
+              <input type="text" id="teacher-city" name="city" class="form-input" placeholder="Paris" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="teacher-bio">Présentez-vous *</label>
+            <textarea id="teacher-bio" name="bio" class="form-textarea" rows="4" placeholder="Votre parcours, votre expérience avec le handpan, votre approche pédagogique..." required></textarea>
+          </div>
+          
+          <!-- Modalités de cours -->
+          <p class="form-section-title">Modalités de cours</p>
+          
+          <div class="form-group">
+            <label class="form-label">Type de cours proposés *</label>
+            <div class="checkbox-group">
+              <label class="checkbox-item">
+                <input type="checkbox" name="course_type[]" value="domicile">
+                &Agrave; domicile
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="course_type[]" value="studio">
+                En studio/atelier
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="course_type[]" value="distance">
+                &Agrave; distance (visio)
+              </label>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Format des cours *</label>
+            <div class="checkbox-group">
+              <label class="checkbox-item">
+                <input type="checkbox" name="course_format[]" value="solo">
+                Cours individuels
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="course_format[]" value="groupe">
+                Cours en groupe
+              </label>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="checkbox-item" style="background: transparent; padding: 0;">
+              <input type="checkbox" name="instrument_available" value="1">
+              <span>Je mets un instrument à disposition sur place</span>
+            </label>
+          </div>
+          
+          <!-- Réseaux sociaux -->
+          <p class="form-section-title">Présence en ligne (optionnel)</p>
+          
+          <div class="form-group">
+            <label class="form-label">Site web</label>
+            <input type="url" id="teacher-website" name="website" class="form-input" placeholder="https://monsite.fr">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Réseaux sociaux</label>
+            
+            <div class="social-input-row">
+              <span class="social-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                </svg>
+              </span>
+              <input type="text" name="instagram" class="form-input" placeholder="@votre_compte">
+            </div>
+            
+            <div class="social-input-row">
+              <span class="social-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </span>
+              <input type="text" name="facebook" class="form-input" placeholder="URL ou nom de page">
+            </div>
+            
+            <div class="social-input-row">
+              <span class="social-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+              </span>
+              <input type="text" name="youtube" class="form-input" placeholder="URL de chaîne">
+            </div>
+            
+            <div class="social-input-row">
+              <span class="social-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+                </svg>
+              </span>
+              <input type="text" name="tiktok" class="form-input" placeholder="@votre_compte">
+            </div>
+          </div>
+          
+          <!-- reCAPTCHA placeholder -->
+          <div class="form-group">
+            <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY" id="recaptcha-container"></div>
+            <p style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: var(--space-sm);">
+              Ce site est protégé par reCAPTCHA.
+            </p>
+          </div>
+          
+          <button type="submit" class="btn btn--primary btn--full" id="teacher-submit-btn">
+            Envoyer ma candidature
+          </button>
+          
+          <p style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: var(--space-md); text-align: center;">
+            Votre demande sera examinée sous 48h. Vous recevrez un email de confirmation.
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ========== TEACHER PROFILE MODAL ========== -->
+  <div id="teacher-profile-modal" class="modal-overlay teacher-modal">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title">Profil du professeur</h3>
+        <button class="modal__close" aria-label="Fermer">&times;</button>
+      </div>
+      <div class="modal__body" id="teacher-profile-content">
+        <!-- Contenu dynamique -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- ========== ADMIN FAB ========== -->
+  <!-- Le FAB admin est maintenant géré par admin-core.js + apprendre-admin.js -->
+  
+  
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- reCAPTCHA -->
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  
+  <!-- Scripts -->
+  
+  <script src="js/main.js"></script>
+  
+
+  <!-- Ancien script inline supprimé - fonctionnalités migrées vers apprendre-admin.js -->
+  
+  <!-- Admin Scripts -->
+  <script src="js/admin-core.js"></script>
+  <script src="js/apprendre-admin.js"></script>
+<script src="js/mistral-stats.js"></script>
+</body>
+</html>

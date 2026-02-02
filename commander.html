@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Commander votre handpan Mistral Pans. RÆ'©servez avec un acompte ou prenez rendez-vous pour personnaliser votre projet.">
+  
+  <title>Commander - Mistral Pans</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css">
+  
+  <style>
+    .order-page {
+      padding-top: calc(var(--header-height) + var(--space-3xl));
+      min-height: 100vh;
+      background: var(--color-bg);
+    }
+    
+    .order-header {
+      text-align: center;
+      margin-bottom: var(--space-3xl);
+    }
+    
+    .order-product {
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-3xl);
+    }
+    
+    .order-product__image {
+      width: 120px;
+      height: 120px;
+      background: var(--color-bg-warm);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    
+    .order-product__info h3 {
+      margin-bottom: var(--space-xs);
+    }
+    
+    .order-product__notes {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-sm);
+    }
+    
+    .order-product__price {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--color-accent);
+    }
+    
+    .order-options {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-xl);
+      margin-bottom: var(--space-3xl);
+    }
+    
+    @media (max-width: 768px) {
+      .order-options {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .order-option {
+      background: var(--color-white);
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-2xl);
+      transition: all var(--transition-base);
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .order-option:hover {
+      border-color: var(--color-accent);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .order-option.selected {
+      border-color: var(--color-accent);
+      background: linear-gradient(180deg, rgba(184, 134, 11, 0.03) 0%, transparent 100%);
+    }
+    
+    .order-option__badge {
+      position: absolute;
+      top: var(--space-lg);
+      right: var(--space-lg);
+      background: var(--color-success);
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+    }
+    
+    .order-option__icon {
+      width: 48px;
+      height: 48px;
+      background: var(--color-bg-warm);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: var(--space-lg);
+    }
+    
+    .order-option__title {
+      font-size: 1.25rem;
+      margin-bottom: var(--space-sm);
+    }
+    
+    .order-option__description {
+      color: var(--color-text-light);
+      font-size: 0.9375rem;
+      margin-bottom: var(--space-lg);
+    }
+    
+    .order-option__details {
+      background: var(--color-bg-warm);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      font-size: 0.875rem;
+    }
+    
+    .order-option__details li {
+      padding: var(--space-xs) 0;
+      padding-left: var(--space-lg);
+      position: relative;
+      list-style: none;
+    }
+    
+    .order-option__details li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: var(--color-success);
+    }
+    
+    .order-form {
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-2xl);
+      display: none;
+    }
+    
+    .order-form.active {
+      display: block;
+    }
+    
+    .order-form__title {
+      margin-bottom: var(--space-xl);
+      padding-bottom: var(--space-lg);
+      border-bottom: 1px solid var(--color-border);
+    }
+    
+    .order-summary {
+      background: var(--color-bg-warm);
+      border-radius: var(--radius-md);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-xl);
+    }
+    
+    .order-summary__row {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-sm) 0;
+    }
+    
+    .order-summary__row.total {
+      border-top: 1px solid var(--color-border);
+      margin-top: var(--space-sm);
+      padding-top: var(--space-md);
+      font-weight: 600;
+      font-size: 1.125rem;
+    }
+    
+    .paypal-note {
+      background: #FFF8E7;
+      border: 1px solid #F0D78C;
+      border-radius: var(--radius-md);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-xl);
+      font-size: 0.9375rem;
+    }
+    
+    .paypal-note strong {
+      color: #0070BA;
+    }
+  </style>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230D7377'/></svg>">
+</head>
+<body>
+  
+  <!-- ========== HEADER ========== -->
+<header class="header">
+  <div class="header__inner">
+    <a href="index.html" class="logo">
+      <img src="ressources/images/Mistral_logov3_ball_black.png" alt="Mistral Pans" class="logo__img">
+      <span class="logo__text">Mistral Pans</span>
+    </a>
+    
+    <nav class="nav">
+      <ul class="nav__list">
+        <li><a href="boutique.html" class="nav__link ">Boutique</a></li>
+        <li><a href="location.html" class="nav__link ">Location</a></li>
+        <li><a href="apprendre.html" class="nav__link ">Apprendre</a></li>
+        <li><a href="galerie.html" class="nav__link ">Galerie</a></li>
+        <li><a href="blog.html" class="nav__link ">Blog</a></li>
+        <li><a href="#" class="nav__link" data-modal="contact">Contact</a></li>
+      </ul>
+      
+      <button class="nav__toggle" aria-label="Menu" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+
+  <!-- ========== ORDER PAGE ========== -->
+  <section class="order-page">
+    <div class="container container--narrow">
+      
+      <div class="order-header">
+        <p class="eyebrow">Æ'"°tape 1 sur 2</p>
+        <h1>Commander</h1>
+      </div>
+      
+      <!-- Product Summary -->
+      <div class="order-product">
+        <div class="order-product__image">
+          <span style="font-size: 2.5rem; opacity: 0.3;">ðŸŽµ</span>
+        </div>
+        <div class="order-product__info">
+          <h3 id="product-name">D Kurd • 9 notes</h3>
+          <p class="order-product__notes" id="product-notes">D3 • A3 • Bb3 • C4 • D4 • E4 • F4 • G4 • A4</p>
+          <p class="order-product__price" id="product-price">1 400 €</p>
+        </div>
+      </div>
+      
+      <!-- Two Options -->
+      <h2 style="margin-bottom: var(--space-lg);">Choisissez votre option</h2>
+      
+      <div class="order-options">
+        
+        <!-- Option 1: Acompte -->
+        <div class="order-option" data-option="deposit" onclick="selectOption('deposit')">
+          <span class="order-option__badge">Populaire</span>
+          <div class="order-option__icon">💳</div>
+          <h3 class="order-option__title">RÆ'©server avec acompte</h3>
+          <p class="order-option__description">
+            Je rÆ'©serve l'instrument tel quel. Fabrication lancÆ'©e dÆ's rÆ'©ception.
+          </p>
+          <ul class="order-option__details">
+            <li>Acompte de 300€ aujourd'hui</li>
+            <li>Solde Æ' la livraison</li>
+            <li>Paiement en 3x disponible</li>
+            <li>DÆ'©lai : 8-12 semaines</li>
+          </ul>
+        </div>
+        
+        <!-- Option 2: RDV -->
+        <div class="order-option" data-option="appointment" onclick="selectOption('appointment')">
+          <div class="order-option__icon">📅</div>
+          <h3 class="order-option__title">Personnaliser mon projet</h3>
+          <p class="order-option__description">
+            Je souhaite discuter des options, de la finition, ou poser des questions.
+          </p>
+          <ul class="order-option__details">
+            <li>Æ'"°change tÆ'©lÆ'©phone ou visio</li>
+            <li>Conseil sur les gammes</li>
+            <li>Devis personnalisÆ'©</li>
+            <li>Sans engagement</li>
+          </ul>
+        </div>
+        
+      </div>
+      
+      <!-- Form: Deposit -->
+      <div id="form-deposit" class="order-form">
+        <h3 class="order-form__title">RÆ'©servation avec acompte</h3>
+        
+        <div class="order-summary">
+          <div class="order-summary__row">
+            <span>Instrument</span>
+            <span id="summary-product">D Kurd 9 notes</span>
+          </div>
+          <div class="order-summary__row">
+            <span>Prix total</span>
+            <span id="summary-total">1 400 €</span>
+          </div>
+          <div class="order-summary__row">
+            <span>Acompte aujourd'hui</span>
+            <span>300 €</span>
+          </div>
+          <div class="order-summary__row total">
+            <span>Reste Æ' payer</span>
+            <span id="summary-remaining">1 100 €</span>
+          </div>
+        </div>
+        
+        <div class="paypal-note">
+          <strong>💳 Paiement en 3x sans frais</strong> disponible via PayPal. 
+          Vous recevrez un email avec le lien de paiement aprÆ's validation.
+        </div>
+        
+        <form data-form="order">
+          <input type="hidden" name="type" value="Commande avec acompte">
+          <input type="hidden" name="product" id="form-product" value="D Kurd 9 notes">
+          <input type="hidden" name="amount" value="300">
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="deposit-firstname">Prénom *</label>
+              <input type="text" id="deposit-firstname" name="firstname" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="deposit-lastname">Nom *</label>
+              <input type="text" id="deposit-lastname" name="lastname" class="form-input" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="deposit-email">Email *</label>
+            <input type="email" id="deposit-email" name="email" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="deposit-phone">Téléphone *</label>
+            <input type="tel" id="deposit-phone" name="phone" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="deposit-address">Adresse de livraison *</label>
+            <textarea id="deposit-address" name="address" class="form-textarea" rows="3" placeholder="Adresse complète ou 'Retrait atelier'" required></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="deposit-message">Message (optionnel)</label>
+            <textarea id="deposit-message" name="message" class="form-textarea" rows="2" placeholder="Précisions, questions..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-checkbox">
+              <input type="checkbox" required>
+              <span>J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</span>
+            </label>
+          </div>
+          
+          <button type="submit" class="btn btn--primary btn--lg btn--full">
+            Valider ma commande
+          </button>
+          
+          <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
+            Vous recevrez un email de confirmation avec le lien de paiement PayPal.
+          </p>
+        </form>
+      </div>
+      
+      <!-- Form: Appointment -->
+      <div id="form-appointment" class="order-form">
+        <h3 class="order-form__title">Prendre rendez-vous</h3>
+        
+        <p style="margin-bottom: var(--space-xl); color: var(--color-text-light);">
+          Discutons de votre projet ! Je vous recontacte sous 48h pour convenir d'un créneau.
+        </p>
+        
+        <form data-form="appointment">
+          <input type="hidden" name="type" value="Demande de RDV">
+          <input type="hidden" name="product_interest" id="form-product-rdv" value="D Kurd 9 notes">
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="rdv-firstname">Prénom *</label>
+              <input type="text" id="rdv-firstname" name="firstname" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="rdv-lastname">Nom *</label>
+              <input type="text" id="rdv-lastname" name="lastname" class="form-input" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="rdv-email">Email *</label>
+            <input type="email" id="rdv-email" name="email" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="rdv-phone">Téléphone *</label>
+            <input type="tel" id="rdv-phone" name="phone" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Comment préférez-vous échanger ?</label>
+            <div class="form-radio-group">
+              <label class="form-radio">
+                <input type="radio" name="contact_preference" value="telephone" checked>
+                <span>Téléphone</span>
+              </label>
+              <label class="form-radio">
+                <input type="radio" name="contact_preference" value="visio">
+                <span>Visio</span>
+              </label>
+              <label class="form-radio">
+                <input type="radio" name="contact_preference" value="atelier">
+                <span>À l'atelier</span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="rdv-project">Décrivez votre projet *</label>
+            <textarea id="rdv-project" name="message" class="form-textarea" rows="4" placeholder="Quel type d'instrument recherchez-vous ? Avez-vous déjà joué du handpan ? Questions particulières ?" required></textarea>
+          </div>
+          
+          <button type="submit" class="btn btn--primary btn--lg btn--full">
+            Envoyer ma demande
+          </button>
+          
+          <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
+            Je vous recontacte sous 48h pour organiser notre échange.
+          </p>
+        </form>
+      </div>
+      
+      <!-- Back link -->
+      <div class="text-center" style="margin-top: var(--space-2xl);">
+        <a href="boutique.html" class="btn btn--ghost">← Retour à la boutique</a>
+      </div>
+      
+    </div>
+  </section>
+  <!-- ========== FOOTER MINIMAL ========== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer__bottom" style="border-top: none; padding-top: 0;">
+      <p>© 2026 Mistral Pans. Tous droits réservés.</p>
+    </div>
+  </div>
+</footer>
+
+<!-- ========== CONTACT MODAL ========== -->
+<div id="contact-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal__header">
+      <h3 class="modal__title">Contact</h3>
+      <button class="modal__close" onclick="closeContactModal()" aria-label="Fermer">&times;</button>
+    </div>
+    <div class="modal__body">
+      <form id="contact-form" onsubmit="submitContactForm(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="contact-firstname">Prénom *</label>
+            <input type="text" id="contact-firstname" name="firstname" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="contact-lastname">Nom *</label>
+            <input type="text" id="contact-lastname" name="lastname" class="form-input" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="contact-email">Email *</label>
+          <input type="email" id="contact-email" name="email" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="contact-phone">Téléphone</label>
+          <input type="tel" id="contact-phone" name="phone" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="contact-message">Votre message *</label>
+          <textarea id="contact-message" name="message" class="form-textarea" rows="4" required></textarea>
+        </div>
+        <button type="submit" class="btn btn--primary btn--full">Envoyer</button>
+      </form>
+      <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
+        Ou directement : <a href="mailto:contact@mistralpans.fr">contact@mistralpans.fr</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+function openContactModal() {
+  document.getElementById('contact-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeContactModal() {
+  document.getElementById('contact-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function submitContactForm(e) {
+  e.preventDefault();
+  var f = e.target;
+  var firstname = f.querySelector('[name="firstname"]').value.trim();
+  var lastname = f.querySelector('[name="lastname"]').value.trim();
+  var email = f.querySelector('[name="email"]').value.trim();
+  var phone = f.querySelector('[name="phone"]').value.trim() || 'Non renseigné';
+  var message = f.querySelector('[name="message"]').value.trim();
+  var subject = '[Mistral Pans] Message de ' + firstname + ' ' + lastname;
+  var body = 'Nom: ' + firstname + ' ' + lastname + '\nEmail: ' + email + '\nTéléphone: ' + phone + '\n\nMessage:\n' + message;
+  window.location.href = 'mailto:contact@mistralpans.fr?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  setTimeout(function() { closeContactModal(); f.reset(); }, 300);
+}
+document.addEventListener('click', function(e) {
+  var contactTrigger = e.target.closest('[data-modal="contact"]');
+  if (contactTrigger) {
+    e.preventDefault();
+    openContactModal();
+  }
+  if (e.target.id === 'contact-modal') {
+    closeContactModal();
+  }
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeContactModal();
+});
+</script>
+
+<!-- Scripts -->
+<script src="js/main.js"></script>
+
+<!-- Commander specific JS -->
+<script>
+    // Récupérer les paramètres de l'URL pour pré-remplir le formulaire
+    document.addEventListener('DOMContentLoaded', function() {
+      const params = new URLSearchParams(window.location.search);
+      const productName = params.get('product') || 'D Kurd 9 notes';
+      const price = params.get('price') || '1400';
+      
+      // Mettre à jour les champs cachés
+      const formProduct = document.getElementById('form-product');
+      const formProductRdv = document.getElementById('form-product-rdv');
+      if (formProduct) formProduct.value = productName;
+      if (formProductRdv) formProductRdv.value = productName;
+      
+      // Mettre à jour l'affichage du résumé si les éléments existent
+      const summaryTotal = document.getElementById('summary-total');
+      const summaryRemaining = document.getElementById('summary-remaining');
+      if (summaryTotal) summaryTotal.textContent = price + ' €';
+      if (summaryRemaining) summaryRemaining.textContent = (parseInt(price) - 300) + ' €';
+    });
+  </script>
+<script src="js/mistral-stats.js"></script>
+</body>
+</html>

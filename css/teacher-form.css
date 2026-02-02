@@ -1,0 +1,285 @@
+/* ==========================================================================
+   MISTRAL PANS - Teacher Form Component CSS
+   Styles pour le formulaire de professeur rÃƒÂ©utilisable
+   
+   SYSTÃƒË†ME DE THÃƒË†ME:
+   Le composant utilise des variables --tf-* (teacher-form) qui s'adaptent
+   automatiquement au contexte (thÃƒÂ¨me clair ou sombre) via les variables
+   parentes dÃƒÂ©finies dans chaque contexte.
+   ========================================================================== */
+
+/* ============================================================================
+   VARIABLES PAR DÃƒâ€°FAUT (ThÃƒÂ¨me clair - pour page publique)
+   ============================================================================ */
+
+.teacher-form {
+  /* Variables du formulaire - hÃƒÂ©ritent du contexte ou utilisent des valeurs par dÃƒÂ©faut */
+  --tf-text: var(--form-text, var(--color-text, #2C2825));
+  --tf-text-muted: var(--form-text-muted, var(--color-text-muted, #666));
+  --tf-text-light: var(--form-text-light, var(--color-text-light, #888));
+  --tf-bg: var(--form-bg, var(--color-white, #FFFFFF));
+  --tf-bg-muted: var(--form-bg-muted, var(--color-bg-warm, #F5F3EF));
+  --tf-border: var(--form-border, var(--color-border, #E8E4DC));
+  --tf-input-bg: var(--form-input-bg, var(--color-white, #FFFFFF));
+  --tf-accent: var(--form-accent, var(--color-accent, #0D7377));
+  --tf-accent-hover: var(--form-accent-hover, #14919B);
+  --tf-radius: var(--form-radius, var(--radius-md, 8px));
+  
+  width: 100%;
+}
+
+/* ============================================================================
+   CONTEXTE ADMIN (ThÃƒÂ¨me sombre)
+   DÃƒÂ©finit les variables pour le thÃƒÂ¨me sombre quand le formulaire est dans un modal admin
+   ============================================================================ */
+
+.admin-modal .teacher-form,
+.admin-page .teacher-form,
+[data-theme="dark"] .teacher-form,
+body.admin-theme .teacher-form {
+  --tf-text: var(--admin-text, #f5f3ef);
+  --tf-text-muted: var(--admin-text-muted, #a8a5a0);
+  --tf-text-light: var(--admin-text-light, #8a8680);
+  --tf-bg: var(--admin-surface, #1a1815);
+  --tf-bg-muted: var(--admin-surface-hover, #242220);
+  --tf-border: var(--admin-border, #2a2725);
+  --tf-input-bg: var(--admin-surface-hover, #242220);
+  --tf-accent: var(--admin-accent, #0D7377);
+  --tf-accent-hover: var(--admin-accent-hover, #14919B);
+}
+
+/* ============================================================================
+   SECTIONS
+   ============================================================================ */
+
+.teacher-form__section {
+  margin-bottom: 1.5rem;
+}
+
+.teacher-form__section:last-child {
+  margin-bottom: 0;
+}
+
+.teacher-form__section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tf-text);
+  margin: 0 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--tf-border);
+}
+
+/* ============================================================================
+   LAYOUT
+   ============================================================================ */
+
+.teacher-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 600px) {
+  .teacher-form__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.teacher-form__group {
+  margin-bottom: 1rem;
+}
+
+.teacher-form__group:last-child {
+  margin-bottom: 0;
+}
+
+/* ============================================================================
+   LABELS & INPUTS
+   ============================================================================ */
+
+.teacher-form__label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--tf-text);
+  margin-bottom: 0.25rem;
+}
+
+.teacher-form__input,
+.teacher-form__textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--tf-text);
+  background: var(--tf-input-bg);
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius);
+  transition: all 0.2s ease;
+}
+
+.teacher-form__input::placeholder,
+.teacher-form__textarea::placeholder {
+  color: var(--tf-text-light);
+}
+
+.teacher-form__input:focus,
+.teacher-form__textarea:focus {
+  outline: none;
+  border-color: var(--tf-accent);
+  box-shadow: 0 0 0 3px rgba(13, 115, 119, 0.15);
+}
+
+.teacher-form__textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.teacher-form__hint {
+  font-size: 0.75rem;
+  color: var(--tf-text-muted);
+  margin-top: 0.25rem;
+}
+
+/* ============================================================================
+   PHOTO UPLOAD
+   ============================================================================ */
+
+.teacher-form__photo-upload {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.teacher-form__photo-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--tf-bg-muted);
+  border: 2px dashed var(--tf-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: var(--tf-text-light);
+}
+
+.teacher-form__photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.teacher-form__photo-preview svg {
+  opacity: 0.5;
+}
+
+.teacher-form__photo-actions {
+  flex: 1;
+}
+
+.teacher-form__photo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--tf-text);
+  background: var(--tf-bg-muted);
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.teacher-form__photo-btn:hover {
+  background: var(--tf-border);
+}
+
+.teacher-form__photo-hint {
+  font-size: 0.75rem;
+  color: var(--tf-text-muted);
+  margin-top: 0.5rem;
+}
+
+/* ============================================================================
+   CHECKBOXES
+   ============================================================================ */
+
+.teacher-form__checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.teacher-form__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--tf-text);
+}
+
+.teacher-form__checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--tf-accent);
+  cursor: pointer;
+}
+
+/* ============================================================================
+   SOCIAL MEDIA ROW
+   ============================================================================ */
+
+.teacher-form__social-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.teacher-form__social-row:last-child {
+  margin-bottom: 0;
+}
+
+.teacher-form__social-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tf-text-muted);
+  flex-shrink: 0;
+}
+
+.teacher-form__social-row .teacher-form__input {
+  flex: 1;
+}
+
+/* ============================================================================
+   RECAPTCHA (for signup form)
+   ============================================================================ */
+
+.teacher-form__recaptcha {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--tf-border);
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 480px) {
+  .teacher-form__photo-upload {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .teacher-form__checkbox-group {
+    flex-direction: column;
+  }
+}
