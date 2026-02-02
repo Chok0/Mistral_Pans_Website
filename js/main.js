@@ -382,3 +382,114 @@ function initScrollAnimations() {
     observer.observe(el);
   });
 }
+/* --------------------------------------------------------------------------
+   Contact Form - Envoi via Netlify Function
+   -------------------------------------------------------------------------- */
+function initContactForm() {
+  const form = document.getElementById('contact-form');
+  if (!form || form.dataset.initialized) return;
+  form.dataset.initialized = 'true';
+  
+  const submitBtn = document.getElementById('contact-submit');
+  const statusDiv = document.getElementById('contact-status');
+  const modal = document.getElementById('contact-modal');
+  
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // Désactiver le bouton
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Envoi en cours...';
+    if (statusDiv) statusDiv.style.display = 'none';
+    
+    // Récupérer les données
+    const formData = new FormData(form);
+    const data = {
+      firstname: formData.get('firstname'),
+      lastname: formData.get('lastname'),
+      email: formData.get('email'),
+      phone: formData.get('phone') || '',
+      message: formData.get('message'),
+      website: formData.get('website') // honeypot
+    };
+    
+    try {
+      const response = await fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        if (statusDiv) {
+          statusDiv.textContent = '✅ Message envoyé ! Je vous réponds rapidement.';
+          statusDiv.className = 'form-status form-status--success';
+          statusDiv.style.display = 'block';
+        }
+        form.reset();
+        
+        // Fermer la modale après 2 secondes
+        setTimeout(function() {
+          if (modal) {
+            modal.classList.remove('open');
+            document.body.style.overflow = '';
+          }
+          if (statusDiv) statusDiv.style.display = 'none';
+        }, 2000);
+        
+      } else {
+        throw new Error(result.error || 'Erreur lors de l\'envoi');
+      }
+      
+    } catch (error) {
+      console.error('Erreur envoi:', error);
+      if (statusDiv) {
+        statusDiv.textContent = '❌ Erreur lors de l\'envoi. Réessayez ou contactez-moi directement par email.';
+        statusDiv.className = 'form-status form-status--error';
+        statusDiv.style.display = 'block';
+      }
+    }
+    
+    // Réactiver le bouton
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Envoyer';
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Contact Modal - Ouverture/Fermeture
+   -------------------------------------------------------------------------- */
+document.addEventListener('click', function(e) {
+  const trigger = e.target.closest('[data-modal="contact"]');
+  if (trigger) {
+    e.preventDefault();
+    const modal = document.getElementById('contact-modal');
+    if (modal) {
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      // Initialiser le formulaire à l'ouverture
+      setTimeout(initContactForm, 100);
+    }
+  }
+  
+  // Fermer au clic sur le fond ou le bouton fermer
+  const modal = document.getElementById('contact-modal');
+  if (modal && modal.classList.contains('open')) {
+    if (e.target === modal || e.target.closest('.modal__close')) {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  }
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('contact-modal');
+    if (modal && modal.classList.contains('open')) {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  }
+});
