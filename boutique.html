@@ -405,21 +405,22 @@
       return flat ? flat + octave : noteWithOctave;
     }
 
-    // Update tonality chips labels based on current scale's useFlats property
-    function updateTonalityChipsLabels() {
-      const scaleData = SCALES_DATA[state.scale];
-      const useFlats = scaleData ? scaleData.useFlats : false;
+    // Determine if we should use flats based on BOTH tonality AND scale
+    // Rule: Use flats only if root is a natural note AND scale prefers flats
+    // Sharp roots (F#, C#, G#, D#, A#) always use sharps regardless of scale
+    function shouldUseFlats(tonality, scaleData) {
+      if (!scaleData || !scaleData.useFlats) return false;
 
-      document.querySelectorAll('#chips-tonality .chip').forEach(chip => {
-        const value = chip.dataset.value; // Always stored as sharps (e.g., "F#2")
-        chip.textContent = toDisplayNotation(value, useFlats);
-      });
+      // Extract root note from tonality (e.g., "F#3" -> "F#", "D3" -> "D")
+      const match = tonality.match(/^([A-G]#?)(\d)$/);
+      if (!match) return false;
 
-      // Also update the tonality label in the options
-      const labelTonality = document.getElementById('label-tonality');
-      if (labelTonality) {
-        labelTonality.textContent = toDisplayNotation(state.tonality, useFlats);
-      }
+      const root = match[1];
+      // If root contains sharp, use sharps (F# Kurd, not Gb Kurd)
+      if (root.includes('#')) return false;
+
+      // Natural root + scale prefers flats = use flats
+      return true;
     }
 
     // Base frequencies for octave 0
@@ -922,22 +923,25 @@
     // ===== UPDATE DISPLAY =====
     function updateDisplay() {
       const scaleData = SCALES_DATA[state.scale];
-      const useFlats = scaleData.useFlats || false;
+      // Use unified logic: flats only for natural roots + flat-preferring scales
+      const useFlats = shouldUseFlats(state.tonality, scaleData);
       const notes = getCurrentNotes();
 
       const rootMatch = state.tonality.match(/^([A-G]#?)(\d)$/);
       const rootNote = rootMatch ? rootMatch[1] : state.tonality;
+      // Root display: never convert sharp roots (F# stays F#, not Gb)
       const rootDisplay = useFlats ? (SHARPS_TO_FLATS[rootNote] || rootNote) : rootNote;
       document.getElementById('display-name').textContent = `${rootDisplay} ${scaleData.name}`;
       document.getElementById('display-notes').textContent = notes.map(n => toDisplayNotation(`${n.note}${n.octave}`, useFlats)).join(' • ');
       document.getElementById('display-mood').textContent = `${state.notes} notes`;
-      
-      document.getElementById('label-tonality').textContent = toDisplayNotation(state.tonality, useFlats);
-      
+
+      // Tonality label: always show standard notation (sharps)
+      document.getElementById('label-tonality').textContent = state.tonality;
+
       document.getElementById('notes-value').textContent = state.notes;
       document.getElementById('notes-minus').disabled = state.notes <= 9;
       document.getElementById('notes-plus').disabled = state.notes >= 17;
-      
+
       // Nom de la configuration
       const configName = `${rootDisplay} ${scaleData.name} ${state.notes} notes`;
       
@@ -1003,9 +1007,6 @@
           document.querySelectorAll('#chips-tonality .chip').forEach(c => {
             c.classList.toggle('active', c.dataset.value === state.tonality);
           });
-
-          // Update tonality chip labels based on new scale's notation preference
-          updateTonalityChipsLabels();
 
           updateDisplay();
         });
@@ -1267,7 +1268,6 @@
     // ===== INIT =====
     document.addEventListener('DOMContentLoaded', () => {
       bindEvents();
-      updateTonalityChipsLabels();  // Set initial chip labels based on default scale
       updateDisplay();
     });
   </script>
