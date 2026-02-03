@@ -146,11 +146,11 @@ body {
 
 /* Note type colors */
 .note-ding {
-  fill: #4a4a4a;
+  fill: #5a5a5a;
 }
 
 .note-tonal {
-  fill: #3d3d3d;
+  fill: #4d4d4d;
 }
 
 .note-mutant {
@@ -161,6 +161,31 @@ body {
   fill: #2d2d2d;
   stroke: #555;
   stroke-dasharray: 3 2;
+}
+
+/* Mobile: larger instrument and touch targets */
+@media (max-width: 768px) {
+  .player-visual svg {
+    max-height: none;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .note-group .note-circle {
+    /* Larger touch targets on mobile */
+    stroke-width: 2px;
+  }
+
+  /* Increase visual feedback area */
+  .note-group {
+    touch-action: manipulation;
+  }
+}
+
+@media (max-width: 500px) {
+  .player-visual svg {
+    max-width: 340px;
+  }
 }
 
 /* Legend */
@@ -516,6 +541,19 @@ body {
 
 .config-note a {
   color: var(--color-accent);
+}
+
+/* Order button - teal primary color */
+#btn-order {
+  background: var(--color-accent);
+  color: white;
+  border: none;
+}
+
+#btn-order:hover {
+  background: var(--color-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(13, 115, 119, 0.3);
 }
 
 /* Flash dot animation */

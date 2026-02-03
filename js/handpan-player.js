@@ -149,8 +149,8 @@ class HandpanPlayer {
             <!-- Outer shell -->
             <defs>
               <radialGradient id="shell-gradient" cx="30%" cy="30%">
-                <stop offset="0%" stop-color="#4a4a4a"/>
-                <stop offset="100%" stop-color="#2a2a2a"/>
+                <stop offset="0%" stop-color="#5a5a5a"/>
+                <stop offset="100%" stop-color="#3a3a3a"/>
               </radialGradient>
               <filter id="note-shadow" x="-50%" y="-50%" width="200%" height="200%">
                 <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
@@ -331,7 +331,7 @@ class HandpanPlayer {
       }
       
       .note-group:hover .note-circle {
-        fill: #4a4a4a;
+        fill: #5a5a5a;
       }
       
       .note-group.active .note-circle {
