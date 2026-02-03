@@ -202,12 +202,7 @@
         <a href="commander.html" class="btn btn-primary" id="btn-order">
           Commander cet instrument
         </a>
-        
-        <a href="#flash-sales" class="btn btn-secondary" id="btn-flash">
-          <span class="flash-dot"></span>
-          Voir les instruments disponibles
-        </a>
-        
+
         <p class="config-note">
           Besoin de conseils ? <a href="#" data-modal="contact">Contactez-moi</a>
         </p>
@@ -285,6 +280,7 @@
         name: 'Kurd',
         baseRoot: 'D',
         baseOctave: 3,
+        useFlats: true,  // Kurd utilise Bb (mode mineur naturel)
         patterns: {
           9: 'D/-A-Bb-C-D-E-F-G-A_',
           10: 'D/-A-Bb-C-D-E-F-G-A-C',
@@ -301,6 +297,7 @@
         name: 'Amara',
         baseRoot: 'D',
         baseOctave: 3,
+        useFlats: true,  // Amara utilise Bb (dérivé du mode dorien)
         patterns: {
           9: 'D/-A-C-D-E-F-G-A-C_',
           10: 'D/-A-C-D-E-F-G-A-C-D',
@@ -317,6 +314,7 @@
         name: 'Low Pygmy',
         baseRoot: 'F#',
         baseOctave: 3,
+        useFlats: false,  // Low Pygmy utilise F#, G#, C# (gamme à dièses)
         patterns: {
           9: 'F#/-G#-A-C#-E-F#-G#-A-C#',
           10: 'F#/-G#-A-C#-E-F#-G#-A-C#-E',
@@ -333,6 +331,7 @@
         name: 'Hijaz',
         baseRoot: 'D',
         baseOctave: 3,
+        useFlats: false,  // Hijaz utilise la seconde augmentée (A#-C#) - dièses
         patterns: {
           9: 'D/-A-A#-C#-D-E-F-G-A',
           10: 'D/-A-A#-C#-D-E-F-G-A-C#',
@@ -349,6 +348,7 @@
         name: 'Myxolydian',
         baseRoot: 'C',
         baseOctave: 3,
+        useFlats: false,  // Myxolydien en Do = notes naturelles (pas d'altération)
         patterns: {
           9: 'C/-G-A-B-C-D-E-F-G',
           10: 'C/-G-A-B-C-D-E-F-G-A',
@@ -365,6 +365,7 @@
         name: 'Equinox',
         baseRoot: 'F',
         baseOctave: 3,
+        useFlats: true,  // Equinox = Fa mineur, utilise bémols (Ab, Db, Eb)
         patterns: {
           9: 'F/-G#3-C4-C#4-D#4-F4-G4-G#4-C5',
           10: 'F/-G#3-C4-C#4-D#4-F4-G4-G#4-C5-D#',
@@ -384,10 +385,43 @@
     
     // Flats to sharps conversion
     const FLATS_TO_SHARPS = {
-      'Db': 'C#', 'Eb': 'D#', 'Fb': 'E', 'Gb': 'F#', 
+      'Db': 'C#', 'Eb': 'D#', 'Fb': 'E', 'Gb': 'F#',
       'Ab': 'G#', 'Bb': 'A#', 'Cb': 'B'
     };
-    
+
+    // Sharps to flats conversion (for display - musical convention)
+    const SHARPS_TO_FLATS = {
+      'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb'
+    };
+
+    // Convert sharp notation to flat for display (only if scale uses flats)
+    function toDisplayNotation(noteWithOctave, useFlats = false) {
+      if (!useFlats) return noteWithOctave;  // Keep sharps for sharp-based scales
+      const match = noteWithOctave.match(/^([A-G]#?)(\d)?$/);
+      if (!match) return noteWithOctave;
+      const note = match[1];
+      const octave = match[2] || '';
+      const flat = SHARPS_TO_FLATS[note];
+      return flat ? flat + octave : noteWithOctave;
+    }
+
+    // Update tonality chips labels based on current scale's useFlats property
+    function updateTonalityChipsLabels() {
+      const scaleData = SCALES_DATA[state.scale];
+      const useFlats = scaleData ? scaleData.useFlats : false;
+
+      document.querySelectorAll('#chips-tonality .chip').forEach(chip => {
+        const value = chip.dataset.value; // Always stored as sharps (e.g., "F#2")
+        chip.textContent = toDisplayNotation(value, useFlats);
+      });
+
+      // Also update the tonality label in the options
+      const labelTonality = document.getElementById('label-tonality');
+      if (labelTonality) {
+        labelTonality.textContent = toDisplayNotation(state.tonality, useFlats);
+      }
+    }
+
     // Base frequencies for octave 0
     const BASE_FREQ = 16.35; // C0
     
@@ -688,22 +722,24 @@
     // ===== RENDER PLAYER =====
     function renderPlayer() {
       const notes = getCurrentNotes();
+      const scaleData = SCALES_DATA[state.scale];
+      const useFlats = scaleData.useFlats || false;
       const size = 780;
       const center = size / 2;
-      
+
       const ding = notes.find(n => n.type === 'ding');
       const tonals = notes.filter(n => n.type === 'tonal');
       const mutants = notes.filter(n => n.type === 'mutant');
       const bottoms = notes.filter(n => n.type === 'bottom');
-      
+
       const shellRadius = size * 0.35;
       const tonalRadius = size * 0.26;
-      const dingSize = size * 0.07;
-      const noteSize = size * 0.045;
+      const dingSize = size * 0.08;       // Larger ding (was 0.07)
+      const noteSize = size * 0.055;       // Larger notes for better touch targets (was 0.045)
       const mutantRadius = size * 0.15;
-      const mutantNoteSize = noteSize * 0.8;
+      const mutantNoteSize = noteSize * 0.85;  // Slightly larger mutants (was 0.8)
       const bottomRadius = size * 0.46;
-      const bottomNoteSize = noteSize * 0.85;
+      const bottomNoteSize = noteSize * 0.9;   // Slightly larger bottoms (was 0.85)
       
       const margin = 100;
       const viewBoxX = -margin;
@@ -715,8 +751,8 @@
         <svg viewBox="${viewBoxX} ${viewBoxY} ${viewBoxW} ${viewBoxH}" width="${size}" height="${size * 1.1}" style="overflow: visible;">
           <defs>
             <radialGradient id="shell-grad" cx="30%" cy="30%">
-              <stop offset="0%" stop-color="#4a4a4a"/>
-              <stop offset="100%" stop-color="#2a2a2a"/>
+              <stop offset="0%" stop-color="#5a5a5a"/>
+              <stop offset="100%" stop-color="#3a3a3a"/>
             </radialGradient>
           </defs>
           
@@ -725,40 +761,44 @@
       `;
       
       if (ding) {
+        const dingDisplay = toDisplayNotation(`${ding.note}${ding.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${ding.note}${ding.octave}" data-freq="${ding.freq}">
             <circle cx="${center}" cy="${center}" r="${dingSize}" class="note-circle note-ding" stroke="#555" stroke-width="1"/>
-            <text x="${center}" y="${center}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#bbb" font-size="16" font-family="system-ui">${ding.note}${ding.octave}</text>
+            <text x="${center}" y="${center}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#bbb" font-size="16" font-family="system-ui">${dingDisplay}</text>
           </g>
         `;
       }
-      
+
       mutants.forEach((note, i) => {
         const pos = getMutantPosition(i, mutants.length, mutantRadius, center);
+        const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
             <circle cx="${pos.x}" cy="${pos.y}" r="${mutantNoteSize}" class="note-circle note-mutant" stroke="#6a5a4a" stroke-width="1"/>
-            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#bbb" font-size="13" font-family="system-ui">${note.note}${note.octave}</text>
+            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#bbb" font-size="13" font-family="system-ui">${noteDisplay}</text>
           </g>
         `;
       });
-      
+
       tonals.forEach((note, i) => {
         const pos = getTonalPosition(i, tonals.length, tonalRadius, center);
+        const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
             <circle cx="${pos.x}" cy="${pos.y}" r="${noteSize}" class="note-circle note-tonal" stroke="#555" stroke-width="1"/>
-            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#aaa" font-size="14" font-family="system-ui">${note.note}${note.octave}</text>
+            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#aaa" font-size="14" font-family="system-ui">${noteDisplay}</text>
           </g>
         `;
       });
-      
+
       bottoms.forEach((note, i) => {
         const pos = getBottomPosition(i, bottoms.length, bottomRadius, center);
+        const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
             <circle cx="${pos.x}" cy="${pos.y}" r="${bottomNoteSize}" class="note-circle note-bottom" fill="#2d2d2d" stroke="#666" stroke-width="1" stroke-dasharray="3 2"/>
-            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#888" font-size="13" font-family="system-ui">${note.note}${note.octave}</text>
+            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#888" font-size="13" font-family="system-ui">${noteDisplay}</text>
           </g>
         `;
       });
@@ -882,15 +922,17 @@
     // ===== UPDATE DISPLAY =====
     function updateDisplay() {
       const scaleData = SCALES_DATA[state.scale];
+      const useFlats = scaleData.useFlats || false;
       const notes = getCurrentNotes();
-      
+
       const rootMatch = state.tonality.match(/^([A-G]#?)(\d)$/);
-      const rootDisplay = rootMatch ? rootMatch[1] : state.tonality;
+      const rootNote = rootMatch ? rootMatch[1] : state.tonality;
+      const rootDisplay = useFlats ? (SHARPS_TO_FLATS[rootNote] || rootNote) : rootNote;
       document.getElementById('display-name').textContent = `${rootDisplay} ${scaleData.name}`;
-      document.getElementById('display-notes').textContent = notes.map(n => `${n.note}${n.octave}`).join(' • ');
+      document.getElementById('display-notes').textContent = notes.map(n => toDisplayNotation(`${n.note}${n.octave}`, useFlats)).join(' • ');
       document.getElementById('display-mood').textContent = `${state.notes} notes`;
       
-      document.getElementById('label-tonality').textContent = state.tonality;
+      document.getElementById('label-tonality').textContent = toDisplayNotation(state.tonality, useFlats);
       
       document.getElementById('notes-value').textContent = state.notes;
       document.getElementById('notes-minus').disabled = state.notes <= 9;
@@ -961,7 +1003,10 @@
           document.querySelectorAll('#chips-tonality .chip').forEach(c => {
             c.classList.toggle('active', c.dataset.value === state.tonality);
           });
-          
+
+          // Update tonality chip labels based on new scale's notation preference
+          updateTonalityChipsLabels();
+
           updateDisplay();
         });
       });
@@ -1222,6 +1267,7 @@
     // ===== INIT =====
     document.addEventListener('DOMContentLoaded', () => {
       bindEvents();
+      updateTonalityChipsLabels();  // Set initial chip labels based on default scale
       updateDisplay();
     });
   </script>
