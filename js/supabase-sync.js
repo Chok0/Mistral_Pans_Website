@@ -10,9 +10,9 @@
  * - Les changements sont synchronisés vers Supabase en arrière-plan
  * - Au chargement, on récupère les dernières données de Supabase
  * 
- * Installation:
- * 1. Ajouter ce script APRÈS supabase-client.js et APRÈS gestion.js
- * 2. C'est tout ! La sync est automatique.
+ * Comportement selon la page:
+ * - Pages admin : sync complète (pull + push + auto-sync 30s)
+ * - Pages publiques : un seul pull au chargement, puis stop
  * 
  * =============================================================================
  */
@@ -25,7 +25,7 @@
   // ============================================================================
   
   const SYNC_CONFIG = {
-    // Intervalle de sync auto (en ms) - 0 = désactivé
+    // Intervalle de sync auto (en ms) - uniquement sur admin
     autoSyncInterval: 30000, // 30 secondes
     
     // Tables à synchroniser
@@ -40,6 +40,16 @@
       { local: 'mistral_blog_articles', remote: 'articles', idField: 'id' }
     ],
     
+    // Tables nécessaires par page publique (pour pull ciblé)
+    publicPageTables: {
+      'boutique':  ['instruments'],
+      'apprendre': ['professeurs'],
+      'galerie':   ['galerie'],
+      'blog':      ['articles'],
+      'article':   ['articles'],
+      'location':  ['instruments']
+    },
+    
     // Clé pour stocker l'état de sync
     syncStateKey: 'mistral_sync_state'
   };
@@ -50,6 +60,9 @@
     pendingChanges: [],
     isSyncing: false
   };
+
+  // Mode de fonctionnement
+  let isAdminPage = false;
 
   // ============================================================================
   // HELPERS
@@ -77,7 +90,12 @@
 
   function setLocalData(key, data) {
     try {
-      localStorage.setItem(key, JSON.stringify(data));
+      // Utiliser l'original pour ne pas déclencher la boucle d'interception
+      if (window._originalSetItem) {
+        window._originalSetItem.call(localStorage, key, JSON.stringify(data));
+      } else {
+        localStorage.setItem(key, JSON.stringify(data));
+      }
       return true;
     } catch (e) {
       return false;
@@ -104,6 +122,38 @@
     } catch (e) {
       // Ignorer
     }
+  }
+
+  /**
+   * Détecte si on est sur une page admin
+   */
+  function detectPageType() {
+    const path = window.location.pathname.toLowerCase();
+    isAdminPage = path.includes('admin');
+    return isAdminPage;
+  }
+
+  /**
+   * Retourne les tables pertinentes pour la page courante
+   */
+  function getTablesForCurrentPage() {
+    if (isAdminPage) {
+      return SYNC_CONFIG.tables;
+    }
+    
+    // Détecter la page courante
+    const path = window.location.pathname;
+    const filename = path.substring(path.lastIndexOf('/') + 1).replace('.html', '') || 'index';
+    
+    const relevantRemoteTables = SYNC_CONFIG.publicPageTables[filename];
+    
+    if (!relevantRemoteTables) {
+      // Page sans besoin de données (index, location, etc.)
+      return [];
+    }
+    
+    // Filtrer les tables configurées
+    return SYNC_CONFIG.tables.filter(t => relevantRemoteTables.includes(t.remote));
   }
 
   // ============================================================================
@@ -265,6 +315,8 @@
         
         setLocalData(tableConfig.local, mergedData);
         log(`Pull ${tableConfig.remote}: ${data.length} enregistrements`, 'success');
+      } else {
+        log(`Pull ${tableConfig.remote}: aucune donnée`, 'info');
       }
       
       return true;
@@ -348,7 +400,7 @@
   }
 
   /**
-   * Synchronisation complète (pull puis push)
+   * Synchronisation complète (pull puis push) - Admin seulement
    */
   async function fullSync() {
     if (syncState.isSyncing) {
@@ -387,11 +439,19 @@
 
   /**
    * Synchronise uniquement depuis Supabase (pull)
+   * @param {Array} tables - Tables à synchroniser (toutes si non spécifié)
    */
-  async function pullAll() {
-    log('Pull depuis Supabase...');
+  async function pullAll(tables) {
+    const targetTables = tables || SYNC_CONFIG.tables;
     
-    for (const tableConfig of SYNC_CONFIG.tables) {
+    if (targetTables.length === 0) {
+      log('Aucune table à synchroniser pour cette page', 'info');
+      return;
+    }
+    
+    log(`Pull depuis Supabase (${targetTables.map(t => t.remote).join(', ')})...`);
+    
+    for (const tableConfig of targetTables) {
       await pullFromSupabase(tableConfig);
     }
     
@@ -416,7 +476,7 @@
   }
 
   // ============================================================================
-  // INTERCEPTION DES MODIFICATIONS localStorage
+  // INTERCEPTION DES MODIFICATIONS localStorage (Admin seulement)
   // ============================================================================
   
   /**
@@ -428,13 +488,14 @@
       const isTrackedKey = SYNC_CONFIG.tables.some(t => t.local === e.key);
       if (isTrackedKey) {
         log(`Changement détecté: ${e.key}`);
-        // Déclencher un push après un délai (debounce)
         debouncedPush();
       }
     });
     
     // Intercepter les appels directs à setItem
     const originalSetItem = localStorage.setItem.bind(localStorage);
+    window._originalSetItem = originalSetItem;
+    
     localStorage.setItem = function(key, value) {
       originalSetItem(key, value);
       
@@ -458,7 +519,7 @@
   }
 
   // ============================================================================
-  // SYNCHRONISATION AUTOMATIQUE
+  // SYNCHRONISATION AUTOMATIQUE (Admin seulement)
   // ============================================================================
   
   let autoSyncIntervalId = null;
@@ -488,17 +549,38 @@
   async function init() {
     log('Initialisation du module de synchronisation...');
     
+    // Détecter le type de page
+    detectPageType();
+    
     // Charger l'état de sync
     loadSyncState();
     
-    // Setup des listeners
-    setupStorageListener();
-    
-    // Sync initiale (récupérer les données de Supabase)
-    await pullAll();
-    
-    // Démarrer l'auto-sync
-    startAutoSync();
+    if (isAdminPage) {
+      // ===== MODE ADMIN =====
+      log('Mode ADMIN : sync complète activée');
+      
+      // Intercepter les modifications localStorage
+      setupStorageListener();
+      
+      // Sync initiale complète (pull + push toutes les tables)
+      await fullSync();
+      
+      // Démarrer l'auto-sync toutes les 30s
+      startAutoSync();
+      
+    } else {
+      // ===== MODE PUBLIC =====
+      const pageTables = getTablesForCurrentPage();
+      
+      if (pageTables.length > 0) {
+        log(`Mode PUBLIC : pull unique (${pageTables.map(t => t.remote).join(', ')})`);
+        
+        // Un seul pull des tables nécessaires, puis stop
+        await pullAll(pageTables);
+      } else {
+        log('Mode PUBLIC : aucune donnée nécessaire pour cette page');
+      }
+    }
     
     log('Module de synchronisation prêt', 'success');
   }
@@ -518,7 +600,7 @@
   window.MistralSync = {
     // Sync manuelle
     fullSync,
-    pullAll,
+    pullAll: () => pullAll(),
     pushAll,
     
     // Auto-sync
@@ -526,9 +608,10 @@
     stopAutoSync,
     
     // État
-    getState: () => ({ ...syncState }),
+    getState: () => ({ ...syncState, isAdminPage }),
     getLastSync: () => syncState.lastSync,
     isSyncing: () => syncState.isSyncing,
+    isAdmin: () => isAdminPage,
     
     // Config
     setAutoSyncInterval: (ms) => {
