@@ -280,6 +280,7 @@
         name: 'Kurd',
         baseRoot: 'D',
         baseOctave: 3,
+        useFlats: true,  // Kurd utilise Bb (mode mineur naturel)
         patterns: {
           9: 'D/-A-Bb-C-D-E-F-G-A_',
           10: 'D/-A-Bb-C-D-E-F-G-A-C',
@@ -296,6 +297,7 @@
         name: 'Amara',
         baseRoot: 'D',
         baseOctave: 3,
+        useFlats: true,  // Amara utilise Bb (dérivé du mode dorien)
         patterns: {
           9: 'D/-A-C-D-E-F-G-A-C_',
           10: 'D/-A-C-D-E-F-G-A-C-D',
@@ -312,6 +314,7 @@
         name: 'Low Pygmy',
         baseRoot: 'F#',
         baseOctave: 3,
+        useFlats: false,  // Low Pygmy utilise F#, G#, C# (gamme à dièses)
         patterns: {
           9: 'F#/-G#-A-C#-E-F#-G#-A-C#',
           10: 'F#/-G#-A-C#-E-F#-G#-A-C#-E',
@@ -328,6 +331,7 @@
         name: 'Hijaz',
         baseRoot: 'D',
         baseOctave: 3,
+        useFlats: false,  // Hijaz utilise la seconde augmentée (A#-C#) - dièses
         patterns: {
           9: 'D/-A-A#-C#-D-E-F-G-A',
           10: 'D/-A-A#-C#-D-E-F-G-A-C#',
@@ -344,6 +348,7 @@
         name: 'Myxolydian',
         baseRoot: 'C',
         baseOctave: 3,
+        useFlats: false,  // Myxolydien en Do = notes naturelles (pas d'altération)
         patterns: {
           9: 'C/-G-A-B-C-D-E-F-G',
           10: 'C/-G-A-B-C-D-E-F-G-A',
@@ -360,6 +365,7 @@
         name: 'Equinox',
         baseRoot: 'F',
         baseOctave: 3,
+        useFlats: true,  // Equinox = Fa mineur, utilise bémols (Ab, Db, Eb)
         patterns: {
           9: 'F/-G#3-C4-C#4-D#4-F4-G4-G#4-C5',
           10: 'F/-G#3-C4-C#4-D#4-F4-G4-G#4-C5-D#',
@@ -388,8 +394,9 @@
       'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb'
     };
 
-    // Convert sharp notation to flat for display
-    function toFlatDisplay(noteWithOctave) {
+    // Convert sharp notation to flat for display (only if scale uses flats)
+    function toDisplayNotation(noteWithOctave, useFlats = false) {
+      if (!useFlats) return noteWithOctave;  // Keep sharps for sharp-based scales
       const match = noteWithOctave.match(/^([A-G]#?)(\d)?$/);
       if (!match) return noteWithOctave;
       const note = match[1];
@@ -698,14 +705,16 @@
     // ===== RENDER PLAYER =====
     function renderPlayer() {
       const notes = getCurrentNotes();
+      const scaleData = SCALES_DATA[state.scale];
+      const useFlats = scaleData.useFlats || false;
       const size = 780;
       const center = size / 2;
-      
+
       const ding = notes.find(n => n.type === 'ding');
       const tonals = notes.filter(n => n.type === 'tonal');
       const mutants = notes.filter(n => n.type === 'mutant');
       const bottoms = notes.filter(n => n.type === 'bottom');
-      
+
       const shellRadius = size * 0.35;
       const tonalRadius = size * 0.26;
       const dingSize = size * 0.08;       // Larger ding (was 0.07)
@@ -735,7 +744,7 @@
       `;
       
       if (ding) {
-        const dingDisplay = toFlatDisplay(`${ding.note}${ding.octave}`);
+        const dingDisplay = toDisplayNotation(`${ding.note}${ding.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${ding.note}${ding.octave}" data-freq="${ding.freq}">
             <circle cx="${center}" cy="${center}" r="${dingSize}" class="note-circle note-ding" stroke="#555" stroke-width="1"/>
@@ -746,7 +755,7 @@
 
       mutants.forEach((note, i) => {
         const pos = getMutantPosition(i, mutants.length, mutantRadius, center);
-        const noteDisplay = toFlatDisplay(`${note.note}${note.octave}`);
+        const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
             <circle cx="${pos.x}" cy="${pos.y}" r="${mutantNoteSize}" class="note-circle note-mutant" stroke="#6a5a4a" stroke-width="1"/>
@@ -757,7 +766,7 @@
 
       tonals.forEach((note, i) => {
         const pos = getTonalPosition(i, tonals.length, tonalRadius, center);
-        const noteDisplay = toFlatDisplay(`${note.note}${note.octave}`);
+        const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
             <circle cx="${pos.x}" cy="${pos.y}" r="${noteSize}" class="note-circle note-tonal" stroke="#555" stroke-width="1"/>
@@ -768,7 +777,7 @@
 
       bottoms.forEach((note, i) => {
         const pos = getBottomPosition(i, bottoms.length, bottomRadius, center);
-        const noteDisplay = toFlatDisplay(`${note.note}${note.octave}`);
+        const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
             <circle cx="${pos.x}" cy="${pos.y}" r="${bottomNoteSize}" class="note-circle note-bottom" fill="#2d2d2d" stroke="#666" stroke-width="1" stroke-dasharray="3 2"/>
@@ -896,13 +905,14 @@
     // ===== UPDATE DISPLAY =====
     function updateDisplay() {
       const scaleData = SCALES_DATA[state.scale];
+      const useFlats = scaleData.useFlats || false;
       const notes = getCurrentNotes();
-      
+
       const rootMatch = state.tonality.match(/^([A-G]#?)(\d)$/);
       const rootNote = rootMatch ? rootMatch[1] : state.tonality;
-      const rootDisplay = SHARPS_TO_FLATS[rootNote] || rootNote;
+      const rootDisplay = useFlats ? (SHARPS_TO_FLATS[rootNote] || rootNote) : rootNote;
       document.getElementById('display-name').textContent = `${rootDisplay} ${scaleData.name}`;
-      document.getElementById('display-notes').textContent = notes.map(n => toFlatDisplay(`${n.note}${n.octave}`)).join(' • ');
+      document.getElementById('display-notes').textContent = notes.map(n => toDisplayNotation(`${n.note}${n.octave}`, useFlats)).join(' • ');
       document.getElementById('display-mood').textContent = `${state.notes} notes`;
       
       document.getElementById('label-tonality').textContent = state.tonality;
