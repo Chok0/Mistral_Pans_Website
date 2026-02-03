@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Configurez votre handpan Mistral Pans. Choisissez la gamme, la tonalitÃ©, le nombre de notes et les options.">
+  <meta name="description" content="Configurez votre handpan Mistral Pans. Choisissez la gamme, la tonalité, le nombre de notes et les options.">
   
   <title>Mistral Pans - Boutique  | Configurez votre handpan</title>
   
@@ -21,34 +21,16 @@
   <link rel="stylesheet" href="css/admin.css">
 
 </head>
-<body id="top">
-  
-  <!-- ===== HEADER ===== -->
-<header class="header">
-  <div class="header__inner">
-    <a href="index.html" class="logo">
-      <img src="ressources/images/Mistral_logov3_ball_black.png" alt="Mistral Pans" class="logo__img">
-      <span class="logo__text">Mistral Pans</span>
-    </a>
-    
-    <nav>
-      <ul class="nav__list">
-        <li><a href="boutique.html" class="nav__link active">Boutique</a></li>
-        <li><a href="location.html" class="nav__link">Location</a></li>
-        <li><a href="apprendre.html" class="nav__link">Apprendre</a></li>
-        <li><a href="galerie.html" class="nav__link">Galerie</a></li>
-        <li><a href="blog.html" class="nav__link">Blog</a></li>
-        <li><a href="#" class="nav__link" data-modal="contact">Contact</a></li>
-      </ul>
-    </nav>
-  </div>
-</header>
+<body id="top" data-page="boutique">
+
+  <!-- Header dynamique -->
+  <div id="site-header"></div>
 
   <!-- ===== BOUTIQUE TABS (Mobile only) ===== -->
   <div class="boutique-tabs" id="boutique-tabs">
     <div class="boutique-tabs__inner">
       <button class="boutique-tab active" data-panel="config">
-        CrÃ©er sur mesure
+        Créer sur mesure
       </button>
       <button class="boutique-tab" data-panel="stock">
         En stock
@@ -75,7 +57,7 @@
       <div class="player-container">
         <div class="player-info">
           <h1 class="player-info__name" id="display-name">D Kurd</h1>
-          <p class="player-info__notes" id="display-notes">D3 "Â¢ A3 "Â¢ Bb3 "Â¢ C4 "Â¢ D4 "Â¢ E4 "Â¢ F4 "Â¢ G4 "Â¢ A4</p>
+          <p class="player-info__notes" id="display-notes">D3 • A3 • Bb3 • C4 • D4 • E4 • F4 • G4 • A4</p>
           <p class="player-info__mood" id="display-mood">9 notes</p>
         </div>
         
@@ -92,7 +74,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <polygon points="5,3 19,12 5,21"/>
             </svg>
-            <span>Ã‰couter</span>
+            <span>Écouter</span>
           </button>
         </div>
       </div>
@@ -102,7 +84,7 @@
     <section class="config-options">
       <div class="config-options-inner">
         <h2 class="config-title">Configurez votre instrument</h2>
-        <p class="config-subtitle">Personnalisez selon vos prÃ©fÃ©rences</p>
+        <p class="config-subtitle">Personnalisez selon vos préférences</p>
         
         <!-- Gamme -->
         <div class="option-group">
@@ -148,9 +130,9 @@
           
           <div class="options-advanced-content" id="advanced-content">
             
-            <!-- TonalitÃ© -->
+            <!-- Tonalité -->
             <div class="option-group">
-              <label class="option-label">TonalitÃ© <span class="option-value" id="label-tonality">D3</span></label>
+              <label class="option-label">Tonalité <span class="option-value" id="label-tonality">D3</span></label>
               <div class="option-chips" id="chips-tonality">
                 <button class="chip" data-value="F2">F2</button>
                 <button class="chip" data-value="F#2">F#2</button>
@@ -187,17 +169,17 @@
             
             <!-- Taille -->
             <div class="option-group">
-              <label class="option-label">Taille (diamÃ¨tre)</label>
+              <label class="option-label">Taille (diamètre)</label>
               <div class="option-cards" id="cards-size">
                 <div class="radio-card" data-value="45">
                   <div class="radio-card__value">45 cm</div>
                   <div class="radio-card__label">Compact</div>
-                  <div class="radio-card__price">+100 â‚¬</div>
+                  <div class="radio-card__price">+100 €</div>
                 </div>
                 <div class="radio-card" data-value="50">
                   <div class="radio-card__value">50 cm</div>
                   <div class="radio-card__label">Medium</div>
-                  <div class="radio-card__price">+100 â‚¬</div>
+                  <div class="radio-card__price">+100 €</div>
                 </div>
                 <div class="radio-card active" data-value="53">
                   <div class="radio-card__value">53 cm</div>
@@ -214,7 +196,7 @@
       <div class="config-footer">
         <div class="price-display">
           <span class="price-label">Prix total</span>
-          <span class="price-value" id="total-price">1 080 â‚¬</span>
+          <span class="price-value" id="total-price">1 080 €</span>
         </div>
         
         <a href="commander.html" class="btn btn-primary" id="btn-order">
@@ -262,13 +244,13 @@
       <div class="flash-header">
         <div>
           <h2 class="flash-title">
-            Disponibles immÃ©diatement
+            Disponibles immédiatement
             <span class="flash-badge">
               <span class="flash-dot" style="width:6px;height:6px;animation:none;"></span>
               <span id="stock-count-section">2</span> en stock
             </span>
           </h2>
-          <p class="flash-subtitle">Ces instruments sont prÃªts Ã  partir. Chaque piÃ¨ce est unique.</p>
+          <p class="flash-subtitle">Ces instruments sont prêts à partir. Chaque pièce est unique.</p>
         </div>
       </div>
       
@@ -287,149 +269,11 @@
     <button class="boutique-dot" data-panel="stock" aria-label="Stock"></button>
   </div>
   
-  <!-- ========== FOOTER ========== -->
-<footer class="footer">
-  <div class="container">
-    <div class="footer__grid">
-      <div class="footer__brand">
-        <p class="footer__logo">Mistral Pans</p>
-        <p class="footer__description">
-          Handpans d'exception fabriquÃ©s artisanalement 
-          en ÃŽle-de-France depuis 2022.
-        </p>
-      </div>
-      
-      <div>
-        <p class="footer__title">Navigation</p>
-        <ul class="footer__links">
-          <li><a href="boutique.html" class="footer__link">Boutique</a></li>
-          <li><a href="location.html" class="footer__link">Location</a></li>
-          <li><a href="apprendre.html" class="footer__link">Apprendre</a></li>
-          <li><a href="galerie.html" class="footer__link">Galerie</a></li>
-        </ul>
-      </div>
-      
-      <div>
-        <p class="footer__title">Ressources</p>
-        <ul class="footer__links">
-          <li><a href="blog.html" class="footer__link">Blog</a></li>
-          <li><a href="#" class="footer__link" data-modal="contact">Contact</a></li>
-          <li><a href="mentions-legales.html" class="footer__link">Mentions lÃ©gales</a></li>
-          <li><a href="cgv.html" class="footer__link">CGV</a></li>
-        </ul>
-      </div>
-      
-      <div>
-        <p class="footer__title">Contact</p>
-        <ul class="footer__links">
-          <li><span class="footer__link">ÃŽle-de-France, France</span></li>
-          <li><a href="mailto:contact@mistralpans.fr" class="footer__link">contact@mistralpans.fr</a></li>
-        </ul>
-      </div>
-    </div>
-    
-    <div class="footer__bottom">
-      <p>Â© 2026 Mistral Pans. Tous droits rÃ©servÃ©s.</p>
-      <div class="footer__social">
-        <a href="#" aria-label="Instagram">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="2" width="20" height="20" rx="5"/>
-            <circle cx="12" cy="12" r="4"/>
-            <circle cx="18" cy="6" r="1"/>
-          </svg>
-        </a>
-        <a href="#" aria-label="YouTube">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="4" width="20" height="16" rx="4"/>
-            <polygon points="10,8 16,12 10,16"/>
-          </svg>
-        </a>
-        <a href="#" aria-label="Facebook">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
-          </svg>
-        </a>
-      </div>
-    </div>
-  </div>
-</footer>
+  <!-- Footer dynamique -->
+  <div id="site-footer"></div>
 
-<!-- ========== CONTACT MODAL ========== -->
-<div id="contact-modal" class="modal-overlay">
-  <div class="modal">
-    <div class="modal__header">
-      <h3 class="modal__title">Contact</h3>
-      <button class="modal__close" onclick="closeContactModal()" aria-label="Fermer">&times;</button>
-    </div>
-    <div class="modal__body">
-      <form id="contact-form" onsubmit="submitContactForm(event)">
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="contact-firstname">PrÃ©nom *</label>
-            <input type="text" id="contact-firstname" name="firstname" class="form-input" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="contact-lastname">Nom *</label>
-            <input type="text" id="contact-lastname" name="lastname" class="form-input" required>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="contact-email">Email *</label>
-          <input type="email" id="contact-email" name="email" class="form-input" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="contact-phone">TÃ©lÃ©phone</label>
-          <input type="tel" id="contact-phone" name="phone" class="form-input">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="contact-message">Votre message *</label>
-          <textarea id="contact-message" name="message" class="form-textarea" rows="4" required></textarea>
-        </div>
-        <button type="submit" class="btn btn--primary btn--full">Envoyer</button>
-      </form>
-      <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
-        Ou directement : <a href="mailto:contact@mistralpans.fr">contact@mistralpans.fr</a>
-      </p>
-    </div>
-  </div>
-</div>
-
-<script>
-function openContactModal() {
-  document.getElementById('contact-modal').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-function closeContactModal() {
-  document.getElementById('contact-modal').classList.remove('open');
-  document.body.style.overflow = '';
-}
-function submitContactForm(e) {
-  e.preventDefault();
-  var f = e.target;
-  var firstname = f.querySelector('[name="firstname"]').value.trim();
-  var lastname = f.querySelector('[name="lastname"]').value.trim();
-  var email = f.querySelector('[name="email"]').value.trim();
-  var phone = f.querySelector('[name="phone"]').value.trim() || 'Non renseignÃ©';
-  var message = f.querySelector('[name="message"]').value.trim();
-  var subject = '[Mistral Pans] Message de ' + firstname + ' ' + lastname;
-  var body = 'Nom: ' + firstname + ' ' + lastname + '\nEmail: ' + email + '\nTÃ©lÃ©phone: ' + phone + '\n\nMessage:\n' + message;
-  window.location.href = 'mailto:contact@mistralpans.fr?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-  setTimeout(function() { closeContactModal(); f.reset(); }, 300);
-}
-document.addEventListener('click', function(e) {
-  var contactTrigger = e.target.closest('[data-modal="contact"]');
-  if (contactTrigger) {
-    e.preventDefault();
-    openContactModal();
-  }
-  if (e.target.id === 'contact-modal') {
-    closeContactModal();
-  }
-});
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeContactModal();
-});
-</script>
+  <!-- Contact modal dynamique -->
+  <div id="contact-modal-container"></div>
 
   <!-- Module de faisabilité -->
   <script src="js/feasibility-module.js"></script>
@@ -601,9 +445,9 @@ document.addEventListener('keydown', function(e) {
     const AUDIO_PATH = 'ressources/audio/';
     
     // Convertir le nom de note interne vers le nom du fichier
-    // Ex: "C#4" Ã¢â€ ' "Cs4", "Bb3" Ã¢â€ ' "As3" (Bb = A#)
+    // Ex: "C#4" → "Cs4", "Bb3" → "As3" (Bb = A#)
     function noteToFileName(noteName) {
-      // D'abord normaliser les bÃ©mols en diÃ¨ses
+      // D'abord normaliser les bémols en dièses
       const flatToSharp = {
         'Db': 'Cs', 'Eb': 'Ds', 'Fb': 'E', 'Gb': 'Fs',
         'Ab': 'Gs', 'Bb': 'As', 'Cb': 'B'
@@ -611,7 +455,7 @@ document.addEventListener('keydown', function(e) {
       
       let fileName = noteName;
       
-      // Remplacer les bÃ©mols par leurs Ã©quivalents diÃ¨ses
+      // Remplacer les bémols par leurs équivalents dièses
       for (const [flat, sharp] of Object.entries(flatToSharp)) {
         if (fileName.startsWith(flat)) {
           fileName = fileName.replace(flat, sharp);
@@ -625,7 +469,7 @@ document.addEventListener('keydown', function(e) {
       return fileName;
     }
     
-    // PrÃ©charger un fichier audio
+    // Précharger un fichier audio
     async function preloadAudio(noteName) {
       const fileName = noteToFileName(noteName);
       if (audioCache[fileName]) return audioCache[fileName];
@@ -645,7 +489,7 @@ document.addEventListener('keydown', function(e) {
     function playNote(noteName) {
       const fileName = noteToFileName(noteName);
       
-      // VÃ©rifier si dÃ©jÃ  en cache
+      // Vérifier si déjà en cache
       if (audioCache[fileName]) {
         const audio = audioCache[fileName].cloneNode();
         audio.volume = 0.7;
@@ -660,13 +504,13 @@ document.addEventListener('keydown', function(e) {
       audio.play().catch(e => console.warn('Erreur lecture audio:', e));
     }
     
-    // PrÃ©charger les notes de la gamme courante
+    // Précharger les notes de la gamme courante
     function preloadCurrentScale() {
       const notes = getCurrentNotes();
       notes.forEach(n => preloadAudio(`${n.note}${n.octave}`));
     }
     
-    // CompatibilitÃ© avec l'ancien code (freq Ã¢â€ ' note)
+    // Compatibilité avec l'ancien code (freq → note)
     // Garder getFrequency pour le tri des notes par hauteur
     function getFrequency(note, octave) {
       const noteIndex = NOTE_NAMES.indexOf(note);
@@ -932,7 +776,7 @@ document.addEventListener('keydown', function(e) {
       }
       document.getElementById('player-legend').innerHTML = legendHTML;
       
-      // PrÃ©charger les notes de la gamme
+      // Précharger les notes de la gamme
       preloadCurrentScale();
       
       document.querySelectorAll('.note-group').forEach(g => {
@@ -1178,7 +1022,7 @@ document.addEventListener('keydown', function(e) {
       }
       
       btn.classList.remove('playing');
-      btn.querySelector('span').textContent = 'Ã‰couter';
+      btn.querySelector('span').textContent = 'Écouter';
     }
     
     function delay(ms) {
@@ -1229,7 +1073,7 @@ document.addEventListener('keydown', function(e) {
           if (navBandBadge) navBandBadge.style.display = 'inline-flex';
           navBand.classList.remove('is-stock');
         } else {
-          navBandText.textContent = 'CrÃ©er sur mesure';
+          navBandText.textContent = 'Créer sur mesure';
           arrowDown.style.display = 'none';
           arrowUp.style.display = 'block';
           if (navBandBadge) navBandBadge.style.display = 'none';
@@ -1337,8 +1181,8 @@ document.addEventListener('keydown', function(e) {
       function updateStockCount() {
         const stockCountTab = document.getElementById('stock-count-tab');
         let count = 0;
-        
-        if (typeof MistralAdmin !== 'undefined') {
+
+        if (typeof MistralAdmin !== 'undefined' && MistralAdmin.FlashAnnonces && typeof MistralAdmin.FlashAnnonces.getActive === 'function') {
           const annonces = MistralAdmin.FlashAnnonces.getActive();
           count = annonces.length;
         }
