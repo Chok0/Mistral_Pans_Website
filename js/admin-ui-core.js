@@ -353,6 +353,7 @@
 
     // Dashboard
     refreshDashboard,
+    updateBadge,
 
     // To-Do
     addTodo,

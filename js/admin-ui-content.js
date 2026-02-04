@@ -76,7 +76,7 @@
     }
     
     // Mettre à jour les badges
-    updateBadge('pending-count', pending.length);
+    if (AdminUI.updateBadge) AdminUI.updateBadge('pending-count', pending.length);
   }
 
   // ============================================================================
