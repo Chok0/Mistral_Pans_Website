@@ -683,6 +683,33 @@
               </select>
             </div>
           </div>
+
+          <!-- Options Configurateur -->
+          <div style="background: var(--admin-surface-hover); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-bottom: 0.75rem;">
+              <input type="checkbox" id="accessoire-visible-config" style="width: 18px; height: 18px;">
+              <span style="font-weight: 500;">Proposer dans le configurateur</span>
+            </label>
+
+            <div id="accessoire-config-options" style="display: none; padding-left: 1.5rem; border-left: 2px solid var(--admin-border);">
+              <label class="admin-form__label" style="margin-bottom: 0.5rem;">Tailles compatibles</label>
+              <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                  <input type="checkbox" id="accessoire-taille-45" style="width: 16px; height: 16px;">
+                  <span>45 cm</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                  <input type="checkbox" id="accessoire-taille-50" style="width: 16px; height: 16px;">
+                  <span>50 cm</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                  <input type="checkbox" id="accessoire-taille-53" style="width: 16px; height: 16px;">
+                  <span>53 cm</span>
+                </label>
+              </div>
+              <div class="admin-form__hint" style="margin-top: 0.5rem;">Sélectionnez les tailles d'instruments avec lesquelles cet accessoire est compatible</div>
+            </div>
+          </div>
         </form>
       </div>
       <div class="admin-modal__footer">

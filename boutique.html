@@ -198,15 +198,29 @@
             
           </div>
         </div>
+
+        <!-- Accessoires (Housse) -->
+        <div class="option-group option-group--accessoires" id="accessoires-section" style="display: none;">
+          <label class="option-label">Ajouter une housse</label>
+          <div class="accessoires-list" id="accessoires-list">
+            <!-- Populated dynamically by JS -->
+          </div>
+        </div>
       </div>
-      
+
       <!-- FOOTER: Price & CTA -->
       <div class="config-footer">
         <div class="price-display">
-          <span class="price-label">Prix total</span>
-          <span class="price-value" id="total-price">1 080 €</span>
+          <div class="price-breakdown" id="price-breakdown" style="display: none;">
+            <span class="price-line">Instrument: <span id="price-instrument">1 080 €</span></span>
+            <span class="price-line" id="price-housse-line" style="display: none;">Housse: <span id="price-housse">0 €</span></span>
+          </div>
+          <div class="price-total">
+            <span class="price-label">Prix total</span>
+            <span class="price-value" id="total-price">1 080 €</span>
+          </div>
         </div>
-        
+
         <a href="commander.html" class="btn btn-primary" id="btn-order">
           Commander cet instrument
         </a>
@@ -321,7 +335,8 @@
       tonality: 'D3',
       tuning: '440',
       size: '53',
-      material: 'NS'  // Default material: Acier Nitruré
+      material: 'NS',  // Default material: Acier Nitruré
+      housse: null     // Selected housse accessory (null = none)
     };
     
     // ===== PRICING =====
@@ -849,15 +864,56 @@
         const result = FeasibilityModule.checkFeasibility(notes, state.size);
         feasibilityStatus = result.status;
       }
-      
-      // Calculer le prix avec le status de faisabilité et le matériau
-      const price = calculatePrice(notes, state.size, feasibilityStatus, state.material);
-      document.getElementById('total-price').textContent = price.toLocaleString('fr-FR') + ' €';
 
-      // Préparer le lien de commande
-      const materialLabel = typeof MistralMateriaux !== 'undefined'
-        ? MistralMateriaux.getLabel(state.material, 'short')
-        : state.material;
+      // Store instrument price for later use
+      state._instrumentPrice = calculatePrice(notes, state.size, feasibilityStatus, state.material);
+      state._feasibilityStatus = feasibilityStatus;
+      state._configName = configName;
+      state._rootDisplay = rootDisplay;
+      state._scaleData = scaleData;
+
+      // Render accessoires section (depends on size)
+      renderAccessoiresSection();
+
+      // Update price display (includes housse if selected)
+      updatePriceDisplay();
+
+      // Mettre à jour l'UI de faisabilité (chips, hint, bouton)
+      if (typeof FeasibilityModule !== 'undefined') {
+        FeasibilityModule.update(state, notes, SCALES_DATA, parsePattern, {
+          configName: configName
+        });
+      }
+
+      renderPlayer();
+    }
+
+    // ===== UPDATE PRICE DISPLAY =====
+    function updatePriceDisplay() {
+      const instrumentPrice = state._instrumentPrice || 0;
+      const houssePrice = state.housse ? (state.housse.prix || 0) : 0;
+      const totalPrice = instrumentPrice + houssePrice;
+
+      // Update price breakdown
+      const priceBreakdown = document.getElementById('price-breakdown');
+      const priceInstrument = document.getElementById('price-instrument');
+      const priceHousseLine = document.getElementById('price-housse-line');
+      const priceHousse = document.getElementById('price-housse');
+
+      if (state.housse && priceBreakdown) {
+        priceBreakdown.style.display = 'block';
+        if (priceInstrument) priceInstrument.textContent = instrumentPrice.toLocaleString('fr-FR') + ' €';
+        if (priceHousseLine) priceHousseLine.style.display = 'block';
+        if (priceHousse) priceHousse.textContent = houssePrice.toLocaleString('fr-FR') + ' €';
+      } else if (priceBreakdown) {
+        priceBreakdown.style.display = 'none';
+        if (priceHousseLine) priceHousseLine.style.display = 'none';
+      }
+
+      // Update total price
+      document.getElementById('total-price').textContent = totalPrice.toLocaleString('fr-FR') + ' €';
+
+      // Update order URL
       const orderParams = new URLSearchParams({
         scale: state.scale,
         tonality: state.tonality,
@@ -865,21 +921,21 @@
         tuning: state.tuning,
         size: state.size,
         material: state.material,
-        price: price,
-        name: `${rootDisplay} ${scaleData.name}`
+        price: totalPrice,
+        instrument_price: instrumentPrice,
+        name: `${state._rootDisplay || ''} ${state._scaleData?.name || ''}`
       });
+
+      // Add housse info if selected
+      if (state.housse) {
+        orderParams.set('housse_id', state.housse.id);
+        orderParams.set('housse_nom', state.housse.nom);
+        orderParams.set('housse_prix', state.housse.prix);
+      }
+
       const orderUrl = `commander.html?${orderParams.toString()}`;
       document.getElementById('btn-order').href = orderUrl;
       document.getElementById('btn-order').dataset.originalHref = orderUrl;
-      
-      // Mettre à jour l'UI de faisabilité (chips, hint, bouton)
-      if (typeof FeasibilityModule !== 'undefined') {
-        FeasibilityModule.update(state, notes, SCALES_DATA, parsePattern, {
-          configName: configName
-        });
-      }
-      
-      renderPlayer();
     }
     
     // ===== RENDER MATERIAL CARDS =====
@@ -920,6 +976,105 @@
           updateDisplay();
         });
       });
+    }
+
+    // ===== RENDER ACCESSOIRES (HOUSSE) =====
+    function getAccessoiresForConfigurateur(size) {
+      // Get accessoires from localStorage (same source as boutique-admin)
+      try {
+        const stored = localStorage.getItem('mistral_accessoires');
+        if (stored) {
+          const accessoires = JSON.parse(stored);
+          return accessoires.filter(a =>
+            a.statut === 'actif' &&
+            a.visible_configurateur === true &&
+            a.tailles_compatibles &&
+            a.tailles_compatibles.includes(size)
+          );
+        }
+      } catch (e) {
+        console.warn('[Configurateur] Erreur lecture accessoires:', e);
+      }
+      return [];
+    }
+
+    function renderAccessoiresSection() {
+      const section = document.getElementById('accessoires-section');
+      const container = document.getElementById('accessoires-list');
+      if (!section || !container) return;
+
+      const accessoires = getAccessoiresForConfigurateur(state.size);
+
+      // Hide section if no accessoires available
+      if (accessoires.length === 0) {
+        section.style.display = 'none';
+        // Reset housse selection if current housse is not available
+        if (state.housse) {
+          state.housse = null;
+        }
+        return;
+      }
+
+      section.style.display = 'block';
+
+      // Check if current housse is still available for this size
+      if (state.housse && !accessoires.find(a => a.id === state.housse.id)) {
+        state.housse = null;
+      }
+
+      let html = `
+        <div class="accessoire-card accessoire-card--none${!state.housse ? ' active' : ''}" data-id="">
+          <div class="accessoire-card__content">
+            <div class="accessoire-card__name">Sans housse</div>
+            <div class="accessoire-card__price">—</div>
+          </div>
+        </div>
+      `;
+
+      accessoires.forEach(acc => {
+        const isActive = state.housse && state.housse.id === acc.id ? ' active' : '';
+        const hasImage = acc.image;
+        const imageHtml = hasImage
+          ? `<div class="accessoire-card__image"><img src="${acc.image}" alt="${escapeHtmlForAccessoire(acc.nom)}"></div>`
+          : '';
+
+        html += `
+          <div class="accessoire-card${isActive}" data-id="${acc.id}">
+            ${imageHtml}
+            <div class="accessoire-card__content">
+              <div class="accessoire-card__name">${escapeHtmlForAccessoire(acc.nom)}</div>
+              <div class="accessoire-card__price">+${Number(acc.prix).toLocaleString('fr-FR')} €</div>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+
+      // Bind events
+      container.querySelectorAll('.accessoire-card').forEach(card => {
+        card.addEventListener('click', () => {
+          container.querySelectorAll('.accessoire-card').forEach(c => c.classList.remove('active'));
+          card.classList.add('active');
+
+          const id = card.dataset.id;
+          if (id) {
+            state.housse = accessoires.find(a => a.id === id) || null;
+          } else {
+            state.housse = null;
+          }
+          updatePriceDisplay();
+        });
+      });
+    }
+
+    function escapeHtmlForAccessoire(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     }
 
     // ===== BIND EVENTS =====

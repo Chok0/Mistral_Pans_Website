@@ -1136,7 +1136,13 @@
   
   function saveAccessoire() {
     const id = $('#accessoire-id')?.value;
-    
+
+    // Collect compatible sizes
+    const taillesCompatibles = [];
+    if ($('#accessoire-taille-45')?.checked) taillesCompatibles.push('45');
+    if ($('#accessoire-taille-50')?.checked) taillesCompatibles.push('50');
+    if ($('#accessoire-taille-53')?.checked) taillesCompatibles.push('53');
+
     const data = {
       nom: $('#accessoire-nom')?.value.trim(),
       categorie: $('#accessoire-categorie')?.value || 'accessoire',
@@ -1144,7 +1150,9 @@
       stock: parseInt($('#accessoire-stock')?.value),
       description: $('#accessoire-description')?.value.trim(),
       image: getAccessoireImageForSave(),
-      statut: $('#accessoire-statut')?.value || 'actif'
+      statut: $('#accessoire-statut')?.value || 'actif',
+      visible_configurateur: $('#accessoire-visible-config')?.checked || false,
+      tailles_compatibles: taillesCompatibles
     };
     
     // Validation
@@ -1187,7 +1195,7 @@
     const accessoires = Storage.get('mistral_accessoires', []);
     const accessoire = accessoires.find(a => a.id === id);
     if (!accessoire) return;
-    
+
     $('#modal-accessoire-title').textContent = 'Modifier l\'accessoire';
     $('#accessoire-id').value = accessoire.id;
     $('#accessoire-nom').value = accessoire.nom || '';
@@ -1196,12 +1204,39 @@
     $('#accessoire-stock').value = accessoire.stock ?? -1;
     $('#accessoire-description').value = accessoire.description || '';
     $('#accessoire-statut').value = accessoire.statut || 'actif';
-    
+
+    // Load configurator options
+    const visibleConfig = accessoire.visible_configurateur || false;
+    $('#accessoire-visible-config').checked = visibleConfig;
+    toggleAccessoireConfigOptions(visibleConfig);
+
+    // Load compatible sizes
+    const tailles = accessoire.tailles_compatibles || [];
+    $('#accessoire-taille-45').checked = tailles.includes('45');
+    $('#accessoire-taille-50').checked = tailles.includes('50');
+    $('#accessoire-taille-53').checked = tailles.includes('53');
+
     showModal('accessoire');
-    
+
     // Initialiser l'upload et charger l'image existante
     initAccessoireUpload();
     loadAccessoireImageForEdit(accessoire);
+  }
+
+  function toggleAccessoireConfigOptions(show) {
+    const optionsDiv = $('#accessoire-config-options');
+    if (optionsDiv) {
+      optionsDiv.style.display = show ? 'block' : 'none';
+    }
+  }
+
+  function initAccessoireConfigToggle() {
+    const checkbox = $('#accessoire-visible-config');
+    if (checkbox) {
+      checkbox.addEventListener('change', () => {
+        toggleAccessoireConfigOptions(checkbox.checked);
+      });
+    }
   }
   
   function toggleAccessoire(id) {
@@ -2394,6 +2429,14 @@
         if (name === 'accessoire') {
           // Initialiser l'upload d'image
           initAccessoireUpload();
+          // Initialiser le toggle des options configurateur
+          initAccessoireConfigToggle();
+          // Reset config options
+          $('#accessoire-visible-config').checked = false;
+          toggleAccessoireConfigOptions(false);
+          $('#accessoire-taille-45').checked = false;
+          $('#accessoire-taille-50').checked = false;
+          $('#accessoire-taille-53').checked = false;
         }
         
         if (name === 'media') {
