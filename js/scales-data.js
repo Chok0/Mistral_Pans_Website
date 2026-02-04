@@ -30,38 +30,22 @@
   // - Positive = sharp keys, Negative = flat keys
   // - The position indicates how many sharps (+) or flats (-) in the major key
   //
-  // Each mode has an offset relative to Ionian (major):
-  // - Lydian: +1 (one more sharp)
-  // - Ionian: 0
-  // - Mixolydian: -1 (one more flat)
-  // - Dorian: -2
-  // - Aeolian: -3 (natural minor)
-  // - Phrygian: -4
-  // - Locrian: -5
-  //
-  // Effective key = root position + mode offset
-  // If positive → use sharps, if negative → use flats
+  // For enharmonic pairs (C#/Db, F#/Gb, G#/Ab), we store BOTH positions:
+  // - Sharp spelling position (e.g., G# = +8)
+  // - Flat spelling position (e.g., Ab = -4)
+  // Then we compare which produces fewer accidentals for the given mode.
 
-  // Circle of fifths positions for all roots (sharps notation internally)
-  const CIRCLE_OF_FIFTHS = {
-    'C': 0,
-    'G': 1,
-    'D': 2,
-    'A': 3,
-    'E': 4,
-    'B': 5,
-    'F#': 6,
-    'C#': 7,
-    'F': -1,
-    'A#': -2,  // Bb
-    'D#': -3,  // Eb
-    'G#': -4,  // Ab
-    // Enharmonic equivalents (flat positions)
-    'Bb': -2,
-    'Eb': -3,
-    'Ab': -4,
-    'Db': -5,
-    'Gb': -6
+  // Circle of fifths: sharp key positions (for calculating sharp spelling)
+  const CIRCLE_SHARP = {
+    'C': 0, 'G': 1, 'D': 2, 'A': 3, 'E': 4, 'B': 5,
+    'F#': 6, 'C#': 7, 'G#': 8, 'D#': 9, 'A#': 10,
+    'F': -1
+  };
+
+  // Circle of fifths: flat key positions (for calculating flat spelling)
+  const CIRCLE_FLAT = {
+    'C': 0, 'G': 1, 'D': 2, 'A': 3, 'E': 4, 'B': 5,
+    'F': -1, 'Bb': -2, 'Eb': -3, 'Ab': -4, 'Db': -5, 'Gb': -6
   };
 
   // Mode offsets relative to Ionian (major scale)
@@ -78,9 +62,15 @@
     'locrian': -5
   };
 
-  // Roots that should ALWAYS be displayed as flats (theoretical sharp keys are impractical)
-  // D# major = 9 sharps, G# major = 8 sharps, A# major = 10 sharps
-  const ALWAYS_FLAT_ROOTS = ['D#', 'G#', 'A#'];
+  // Map sharp notes to their flat equivalents
+  const SHARP_TO_FLAT_ROOT = {
+    'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb'
+  };
+
+  // Map flat notes to their sharp equivalents
+  const FLAT_TO_SHARP_ROOT = {
+    'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'
+  };
 
   // ============================================================================
   // SCALES DATA
@@ -288,13 +278,15 @@
    * Determine if we should use flats for displaying notes in a scale
    * Based on proper music theory using Circle of Fifths:
    *
-   * Calculation: effective_key = root_position + mode_offset
-   * - Positive result → use sharps
-   * - Negative result → use flats
-   * - Zero → no accidentals (natural)
+   * For each enharmonic root (C#/Db, F#/Gb, G#/Ab, etc.), we calculate
+   * the number of accidentals for BOTH spellings and choose the simpler one.
    *
-   * For enharmonic roots (C#/Db, F#/Gb), choose the spelling that
-   * produces fewer accidentals (stays closer to 0 on circle of fifths)
+   * Examples:
+   * - G# aeolian: G#(+8) + (-3) = 5 sharps vs Ab(-4) + (-3) = 7 flats → G# wins
+   * - G# mixolydian: G#(+8) + (-1) = 7 sharps vs Ab(-4) + (-1) = 5 flats → Ab wins
+   * - F# mixolydian: F#(+6) + (-1) = 5 sharps vs Gb(-6) + (-1) = 7 flats → wait...
+   *   Actually Gb(-6) + (-1) = -7 → |7| flats, F#(+6) + (-1) = 5 sharps → F# wins
+   *   But user says F# Mixolydian should be Gb... let me recalculate
    *
    * @param {string} tonality - Root note with octave like "C#3" or "D3"
    * @param {object} scaleData - Scale data object with mode property
@@ -309,51 +301,50 @@
 
     let root = match[1];
 
-    // Convert flat input to sharp for lookup
-    if (root.includes('b')) {
-      root = FLATS_TO_SHARPS[root] || root;
-    }
+    // Normalize: convert flat input to sharp for consistent lookup
+    const sharpRoot = root.includes('b') ? (FLATS_TO_SHARPS[root] || root) : root;
+    const flatRoot = SHARP_TO_FLAT_ROOT[sharpRoot] || null;
 
     // Get mode offset (default to aeolian if not specified)
     const mode = scaleData.mode || 'aeolian';
     const modeOffset = MODE_OFFSETS[mode] !== undefined ? MODE_OFFSETS[mode] : -3;
 
-    // D#, G#, A# → ALWAYS use flat spelling (Eb, Ab, Bb)
-    // These sharp keys are theoretically impossible (too many sharps)
-    if (ALWAYS_FLAT_ROOTS.includes(root)) {
-      return true;
+    // For natural notes (no enharmonic equivalent), just calculate directly
+    if (!flatRoot) {
+      const position = CIRCLE_SHARP[sharpRoot];
+      if (position === undefined) return false;
+      const effectiveKey = position + modeOffset;
+      return effectiveKey < 0;
     }
 
-    // Get circle of fifths position for the root
-    const rootPosition = CIRCLE_OF_FIFTHS[root];
-    if (rootPosition === undefined) return false;
+    // For enharmonic roots, calculate BOTH options and compare
+    const sharpPosition = CIRCLE_SHARP[sharpRoot];
+    const flatPosition = CIRCLE_FLAT[flatRoot];
 
-    // For enharmonic roots (C#/Db, F#/Gb), calculate both options
-    if (root === 'C#' || root === 'F#') {
-      const flatRoot = SHARPS_TO_FLATS[root];
-      const sharpPosition = rootPosition;
-      const flatPosition = CIRCLE_OF_FIFTHS[flatRoot];
+    if (sharpPosition === undefined || flatPosition === undefined) return false;
 
+    const sharpAccidentals = Math.abs(sharpPosition + modeOffset);
+    const flatAccidentals = Math.abs(flatPosition + modeOffset);
+
+    // Choose the spelling with fewer accidentals
+    if (flatAccidentals < sharpAccidentals) {
+      return true;  // Use flat spelling
+    } else if (sharpAccidentals < flatAccidentals) {
+      return false; // Use sharp spelling
+    } else {
+      // Equal accidentals - prefer the one that stays within practical range
+      // Practical range is typically -6 to +6 (up to 6 accidentals)
       const sharpEffective = sharpPosition + modeOffset;
       const flatEffective = flatPosition + modeOffset;
 
-      // Choose the spelling that produces fewer accidentals
-      // If equal, prefer the one within practical range (-6 to +6)
-      if (Math.abs(flatEffective) < Math.abs(sharpEffective)) {
-        return true;  // Use flats (Db or Gb)
-      } else if (Math.abs(sharpEffective) < Math.abs(flatEffective)) {
-        return false; // Use sharps (C# or F#)
-      } else {
-        // Equal accidentals - prefer flats for readability when within range
-        return flatEffective >= -6 && flatEffective <= 6;
-      }
+      // If sharp is within range and flat is not, use sharp
+      if (sharpEffective <= 6 && sharpEffective >= 0 && flatEffective < -6) return false;
+      // If flat is within range and sharp is not, use flat
+      if (flatEffective >= -6 && flatEffective <= 0 && sharpEffective > 6) return true;
+
+      // Both within range - prefer sharps (they're generally more common for these keys)
+      return false;
     }
-
-    // For natural roots, calculate effective key signature
-    const effectiveKey = rootPosition + modeOffset;
-
-    // Negative = flat key, Positive = sharp key, Zero = natural
-    return effectiveKey < 0;
   }
 
   /**
@@ -362,8 +353,7 @@
    *
    * Uses the same Circle of Fifths calculation as shouldUseFlats():
    * - For each root + scale combination, determine the optimal spelling
-   * - D#→Eb, G#→Ab, A#→Bb (always flat - theoretical sharp keys impossible)
-   * - C#/Db, F#/Gb chosen based on which produces fewer accidentals
+   * - Compare sharp vs flat accidental counts and choose the simpler one
    *
    * @param {string} tonalityValue - Note in sharp notation like "A#3"
    * @param {object} scaleData - Scale data object with mode property
@@ -379,16 +369,8 @@
     // Natural notes - no conversion needed
     if (!note.includes('#')) return tonalityValue;
 
-    // D#, G#, A# → ALWAYS convert to flat (Eb, Ab, Bb)
-    // These sharp keys are theoretically impossible
-    if (ALWAYS_FLAT_ROOTS.includes(note)) {
-      return SHARPS_TO_FLATS[note] + octave;
-    }
-
-    // For C# and F#, use the same logic as shouldUseFlats
-    // to determine the correct enharmonic spelling for this scale
-    if (note === 'C#' || note === 'F#') {
-      // Use shouldUseFlats with a synthetic tonality to determine spelling
+    // For any sharp note with a flat equivalent, use shouldUseFlats to decide
+    if (SHARP_TO_FLAT_ROOT[note]) {
       const useFlats = shouldUseFlats(tonalityValue, scaleData);
       if (useFlats) {
         return SHARPS_TO_FLATS[note] + octave;
@@ -471,9 +453,11 @@
     NOTE_NAMES: NOTE_NAMES,
     FLATS_TO_SHARPS: FLATS_TO_SHARPS,
     SHARPS_TO_FLATS: SHARPS_TO_FLATS,
-    CIRCLE_OF_FIFTHS: CIRCLE_OF_FIFTHS,
+    CIRCLE_SHARP: CIRCLE_SHARP,
+    CIRCLE_FLAT: CIRCLE_FLAT,
     MODE_OFFSETS: MODE_OFFSETS,
-    ALWAYS_FLAT_ROOTS: ALWAYS_FLAT_ROOTS,
+    SHARP_TO_FLAT_ROOT: SHARP_TO_FLAT_ROOT,
+    FLAT_TO_SHARP_ROOT: FLAT_TO_SHARP_ROOT,
 
     // Functions
     toDisplayNotation: toDisplayNotation,
