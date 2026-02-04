@@ -903,41 +903,33 @@
   // MODULES MÃ‰TIER
   // ============================================================================
 
-  // --- Module Annonces (Stock) ---
-  const Annonces = {
-    KEY: CONFIG.STORAGE_KEYS.annonces,
-
-    getAll() {
-      return Storage.get(this.KEY, []);
-    },
-
-    get(id) {
-      return Storage.find(this.KEY, id);
-    },
-
-    add(annonce) {
-      return Storage.add(this.KEY, {
-        ...annonce,
-        active: annonce.active !== false
-      });
-    },
-
-    update(id, updates) {
-      return Storage.update(this.KEY, id, updates);
-    },
-
-    delete(id) {
-      return Storage.remove(this.KEY, id);
-    },
-
-    toggleActive(id) {
-      const annonce = this.get(id);
-      if (annonce) {
-        return this.update(id, { active: !annonce.active });
+  // --- Module Migrations (cleanup orphaned data) ---
+  const Migrations = {
+    // Clean up orphaned mistral_flash_annonces (old system replaced by mistral_gestion_instruments)
+    cleanupOldAnnonces() {
+      const oldKey = CONFIG.STORAGE_KEYS.annonces; // 'mistral_flash_annonces'
+      const oldData = localStorage.getItem(oldKey);
+      if (oldData) {
+        console.log('[MistralAdmin] Nettoyage des anciennes annonces orphelines...');
+        localStorage.removeItem(oldKey);
+        return true;
       }
-      return null;
+      return false;
+    },
+
+    // Run all migrations
+    runAll() {
+      let cleaned = false;
+      if (this.cleanupOldAnnonces()) cleaned = true;
+      if (cleaned) {
+        console.log('[MistralAdmin] Migrations terminées');
+      }
+      return cleaned;
     }
   };
+
+  // Auto-run migrations on load
+  Migrations.runAll();
 
   // --- Module Professeurs ---
   const Teachers = {
@@ -1225,7 +1217,7 @@
     Confirm,
 
     // Business Modules
-    Annonces,
+    Migrations,
     Teachers,
     Gallery,
     Blog,

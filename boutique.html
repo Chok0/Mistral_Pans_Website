@@ -1503,15 +1503,17 @@
         const stockCountTab = document.getElementById('stock-count-tab');
         let count = 0;
 
-        if (typeof MistralAdmin !== 'undefined' && MistralAdmin.FlashAnnonces && typeof MistralAdmin.FlashAnnonces.getActive === 'function') {
-          const annonces = MistralAdmin.FlashAnnonces.getActive();
-          count = annonces.length;
+        // Use new system (BoutiqueAdmin) - instruments en_ligne + accessoires actifs
+        if (typeof BoutiqueAdmin !== 'undefined') {
+          const instruments = BoutiqueAdmin.getInstrumentsEnLigne();
+          const accessoires = BoutiqueAdmin.getAccessoiresActifs();
+          count = instruments.length + accessoires.length;
         }
-        
+
         if (stockCountTab) {
           stockCountTab.textContent = count;
         }
-        
+
         if (navBandCount) {
           navBandCount.textContent = count;
         }
