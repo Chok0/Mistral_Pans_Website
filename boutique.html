@@ -284,16 +284,19 @@
     const SHARPS_TO_FLATS = MistralScales.SHARPS_TO_FLATS;
     const toDisplayNotation = MistralScales.toDisplayNotation;
     const shouldUseFlats = MistralScales.shouldUseFlats;
+    const getTonalityChipNotation = MistralScales.getTonalityChipNotation;
 
-    // Update tonality chips labels based on current tonality + scale
-    // Sharp roots (F#, C#...) show sharps, natural roots use scale preference
+    // Update tonality chips labels based on music theory rules
+    // Each chip displays its correct notation according to the cycle of fifths:
+    // - Eb, Ab, Bb always shown as flats (D#, G#, A# are theoretically impractical)
+    // - Db shown as flat (easier than C# with 7 sharps)
+    // - F#/Gb depends on scale preference
     function updateTonalityChipsLabels() {
       const scaleData = SCALES_DATA[state.scale];
-      const useFlats = shouldUseFlats(state.tonality, scaleData);
 
       document.querySelectorAll('#chips-tonality .chip').forEach(chip => {
         const value = chip.dataset.value; // Always stored as sharps internally
-        chip.textContent = toDisplayNotation(value, useFlats);
+        chip.textContent = getTonalityChipNotation(value, scaleData);
       });
     }
 
@@ -798,13 +801,13 @@
     // ===== UPDATE DISPLAY =====
     function updateDisplay() {
       const scaleData = SCALES_DATA[state.scale];
-      // Use shouldUseFlats: sharp roots (F#, C#...) always use sharps, natural roots use scale preference
+      // Music theory rules: Eb/Ab/Bb/Db roots use flats, F# depends on scale, natural roots use scale preference
       const useFlats = shouldUseFlats(state.tonality, scaleData);
       const notes = getCurrentNotes();
 
       const rootMatch = state.tonality.match(/^([A-G]#?)(\d)$/);
       const rootNote = rootMatch ? rootMatch[1] : state.tonality;
-      // Root display: sharp roots stay sharp (C# Equinox), natural roots adapt (F Equinox with flats)
+      // Root display: convert to flat notation if needed (A# -> Bb, G# -> Ab, etc.)
       const rootDisplay = useFlats ? (SHARPS_TO_FLATS[rootNote] || rootNote) : rootNote;
       document.getElementById('display-name').textContent = `${rootDisplay} ${scaleData.name}`;
       document.getElementById('display-notes').textContent = notes.map(n => toDisplayNotation(`${n.note}${n.octave}`, useFlats)).join(' • ');
