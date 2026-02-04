@@ -389,7 +389,7 @@ document.addEventListener('keydown', function(e) {
       <article>
         <div class="article-hero">
           ${article.coverImage ? `
-            <img src="${article.coverImage}" alt="" class="article-hero__image">
+            <img src="${article.coverImage}" alt="${escapeHtml(article.title)} - Image de couverture" class="article-hero__image">
           ` : ''}
           <div class="article-hero__overlay"></div>
           <div class="article-hero__content">
