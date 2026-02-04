@@ -283,12 +283,13 @@
     const FLATS_TO_SHARPS = MistralScales.FLATS_TO_SHARPS;
     const SHARPS_TO_FLATS = MistralScales.SHARPS_TO_FLATS;
     const toDisplayNotation = MistralScales.toDisplayNotation;
+    const shouldUseFlats = MistralScales.shouldUseFlats;
 
-    // Update tonality chips labels based on current scale's useFlats property
-    // Chips adapt responsively: Kurd shows Gb2, Ab2, Bb2... / Hijaz shows F#2, G#2, A#2...
+    // Update tonality chips labels based on current tonality + scale
+    // Sharp roots (F#, C#...) show sharps, natural roots use scale preference
     function updateTonalityChipsLabels() {
       const scaleData = SCALES_DATA[state.scale];
-      const useFlats = scaleData ? scaleData.useFlats : false;
+      const useFlats = shouldUseFlats(state.tonality, scaleData);
 
       document.querySelectorAll('#chips-tonality .chip').forEach(chip => {
         const value = chip.dataset.value; // Always stored as sharps internally
@@ -597,7 +598,7 @@
     function renderPlayer() {
       const notes = getCurrentNotes();
       const scaleData = SCALES_DATA[state.scale];
-      const useFlats = scaleData.useFlats || false;
+      const useFlats = shouldUseFlats(state.tonality, scaleData);
       const size = 780;
       const center = size / 2;
 
@@ -797,19 +798,19 @@
     // ===== UPDATE DISPLAY =====
     function updateDisplay() {
       const scaleData = SCALES_DATA[state.scale];
-      // Use scale's notation preference (Kurd/Amara/Equinox use flats, others use sharps)
-      const useFlats = scaleData.useFlats || false;
+      // Use shouldUseFlats: sharp roots (F#, C#...) always use sharps, natural roots use scale preference
+      const useFlats = shouldUseFlats(state.tonality, scaleData);
       const notes = getCurrentNotes();
 
       const rootMatch = state.tonality.match(/^([A-G]#?)(\d)$/);
       const rootNote = rootMatch ? rootMatch[1] : state.tonality;
-      // Root display adapts to scale: Gb Kurd or F# Hijaz
+      // Root display: sharp roots stay sharp (C# Equinox), natural roots adapt (F Equinox with flats)
       const rootDisplay = useFlats ? (SHARPS_TO_FLATS[rootNote] || rootNote) : rootNote;
       document.getElementById('display-name').textContent = `${rootDisplay} ${scaleData.name}`;
       document.getElementById('display-notes').textContent = notes.map(n => toDisplayNotation(`${n.note}${n.octave}`, useFlats)).join(' • ');
       document.getElementById('display-mood').textContent = `${state.notes} notes`;
 
-      // Tonality label adapts to scale notation
+      // Tonality label: stays as stored (sharps internally), displayed per context
       document.getElementById('label-tonality').textContent = toDisplayNotation(state.tonality, useFlats);
 
       document.getElementById('notes-value').textContent = state.notes;
@@ -893,10 +894,14 @@
         chip.addEventListener('click', () => {
           // Ne pas changer si le chip est désactivé
           if (chip.disabled || chip.classList.contains('chip--disabled')) return;
-          
+
           document.querySelectorAll('#chips-tonality .chip').forEach(c => c.classList.remove('active'));
           chip.classList.add('active');
           state.tonality = chip.dataset.value;
+
+          // Update chip labels based on new tonality (sharp root = sharps, natural = scale pref)
+          updateTonalityChipsLabels();
+
           updateDisplay();
         });
       });
