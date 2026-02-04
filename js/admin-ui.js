@@ -1753,10 +1753,12 @@
       showArticleImagePreview(article.coverImage);
     }
     
-    // Charger le contenu dans l'éditeur
+    // Charger le contenu dans l'éditeur (sanitizé pour éviter XSS)
     setTimeout(() => {
       if (articleQuillEditor && article.content) {
-        articleQuillEditor.root.innerHTML = article.content;
+        // Sanitize le HTML avant de l'injecter dans l'éditeur
+        const sanitizedContent = utils.sanitizeHtml ? utils.sanitizeHtml(article.content) : article.content;
+        articleQuillEditor.root.innerHTML = sanitizedContent;
       } else {
         const fallback = $('#article-contenu-fallback');
         if (fallback) fallback.value = article.content || '';

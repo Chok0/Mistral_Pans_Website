@@ -13,7 +13,7 @@
   --color-bg-dark: #1A1815;
   --color-text: #2C2825;
   --color-text-light: #6B6560;
-  --color-text-muted: #9A958F;
+  --color-text-muted: #736E68; /* Darkened for WCAG AA compliance (4.5:1 contrast) */
   --color-accent: #0D7377; /* Teal - Premium feel */
   --color-accent-hover: #095456;
   --color-accent-light: #14919B;

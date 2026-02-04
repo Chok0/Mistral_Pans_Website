@@ -148,7 +148,7 @@
   }
 
   /**
-   * Ã‰chappe le HTML pour Ã©viter les injections XSS
+   * Échappe le HTML pour éviter les injections XSS
    */
   function escapeHtml(text) {
     if (!text) return '';
@@ -158,7 +158,89 @@
   }
 
   /**
-   * DÃ©bounce une fonction
+   * Sanitize HTML - garde les balises sûres, supprime les dangereuses
+   * Pour le contenu WYSIWYG (blog, descriptions)
+   */
+  function sanitizeHtml(html) {
+    if (!html) return '';
+
+    // Balises autorisées
+    const allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'a', 'ul', 'ol', 'li',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'img', 'figure',
+      'figcaption', 'span', 'div', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
+
+    // Attributs autorisés par balise
+    const allowedAttrs = {
+      'a': ['href', 'title', 'target', 'rel'],
+      'img': ['src', 'alt', 'title', 'width', 'height'],
+      '*': ['class', 'id', 'style']
+    };
+
+    // Créer un DOM temporaire
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const body = doc.body;
+
+    // Supprimer les scripts et styles
+    body.querySelectorAll('script, style, iframe, object, embed, form, input, textarea, button').forEach(el => el.remove());
+
+    // Supprimer les handlers d'événements
+    body.querySelectorAll('*').forEach(el => {
+      const tagName = el.tagName.toLowerCase();
+
+      // Supprimer si balise non autorisée
+      if (!allowedTags.includes(tagName)) {
+        // Garder le contenu texte mais supprimer l'élément
+        el.replaceWith(...el.childNodes);
+        return;
+      }
+
+      // Nettoyer les attributs
+      Array.from(el.attributes).forEach(attr => {
+        const attrName = attr.name.toLowerCase();
+
+        // Supprimer tous les handlers on*
+        if (attrName.startsWith('on')) {
+          el.removeAttribute(attr.name);
+          return;
+        }
+
+        // Vérifier si attribut autorisé
+        const tagAllowed = allowedAttrs[tagName] || [];
+        const globalAllowed = allowedAttrs['*'] || [];
+        if (!tagAllowed.includes(attrName) && !globalAllowed.includes(attrName)) {
+          el.removeAttribute(attr.name);
+          return;
+        }
+
+        // Nettoyer les URLs javascript:
+        if (attrName === 'href' || attrName === 'src') {
+          const value = attr.value.toLowerCase().trim();
+          if (value.startsWith('javascript:') || value.startsWith('data:text/html')) {
+            el.removeAttribute(attr.name);
+          }
+        }
+
+        // Nettoyer les styles dangereux
+        if (attrName === 'style') {
+          const cleanStyle = attr.value
+            .replace(/expression\s*\(/gi, '')
+            .replace(/javascript:/gi, '')
+            .replace(/behavior\s*:/gi, '');
+          el.setAttribute('style', cleanStyle);
+        }
+      });
+
+      // Forcer rel="noopener" sur les liens externes
+      if (tagName === 'a' && el.getAttribute('target') === '_blank') {
+        el.setAttribute('rel', 'noopener noreferrer');
+      }
+    });
+
+    return body.innerHTML;
+  }
+
+  /**
+   * Débounce une fonction
    */
   function debounce(func, wait) {
     let timeout;
@@ -1128,6 +1210,7 @@
       formatDate,
       formatPrice,
       escapeHtml,
+      sanitizeHtml,
       debounce
     },
 
