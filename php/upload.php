@@ -18,10 +18,26 @@ define('ALLOWED_IMAGE_TYPES', ['image/jpeg', 'image/png', 'image/webp']);
 define('ALLOWED_VIDEO_TYPES', ['video/mp4', 'video/webm']);
 
 // Headers CORS pour les requêtes AJAX
+// IMPORTANT: Restreindre à votre domaine en production
+$allowedOrigins = [
+    'https://mistralpans.fr',
+    'https://www.mistralpans.fr',
+    'http://localhost:8000',  // Développement local
+    'http://127.0.0.1:8000'   // Développement local
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+} else if (empty($origin)) {
+    // Requête same-origin (pas de header Origin)
+    header('Access-Control-Allow-Origin: https://mistralpans.fr');
+}
+
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-Admin-Token');
+header('Access-Control-Allow-Credentials: true');
 
 // Gérer les requêtes OPTIONS (preflight CORS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -191,10 +207,17 @@ function handleVideoUpload() {
     // Gérer la miniature (envoyée par le JS)
     $thumbnailPath = '';
     if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
-        $thumbFilename = 'thumb-' . pathinfo($filename, PATHINFO_FILENAME) . '.jpg';
-        $thumbnailPath = THUMB_DIR . $thumbFilename;
-        move_uploaded_file($_FILES['thumbnail']['tmp_name'], $thumbnailPath);
-        $thumbnailPath = str_replace('../', '', $thumbnailPath);
+        // Valider le type MIME de la miniature
+        $thumbFinfo = finfo_open(FILEINFO_MIME_TYPE);
+        $thumbMime = finfo_file($thumbFinfo, $_FILES['thumbnail']['tmp_name']);
+        finfo_close($thumbFinfo);
+
+        if (in_array($thumbMime, ALLOWED_IMAGE_TYPES)) {
+            $thumbFilename = 'thumb-' . pathinfo($filename, PATHINFO_FILENAME) . '.jpg';
+            $thumbnailPath = THUMB_DIR . $thumbFilename;
+            move_uploaded_file($_FILES['thumbnail']['tmp_name'], $thumbnailPath);
+            $thumbnailPath = str_replace('../', '', $thumbnailPath);
+        }
     }
 
     // Retourner les chemins
@@ -237,27 +260,29 @@ function resizeImage($source, $origW, $origH, $newW, $newH) {
 
 function getAdminHash() {
     // Lire le hash depuis un fichier local (plus sécurisé que dans le code)
+    // IMPORTANT: Créez ce fichier avec un hash sécurisé en production
     $hashFile = __DIR__ . '/.admin_hash';
     if (file_exists($hashFile)) {
         return trim(file_get_contents($hashFile));
     }
-    
-    // Fallback : accepte le hash JS de 'mistral2024'
-    // Le hash simple JS de 'mistral2024' = '-6de5765f'
+
+    // Aussi vérifier une variable d'environnement
+    $envHash = getenv('MISTRAL_ADMIN_HASH');
+    if ($envHash) {
+        return $envHash;
+    }
+
+    // ATTENTION: En production, créez le fichier .admin_hash
+    // ou définissez la variable d'environnement MISTRAL_ADMIN_HASH
+    error_log('AVERTISSEMENT: Utilisation du hash par défaut. Créez php/.admin_hash en production.');
     return '-6de5765f';
 }
 
 function verifyToken($token, $storedHash) {
-    if (empty($token)) return false;
-    
-    // Accepte le hash stocké ou des tokens alternatifs
-    $validTokens = [
-        $storedHash,
-        '-6de5765f', // Hash JS de 'mistral2024'
-        'mistral_upload_token' // Token de secours
-    ];
-    
-    return in_array($token, $validTokens);
+    if (empty($token) || strlen($token) < 8) return false;
+
+    // Comparaison timing-safe pour éviter les attaques temporelles
+    return hash_equals($storedHash, $token);
 }
 
 function getUploadErrorMessage($errorCode) {

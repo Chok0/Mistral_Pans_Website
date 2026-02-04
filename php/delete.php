@@ -8,10 +8,26 @@ define('UPLOAD_DIR', '../ressources/images/galerie/');
 define('THUMB_DIR', '../ressources/images/galerie/thumbs/');
 
 // Headers CORS
+// IMPORTANT: Restreindre à votre domaine en production
+$allowedOrigins = [
+    'https://mistralpans.fr',
+    'https://www.mistralpans.fr',
+    'http://localhost:8000',  // Développement local
+    'http://127.0.0.1:8000'   // Développement local
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+} else if (empty($origin)) {
+    // Requête same-origin (pas de header Origin)
+    header('Access-Control-Allow-Origin: https://mistralpans.fr');
+}
+
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-Admin-Token');
+header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -69,23 +85,28 @@ if ($deleted) {
 // =============================================================================
 
 function getAdminHash() {
+    // Lire le hash depuis un fichier local (plus sécurisé que dans le code)
     $hashFile = __DIR__ . '/.admin_hash';
     if (file_exists($hashFile)) {
         return trim(file_get_contents($hashFile));
     }
-    return '-6de5765f'; // Hash JS de 'mistral2024'
+
+    // Aussi vérifier une variable d'environnement
+    $envHash = getenv('MISTRAL_ADMIN_HASH');
+    if ($envHash) {
+        return $envHash;
+    }
+
+    // ATTENTION: En production, créez le fichier .admin_hash
+    error_log('AVERTISSEMENT: Utilisation du hash par défaut. Créez php/.admin_hash en production.');
+    return '-6de5765f';
 }
 
 function verifyToken($token, $storedHash) {
-    if (empty($token)) return false;
-    
-    $validTokens = [
-        $storedHash,
-        '-6de5765f',
-        'mistral_upload_token'
-    ];
-    
-    return in_array($token, $validTokens);
+    if (empty($token) || strlen($token) < 8) return false;
+
+    // Comparaison timing-safe pour éviter les attaques temporelles
+    return hash_equals($storedHash, $token);
 }
 
 function sendSuccess($data) {

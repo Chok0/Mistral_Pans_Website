@@ -1,7 +1,17 @@
 /* ==========================================================================
    MISTRAL PANS - Main JavaScript
-   Version 2.0 - Avec chargement dynamique des partials
+   Version 2.1 - Avec chargement dynamique des partials et RGPD
    ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Cookie Consent - Chargement prioritaire pour RGPD
+   -------------------------------------------------------------------------- */
+(function loadCookieConsent() {
+  // Charger le script de consentement cookies en premier
+  const script = document.createElement('script');
+  script.src = 'js/cookie-consent.js';
+  document.head.appendChild(script);
+})();
 
 /* --------------------------------------------------------------------------
    Supabase Sync - Chargement dynamique sur toutes les pages
