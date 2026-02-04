@@ -285,11 +285,12 @@
     const toDisplayNotation = MistralScales.toDisplayNotation;
     const shouldUseFlats = MistralScales.shouldUseFlats;
 
-    // Update tonality chips labels based on current tonality + scale
-    // Sharp roots (F#, C#...) show sharps, natural roots use scale preference
+    // Update tonality chips labels based on SCALE preference only
+    // Chips are the "menu" - they show the scale's notation (flats for Equinox, sharps for Hijaz)
+    // The RESULT (title, notes) uses correct notation based on selected root
     function updateTonalityChipsLabels() {
       const scaleData = SCALES_DATA[state.scale];
-      const useFlats = shouldUseFlats(state.tonality, scaleData);
+      const useFlats = scaleData ? scaleData.useFlats : false;
 
       document.querySelectorAll('#chips-tonality .chip').forEach(chip => {
         const value = chip.dataset.value; // Always stored as sharps internally
@@ -898,10 +899,6 @@
           document.querySelectorAll('#chips-tonality .chip').forEach(c => c.classList.remove('active'));
           chip.classList.add('active');
           state.tonality = chip.dataset.value;
-
-          // Update chip labels based on new tonality (sharp root = sharps, natural = scale pref)
-          updateTonalityChipsLabels();
-
           updateDisplay();
         });
       });
