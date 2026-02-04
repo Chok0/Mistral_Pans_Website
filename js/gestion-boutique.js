@@ -131,10 +131,15 @@
 
     /**
      * Formate le matériau pour affichage
+     * Uses centralized MistralMateriaux module if available
      */
     formatMateriau(code) {
+      if (typeof MistralMateriaux !== 'undefined') {
+        return MistralMateriaux.getLabel(code, 'full');
+      }
+      // Fallback if module not loaded
       const labels = {
-        'NS': 'Acier nitrure',
+        'NS': 'Acier nitruré',
         'ES': 'Ember Steel',
         'SS': 'Acier inoxydable'
       };

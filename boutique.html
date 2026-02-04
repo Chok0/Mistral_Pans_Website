@@ -98,7 +98,15 @@
             <button class="chip" data-value="equinox">Equinox</button>
           </div>
         </div>
-        
+
+        <!-- Matériau -->
+        <div class="option-group">
+          <label class="option-label">Matériau</label>
+          <div class="option-cards option-cards--3" id="cards-material">
+            <!-- Populated dynamically by JS -->
+          </div>
+        </div>
+
         <!-- Nombre de notes -->
         <div class="option-group">
           <label class="option-label">Nombre de notes</label>
@@ -273,6 +281,9 @@
   <!-- Scales data (unified source) -->
   <script src="js/scales-data.js"></script>
 
+  <!-- Matériaux data (unified source) -->
+  <script src="js/materiaux-data.js"></script>
+
   <!-- Module de faisabilité -->
   <script src="js/feasibility-module.js"></script>
 
@@ -309,7 +320,8 @@
       notes: 9,
       tonality: 'D3',
       tuning: '440',
-      size: '53'
+      size: '53',
+      material: 'NS'  // Default material: Acier Nitruré
     };
     
     // ===== PRICING =====
@@ -318,10 +330,10 @@
     const priceBottomBonus = 25;   // +25€ si l'instrument a des bottoms
     const sizeMalus = { '53': 0, '50': 0.025, '45': 0.05 };  // +2.5% pour 50cm, +5% pour 45cm
     
-    function calculatePrice(notes, size, feasibilityStatus) {
+    function calculatePrice(notes, size, feasibilityStatus, materialCode) {
       let price = 0;
       let hasBottom = false;
-      
+
       notes.forEach(note => {
         price += pricePerNote;
         if (note.octave === 2) {
@@ -331,23 +343,31 @@
           hasBottom = true;
         }
       });
-      
+
       // Bonus bottom (une seule fois)
       if (hasBottom) {
         price += priceBottomBonus;
       }
-      
+
       // Malus taille (en %)
       const sizeMultiplier = 1 + (sizeMalus[size] || 0);
       price = price * sizeMultiplier;
-      
+
+      // Malus matériau (en %)
+      const materialMalus = typeof MistralMateriaux !== 'undefined'
+        ? MistralMateriaux.getPrixMalus(materialCode)
+        : 0;
+      if (materialMalus > 0) {
+        price = price * (1 + materialMalus / 100);
+      }
+
       // Pourcentage selon difficulté
       if (feasibilityStatus === 'warning') {
         price = price * 1.05;
       } else if (feasibilityStatus === 'difficult') {
         price = price * 1.10;
       }
-      
+
       // Arrondir à la tranche de 5€ inférieure
       return Math.floor(price / 5) * 5;
     }
@@ -830,17 +850,21 @@
         feasibilityStatus = result.status;
       }
       
-      // Calculer le prix avec le status de faisabilité
-      const price = calculatePrice(notes, state.size, feasibilityStatus);
+      // Calculer le prix avec le status de faisabilité et le matériau
+      const price = calculatePrice(notes, state.size, feasibilityStatus, state.material);
       document.getElementById('total-price').textContent = price.toLocaleString('fr-FR') + ' €';
-      
+
       // Préparer le lien de commande
+      const materialLabel = typeof MistralMateriaux !== 'undefined'
+        ? MistralMateriaux.getLabel(state.material, 'short')
+        : state.material;
       const orderParams = new URLSearchParams({
         scale: state.scale,
         tonality: state.tonality,
         notes: state.notes,
         tuning: state.tuning,
         size: state.size,
+        material: state.material,
         price: price,
         name: `${rootDisplay} ${scaleData.name}`
       });
@@ -858,6 +882,46 @@
       renderPlayer();
     }
     
+    // ===== RENDER MATERIAL CARDS =====
+    function renderMaterialCards() {
+      const container = document.getElementById('cards-material');
+      if (!container) return;
+
+      // Récupérer les matériaux depuis le module
+      const materiaux = typeof MistralMateriaux !== 'undefined'
+        ? MistralMateriaux.getForConfigurateur()
+        : [
+            { code: 'NS', nom: 'Acier Nitruré', nom_court: 'Nitrure', prix_malus: 0 },
+            { code: 'ES', nom: 'Ember Steel', nom_court: 'Ember Steel', prix_malus: 5 },
+            { code: 'SS', nom: 'Acier Inoxydable', nom_court: 'Inox', prix_malus: 10 }
+          ];
+
+      let html = '';
+      materiaux.forEach(mat => {
+        const isActive = mat.code === state.material ? ' active' : '';
+        const priceInfo = mat.prix_malus > 0 ? `<div class="radio-card__price">+${mat.prix_malus}%</div>` : '';
+        html += `
+          <div class="radio-card${isActive}" data-value="${mat.code}">
+            <div class="radio-card__value">${mat.nom_court || mat.nom}</div>
+            <div class="radio-card__label">${mat.nom}</div>
+            ${priceInfo}
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+
+      // Bind events
+      container.querySelectorAll('.radio-card').forEach(card => {
+        card.addEventListener('click', () => {
+          container.querySelectorAll('.radio-card').forEach(c => c.classList.remove('active'));
+          card.classList.add('active');
+          state.material = card.dataset.value;
+          updateDisplay();
+        });
+      });
+    }
+
     // ===== BIND EVENTS =====
     function bindEvents() {
       const toggleBtn = document.getElementById('toggle-advanced');
@@ -1152,9 +1216,16 @@
     
     // ===== INIT =====
     document.addEventListener('DOMContentLoaded', () => {
+      renderMaterialCards();  // Render material cards first
       bindEvents();
       updateTonalityChipsLabels();  // Set chip labels based on default scale (Kurd = flats)
       updateDisplay();
+
+      // Listen for material updates from admin
+      window.addEventListener('materiauxUpdated', () => {
+        renderMaterialCards();
+        updateDisplay();
+      });
     });
   </script>
   

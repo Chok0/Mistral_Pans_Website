@@ -181,8 +181,11 @@
     if (hasValue(instrument.taille)) specs.push(instrument.taille + 'cm');
     if (hasValue(instrument.accordage)) specs.push(instrument.accordage + 'Hz');
     if (hasValue(instrument.materiau)) {
-      const materiauLabels = { 'NS': 'Nitrure', 'ES': 'Ember Steel', 'SS': 'Inox' };
-      specs.push(materiauLabels[instrument.materiau] || instrument.materiau);
+      // Use centralized material labels from MistralMateriaux module
+      const label = typeof MistralMateriaux !== 'undefined'
+        ? MistralMateriaux.getLabel(instrument.materiau, 'short')
+        : instrument.materiau;
+      specs.push(label);
     }
     const specsHtml = specs.length > 0 ? '<p class="flash-card__specs">' + specs.join(' · ') + '</p>' : '';
     
