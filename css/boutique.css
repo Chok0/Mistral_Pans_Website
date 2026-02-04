@@ -145,22 +145,22 @@ body {
   fill: #2C1810 !important;  /* Dark brown on white background */
 }
 
-/* Note type colors - Golden/Copper handpan */
+/* Note type colors - Silver/Steel handpan */
 .note-ding {
-  fill: #C9A227;  /* Bright gold for central ding */
+  fill: #D0D0D0;  /* Bright silver for central ding */
 }
 
 .note-tonal {
-  fill: #B8860B;  /* Dark goldenrod for tonal notes */
+  fill: #A0A0A0;  /* Steel gray for tonal notes */
 }
 
 .note-mutant {
-  fill: #CD853F;  /* Peru/copper for mutant notes */
+  fill: #909090;  /* Darker steel for mutant notes */
 }
 
 .note-bottom {
-  fill: #8B5A2B;  /* Dark copper for bottom notes */
-  stroke: #A0522D;
+  fill: #707070;  /* Dark steel for bottom notes */
+  stroke: #505050;
   stroke-dasharray: 3 2;
 }
 
@@ -213,16 +213,16 @@ body {
 }
 
 .legend-dot--tonal {
-  background: #B8860B;  /* Match note-tonal */
+  background: #A0A0A0;  /* Match note-tonal */
 }
 
 .legend-dot--mutant {
-  background: #CD853F;  /* Match note-mutant */
+  background: #909090;  /* Match note-mutant */
 }
 
 .legend-dot--bottom {
-  background: #8B5A2B;  /* Match note-bottom */
-  border: 1px dashed #A0522D;
+  background: #707070;  /* Match note-bottom */
+  border: 1px dashed #505050;
 }
 
 /* Controls */
