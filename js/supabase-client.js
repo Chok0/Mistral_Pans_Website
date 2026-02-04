@@ -302,21 +302,28 @@
       async search(query, fields = ['nom']) {
         const client = initSupabase();
         if (!client) return [];
-        
-        // Construire la requête OR pour chercher dans plusieurs champs
+
+        // Sanitize query: escape special LIKE characters and limit length
+        const sanitizedQuery = String(query || '')
+          .substring(0, 100)  // Limit query length
+          .replace(/[%_\\]/g, '\\$&');  // Escape LIKE wildcards
+
+        if (!sanitizedQuery.trim()) return [];
+
+        // Construire la requete OR pour chercher dans plusieurs champs
         const orConditions = fields
-          .map(field => `${field}.ilike.%${query}%`)
+          .map(field => `${field}.ilike.%${sanitizedQuery}%`)
           .join(',');
-        
+
         const { data, error } = await client
           .from(tableName)
           .select('*')
           .or(orConditions);
-        
+
         if (error) {
           return handleError(error, `search ${tableName}`) || [];
         }
-        
+
         return data || [];
       },
       
