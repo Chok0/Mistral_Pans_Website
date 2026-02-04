@@ -438,6 +438,14 @@ Le systeme admin a ete refactorise en modules independants pour une meilleure ma
 
 ## Historique des versions
 
+### v3.2 (4 Fevrier 2026)
+- **Ventes :** Workflow de vente integre (instrument -> facture -> statut vendu)
+- **Factures :** Ajout automatique d'instrument avec `addFactureLigneFromInstrument()`
+- **Statuts :** Systeme de validation des transitions de statut instruments
+- **Synchronisation :** Les instruments lies sont automatiquement marques "vendu" au paiement
+- **Bug fixes :** Correction declarations de variables dupliquees (admin-ui-boutique.js, admin-ui-content.js)
+- **Supabase :** Ajout sync des professeurs en attente (`mistral_pending_teachers`)
+
 ### v3.1 (4 Fevrier 2026)
 - **Securite :** Correction 7 vulnerabilites critiques (XSS, CORS, injection)
 - **RGPD :** Banniere consentement cookies, Google Fonts conditionnel
@@ -487,4 +495,4 @@ Le systeme admin a ete refactorise en modules independants pour une meilleure ma
 
 ---
 
-*Documentation mise a jour le 4 fevrier 2026*
+*Documentation mise a jour le 4 fevrier 2026 (v3.2)*
