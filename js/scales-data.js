@@ -24,26 +24,63 @@
   };
 
   // ============================================================================
-  // MUSIC THEORY: FLAT vs SHARP KEYS (Cycle of Fifths)
+  // MUSIC THEORY: CIRCLE OF FIFTHS & KEY SIGNATURES
   // ============================================================================
-  // In music theory, each key signature has a standard notation:
-  // - Sharp keys: C, G, D, A, E, B, F#, C#
-  // - Flat keys: F, Bb, Eb, Ab, Db, Gb, Cb
+  // Each root note has a position on the circle of fifths:
+  // - Positive = sharp keys, Negative = flat keys
+  // - The position indicates how many sharps (+) or flats (-) in the major key
   //
-  // For altered root notes (enharmonic equivalents):
-  // - D#/Eb → Always Eb (D# major would need 9 sharps - impossible)
-  // - G#/Ab → Always Ab (G# major would need 8 sharps - impossible)
-  // - A#/Bb → Always Bb (A# major would need 10 sharps - impossible)
-  // - C#/Db → Db is more common (5 flats vs 7 sharps), but C# exists
-  // - F#/Gb → Both are common (6 sharps vs 6 flats)
+  // Each mode has an offset relative to Ionian (major):
+  // - Lydian: +1 (one more sharp)
+  // - Ionian: 0
+  // - Mixolydian: -1 (one more flat)
+  // - Dorian: -2
+  // - Aeolian: -3 (natural minor)
+  // - Phrygian: -4
+  // - Locrian: -5
+  //
+  // Effective key = root position + mode offset
+  // If positive → use sharps, if negative → use flats
 
-  // Roots that should ALWAYS be displayed as flats (no matter the scale)
+  // Circle of fifths positions for all roots (sharps notation internally)
+  const CIRCLE_OF_FIFTHS = {
+    'C': 0,
+    'G': 1,
+    'D': 2,
+    'A': 3,
+    'E': 4,
+    'B': 5,
+    'F#': 6,
+    'C#': 7,
+    'F': -1,
+    'A#': -2,  // Bb
+    'D#': -3,  // Eb
+    'G#': -4,  // Ab
+    // Enharmonic equivalents (flat positions)
+    'Bb': -2,
+    'Eb': -3,
+    'Ab': -4,
+    'Db': -5,
+    'Gb': -6
+  };
+
+  // Mode offsets relative to Ionian (major scale)
+  // These determine the key signature: root_position + mode_offset
+  // Positive = sharps, Negative = flats
+  const MODE_OFFSETS = {
+    'lydian': 1,
+    'ionian': 0,
+    'mixolydian': -1,
+    'dorian': -2,
+    'aeolian': -3,
+    'phrygian': -4,
+    'phrygian_dominant': -4,  // Same key signature tendency as phrygian
+    'locrian': -5
+  };
+
+  // Roots that should ALWAYS be displayed as flats (theoretical sharp keys are impractical)
+  // D# major = 9 sharps, G# major = 8 sharps, A# major = 10 sharps
   const ALWAYS_FLAT_ROOTS = ['D#', 'G#', 'A#'];
-
-  // Roots that are preferably flats but can be sharps in sharp-heavy scales
-  const PREFER_FLAT_ROOTS = ['C#'];
-
-  // F# vs Gb depends on scale preference (both are equally valid)
 
   // ============================================================================
   // SCALES DATA
@@ -54,7 +91,7 @@
       name: 'Kurd',
       baseRoot: 'D',
       baseOctave: 3,
-      useFlats: true,  // Kurd utilise Bb (mode mineur naturel)
+      mode: 'aeolian',  // Natural minor - determines sharp/flat based on root
       description: 'La gamme la plus populaire. Douce, meditative, accessible a tous.',
       mood: 'Melancolique, introspectif',
       baseNotes: ['D3', 'A3', 'Bb3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4'],
@@ -75,7 +112,7 @@
       name: 'Amara',
       baseRoot: 'D',
       baseOctave: 3,
-      useFlats: true,  // Amara utilise Bb (derive du mode dorien)
+      mode: 'dorian',  // Dorian mode - determines sharp/flat based on root
       description: 'Variante du Celtic, plus douce. Ideale pour debuter.',
       mood: 'Doux, apaisant',
       baseNotes: ['D3', 'A3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'],
@@ -96,7 +133,7 @@
       name: 'Celtic Minor',
       baseRoot: 'D',
       baseOctave: 3,
-      useFlats: false,  // Celtic utilise des notes naturelles principalement
+      mode: 'dorian',  // Dorian mode - same as Amara
       description: 'Sonorites celtiques et medievales. Tres melodique.',
       mood: 'Mystique, nostalgique',
       baseNotes: ['D3', 'A3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'],
@@ -107,7 +144,7 @@
       name: 'Pygmy',
       baseRoot: 'D',
       baseOctave: 3,
-      useFlats: true,  // Pygmy utilise Bb
+      mode: 'aeolian',  // Minor pentatonic based - uses aeolian for key signature
       description: 'Gamme pentatonique africaine. Joyeuse et entrainante.',
       mood: 'Joyeux, tribal',
       baseNotes: ['D3', 'A3', 'Bb3', 'C4', 'D4', 'F4', 'G4', 'A4'],
@@ -118,7 +155,7 @@
       name: 'Low Pygmy',
       baseRoot: 'F#',
       baseOctave: 3,
-      useFlats: false,  // Low Pygmy utilise F#, G#, C# (gamme a dieses)
+      mode: 'aeolian',  // Minor pentatonic based - uses aeolian for key signature
       description: 'Version grave du Pygmy. Profonde et hypnotique.',
       mood: 'Profond, tribal',
       baseNotes: ['F#3', 'G#3', 'A3', 'C#4', 'E4', 'F#4', 'G#4', 'A4', 'C#5'],
@@ -139,7 +176,7 @@
       name: 'Hijaz',
       baseRoot: 'D',
       baseOctave: 3,
-      useFlats: false,  // Hijaz utilise la seconde augmentee (A#-C#) - dieses
+      mode: 'phrygian_dominant',  // Phrygian dominant (5th mode of harmonic minor)
       description: 'Sonorites orientales. Mysterieuse et envoutante.',
       mood: 'Oriental, mystique',
       baseNotes: ['D3', 'A3', 'Bb3', 'C#4', 'D4', 'E4', 'F4', 'G4', 'A4'],
@@ -160,7 +197,7 @@
       name: 'Myxolydian',
       baseRoot: 'C',
       baseOctave: 3,
-      useFlats: false,  // Myxolydien en Do = notes naturelles (pas d'alteration)
+      mode: 'mixolydian',  // Mixolydian mode
       description: 'Mode grec lumineux. Joyeux et ouvert.',
       mood: 'Lumineux, joyeux',
       baseNotes: ['C3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4'],
@@ -181,7 +218,7 @@
       name: 'Equinox',
       baseRoot: 'F',
       baseOctave: 3,
-      useFlats: true,  // Equinox = Fa mineur, utilise bemols (Ab, Db, Eb)
+      mode: 'phrygian',  // Phrygian mode
       description: 'Gamme grave et profonde. Sonorites riches.',
       mood: 'Profond, meditatif',
       baseNotes: ['F3', 'Ab3', 'C4', 'Db4', 'Eb4', 'F4', 'G4', 'Ab4', 'C5'],
@@ -249,46 +286,87 @@
 
   /**
    * Determine if we should use flats for displaying notes in a scale
-   * Based on music theory rules:
-   * - D#/Eb, G#/Ab, A#/Bb roots → ALWAYS use flats (flat keys)
-   * - C#/Db root → use flats (Db is more practical than C# with 7 sharps)
-   * - F#/Gb root → depends on scale preference
-   * - Natural roots → use the scale's preference
+   * Based on proper music theory using Circle of Fifths:
+   *
+   * Calculation: effective_key = root_position + mode_offset
+   * - Positive result → use sharps
+   * - Negative result → use flats
+   * - Zero → no accidentals (natural)
+   *
+   * For enharmonic roots (C#/Db, F#/Gb), choose the spelling that
+   * produces fewer accidentals (stays closer to 0 on circle of fifths)
+   *
    * @param {string} tonality - Root note with octave like "C#3" or "D3"
-   * @param {object} scaleData - Scale data object with useFlats property
+   * @param {object} scaleData - Scale data object with mode property
    * @returns {boolean} - True if should display as flats
    */
   function shouldUseFlats(tonality, scaleData) {
     if (!scaleData) return false;
 
     // Extract root note from tonality (e.g., "C#3" -> "C#", "D3" -> "D")
-    const match = tonality.match(/^([A-G]#?)(\d)$/);
-    if (!match) return scaleData.useFlats || false;
+    const match = tonality.match(/^([A-G][#b]?)(\d)$/);
+    if (!match) return false;
 
-    const root = match[1];
+    let root = match[1];
 
-    // Eb, Ab, Bb roots → ALWAYS flat keys (music theory standard)
-    if (ALWAYS_FLAT_ROOTS.includes(root)) return true;
+    // Convert flat input to sharp for lookup
+    if (root.includes('b')) {
+      root = FLATS_TO_SHARPS[root] || root;
+    }
 
-    // Db root → preferably flat (5 flats is easier than 7 sharps)
-    if (PREFER_FLAT_ROOTS.includes(root)) return true;
+    // Get mode offset (default to aeolian if not specified)
+    const mode = scaleData.mode || 'aeolian';
+    const modeOffset = MODE_OFFSETS[mode] !== undefined ? MODE_OFFSETS[mode] : -3;
 
-    // F# root → use scale preference (both F# and Gb are valid)
-    if (root === 'F#') return scaleData.useFlats || false;
+    // D#, G#, A# → ALWAYS use flat spelling (Eb, Ab, Bb)
+    // These sharp keys are theoretically impossible (too many sharps)
+    if (ALWAYS_FLAT_ROOTS.includes(root)) {
+      return true;
+    }
 
-    // Natural roots use the scale's preference
-    return scaleData.useFlats || false;
+    // Get circle of fifths position for the root
+    const rootPosition = CIRCLE_OF_FIFTHS[root];
+    if (rootPosition === undefined) return false;
+
+    // For enharmonic roots (C#/Db, F#/Gb), calculate both options
+    if (root === 'C#' || root === 'F#') {
+      const flatRoot = SHARPS_TO_FLATS[root];
+      const sharpPosition = rootPosition;
+      const flatPosition = CIRCLE_OF_FIFTHS[flatRoot];
+
+      const sharpEffective = sharpPosition + modeOffset;
+      const flatEffective = flatPosition + modeOffset;
+
+      // Choose the spelling that produces fewer accidentals
+      // If equal, prefer the one within practical range (-6 to +6)
+      if (Math.abs(flatEffective) < Math.abs(sharpEffective)) {
+        return true;  // Use flats (Db or Gb)
+      } else if (Math.abs(sharpEffective) < Math.abs(flatEffective)) {
+        return false; // Use sharps (C# or F#)
+      } else {
+        // Equal accidentals - prefer flats for readability when within range
+        return flatEffective >= -6 && flatEffective <= 6;
+      }
+    }
+
+    // For natural roots, calculate effective key signature
+    const effectiveKey = rootPosition + modeOffset;
+
+    // Negative = flat key, Positive = sharp key, Zero = natural
+    return effectiveKey < 0;
   }
 
   /**
    * Get the correct notation for a tonality chip based on music theory
-   * This determines how each individual chip should be displayed
-   * Rules:
-   * - D#→Eb, G#→Ab, A#→Bb (always flat, music theory standard)
-   * - C#→Db (preferably flat for most scales)
-   * - F#/Gb depends on scale's useFlats preference
+   * This determines how each individual root note chip should be displayed
+   *
+   * Uses the same Circle of Fifths calculation as shouldUseFlats():
+   * - For each root + scale combination, determine the optimal spelling
+   * - D#→Eb, G#→Ab, A#→Bb (always flat - theoretical sharp keys impossible)
+   * - C#/Db, F#/Gb chosen based on which produces fewer accidentals
+   *
    * @param {string} tonalityValue - Note in sharp notation like "A#3"
-   * @param {object} scaleData - Scale data object with useFlats property
+   * @param {object} scaleData - Scale data object with mode property
    * @returns {string} - Display notation like "Bb3"
    */
   function getTonalityChipNotation(tonalityValue, scaleData) {
@@ -302,18 +380,19 @@
     if (!note.includes('#')) return tonalityValue;
 
     // D#, G#, A# → ALWAYS convert to flat (Eb, Ab, Bb)
+    // These sharp keys are theoretically impossible
     if (ALWAYS_FLAT_ROOTS.includes(note)) {
       return SHARPS_TO_FLATS[note] + octave;
     }
 
-    // C# → Convert to Db (more practical notation)
-    if (PREFER_FLAT_ROOTS.includes(note)) {
-      return SHARPS_TO_FLATS[note] + octave;
-    }
-
-    // F# → Depends on scale preference (Gb for flat scales, F# for sharp scales)
-    if (note === 'F#' && scaleData && scaleData.useFlats) {
-      return SHARPS_TO_FLATS[note] + octave;
+    // For C# and F#, use the same logic as shouldUseFlats
+    // to determine the correct enharmonic spelling for this scale
+    if (note === 'C#' || note === 'F#') {
+      // Use shouldUseFlats with a synthetic tonality to determine spelling
+      const useFlats = shouldUseFlats(tonalityValue, scaleData);
+      if (useFlats) {
+        return SHARPS_TO_FLATS[note] + octave;
+      }
     }
 
     return tonalityValue;
@@ -322,13 +401,15 @@
   /**
    * Get base notes for a scale, converted to display notation
    * @param {string} scaleKey - Scale key like "kurd"
-   * @param {boolean} [forceFlats] - Override useFlats setting
+   * @param {boolean} [forceFlats] - Override useFlats calculation
    * @returns {string[]} - Array of notes in display notation
    */
   function getScaleNotes(scaleKey, forceFlats) {
     const scale = SCALES_DATA[scaleKey];
     if (!scale) return [];
-    const useFlats = forceFlats !== undefined ? forceFlats : scale.useFlats;
+    // Use proper music theory to determine flats/sharps for base tonality
+    const baseTonality = scale.baseRoot + scale.baseOctave;
+    const useFlats = forceFlats !== undefined ? forceFlats : shouldUseFlats(baseTonality, scale);
     return scale.baseNotes.map(note => toDisplayNotation(note, useFlats));
   }
 
@@ -343,9 +424,13 @@
     if (!scale) return '';
 
     let root = tonality || (scale.baseRoot + scale.baseOctave);
-    const rootMatch = root.match(/^([A-G]#?)(\d)?$/);
+    const rootMatch = root.match(/^([A-G][#b]?)(\d)?$/);
     const rootNote = rootMatch ? rootMatch[1] : root;
-    const displayRoot = toDisplayNotation(rootNote, scale.useFlats);
+    const octave = rootMatch ? rootMatch[2] : scale.baseOctave;
+
+    // Use proper music theory to determine sharp/flat display
+    const useFlats = shouldUseFlats(rootNote + octave, scale);
+    const displayRoot = toDisplayNotation(rootNote, useFlats);
 
     return `${displayRoot} ${scale.name}`;
   }
@@ -386,8 +471,9 @@
     NOTE_NAMES: NOTE_NAMES,
     FLATS_TO_SHARPS: FLATS_TO_SHARPS,
     SHARPS_TO_FLATS: SHARPS_TO_FLATS,
+    CIRCLE_OF_FIFTHS: CIRCLE_OF_FIFTHS,
+    MODE_OFFSETS: MODE_OFFSETS,
     ALWAYS_FLAT_ROOTS: ALWAYS_FLAT_ROOTS,
-    PREFER_FLAT_ROOTS: PREFER_FLAT_ROOTS,
 
     // Functions
     toDisplayNotation: toDisplayNotation,
