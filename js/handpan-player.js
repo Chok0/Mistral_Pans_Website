@@ -60,8 +60,9 @@ class HandpanPlayer {
       const scales = {};
       for (const [key, data] of Object.entries(MistralScales.SCALES_DATA)) {
         if (data.baseNotes && data.baseNotes.length > 0) {
-          // Convert notes to display notation for this scale
-          const useFlats = data.useFlats || false;
+          // Use proper music theory to determine sharp/flat for base tonality
+          const baseTonality = data.baseRoot + data.baseOctave;
+          const useFlats = MistralScales.shouldUseFlats(baseTonality, data);
           const notes = data.baseNotes.map(n => MistralScales.toDisplayNotation(n, useFlats));
           scales[key] = {
             name: `${MistralScales.toDisplayNotation(data.baseRoot, useFlats)} ${data.name}`,
