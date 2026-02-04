@@ -2,9 +2,6 @@
 # MISTRAL PANS - Git Ignore
 # =============================================================================
 
-# Configuration sensible (identifiants Supabase)
-js/config.js
-
 # Fichiers SQL (schéma et politiques RLS)
 sql/
 
