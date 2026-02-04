@@ -16,6 +16,7 @@
   const STORAGE_KEY = 'mistral_materiaux';
 
   // Matériaux par défaut (utilisés si localStorage vide ou pour initialisation)
+  // Note: tous les matériaux sont au même prix (pas de malus)
   const DEFAULT_MATERIAUX = [
     {
       id: 'mat-ns',
@@ -37,7 +38,7 @@
       nom: 'Ember Steel',
       nom_court: 'Ember Steel',
       description: 'Acier avec finition cuivrée unique. Chaleur du son et esthétique distinctive.',
-      prix_malus: 5,
+      prix_malus: 0,
       ordre: 2,
       couleur: '#CD853F',
       disponible: true,
@@ -51,7 +52,7 @@
       nom: 'Acier Inoxydable',
       nom_court: 'Inox',
       description: 'Acier inoxydable pour une durabilité maximale. Finition brillante argentée.',
-      prix_malus: 10,
+      prix_malus: 0,
       ordre: 3,
       couleur: '#C0C0C0',
       disponible: true,

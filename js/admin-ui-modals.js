@@ -1489,33 +1489,6 @@
     }
   }
 
-  // Boutique
-  function editAnnonce(id) { console.log('TODO: editAnnonce', id); }
-  function toggleAnnonce(id) {
-    const annonces = Storage.get('mistral_flash_annonces', []);
-    const index = annonces.findIndex(a => a.id === id);
-    if (index !== -1) {
-      annonces[index].active = !annonces[index].active;
-      Storage.set('mistral_flash_annonces', annonces);
-      renderBoutique();
-    }
-  }
-  async function deleteAnnonce(id) {
-    const confirmed = await Confirm.show({
-      title: 'Supprimer l\'annonce',
-      message: 'Cette action est irréversible.',
-      confirmText: 'Supprimer',
-      type: 'danger'
-    });
-    
-    if (confirmed) {
-      const annonces = Storage.get('mistral_flash_annonces', []);
-      Storage.set('mistral_flash_annonces', annonces.filter(a => a.id !== id));
-      renderBoutique();
-      Toast.success('Annonce supprimée');
-    }
-  }
-
   // Professeurs
   function approveTeacher(id) {
     const pending = Storage.get('mistral_pending_teachers', []);
