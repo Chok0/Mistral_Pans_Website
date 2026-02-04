@@ -146,12 +146,12 @@ class HandpanPlayer {
         
         <div class="handpan-visual">
           <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
-            <!-- Outer shell - Golden/Copper finish -->
+            <!-- Outer shell - Silver/Steel finish -->
             <defs>
               <radialGradient id="shell-gradient" cx="30%" cy="30%">
-                <stop offset="0%" stop-color="#D4A855"/>
-                <stop offset="70%" stop-color="#A67C52"/>
-                <stop offset="100%" stop-color="#8B5A2B"/>
+                <stop offset="0%" stop-color="#E8E8E8"/>
+                <stop offset="70%" stop-color="#B8B8B8"/>
+                <stop offset="100%" stop-color="#7A7A7A"/>
               </radialGradient>
               <filter id="note-shadow" x="-50%" y="-50%" width="200%" height="200%">
                 <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.2"/>
@@ -160,7 +160,7 @@ class HandpanPlayer {
 
             <!-- Main shell -->
             <circle cx="${center}" cy="${center}" r="${size * 0.46}" fill="url(#shell-gradient)" />
-            <circle cx="${center}" cy="${center}" r="${size * 0.44}" fill="none" stroke="#9A7B4F" stroke-width="1.5"/>
+            <circle cx="${center}" cy="${center}" r="${size * 0.44}" fill="none" stroke="#909090" stroke-width="1.5"/>
 
             <!-- Notes -->
             ${notePositions.map((pos, i) => `
@@ -170,8 +170,8 @@ class HandpanPlayer {
                   cy="${pos.y}"
                   r="${i === 0 ? noteRadius * 1.3 : noteRadius}"
                   class="note-circle"
-                  fill="${i === 0 ? '#C9A227' : '#B8860B'}"
-                  stroke="#8B6914"
+                  fill="${i === 0 ? '#D0D0D0' : '#A0A0A0'}"
+                  stroke="#686868"
                   stroke-width="1.5"
                   filter="url(#note-shadow)"
                 />
@@ -182,7 +182,7 @@ class HandpanPlayer {
                     text-anchor="middle"
                     dominant-baseline="central"
                     class="note-label"
-                    fill="#3D2914"
+                    fill="#3A3A3A"
                     font-size="${size * 0.035}px"
                     font-weight="600"
                     font-family="system-ui, sans-serif"
@@ -333,7 +333,7 @@ class HandpanPlayer {
       }
       
       .note-group:hover .note-circle {
-        fill: #D4A855;  /* Brighter gold on hover */
+        fill: #C8C8C8;  /* Brighter silver on hover */
       }
       
       .note-group.active .note-circle {
