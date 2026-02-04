@@ -1059,14 +1059,30 @@ loginForm.addEventListener('submit', async function(e) {
           btn.textContent = 'Connexion';
           btn.disabled = false;
         } else {
-          // Fallback ancien système
-          if (Auth.login(email, password)) {
+          // Systeme local avec MistralAdmin
+          if (!MistralAdmin.isCredentialsConfigured()) {
+            loginError.textContent = 'Admin non configure. Executez MistralAdmin.setCredentials(user, pass) dans la console.';
+            loginError.classList.add('show');
+            return;
+          }
+
+          const btn = loginForm.querySelector('button[type="submit"]');
+          btn.textContent = 'Connexion...';
+          btn.disabled = true;
+
+          const success = await Auth.login(email, password);
+
+          if (success) {
             loginError.classList.remove('show');
             updateView();
           } else {
+            loginError.textContent = 'Identifiants incorrects';
             loginError.classList.add('show');
             document.getElementById('password').value = '';
           }
+
+          btn.textContent = 'Connexion';
+          btn.disabled = false;
         }
       });
       

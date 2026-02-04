@@ -16,7 +16,7 @@
     SESSION_EXPIRY: 24 * 60 * 60 * 1000, // 24 heures
     
     // Credentials (Ã   modifier en production)
-    ADMIN_USER: 'admin',
+    ADMIN_USER: null, // Configure via setAdminCredentials()
     ADMIN_PASS_HASH: null, // Sera calculÃ© Ã   l'init
     
     // Storage keys
@@ -31,14 +31,32 @@
   };
 
   // Calculer le hash du mot de passe par dÃ©faut
-  CONFIG.ADMIN_PASS_HASH = simpleHash('mistral2024');
+  // SECURITE: Ne pas utiliser de mot de passe par defaut
+  // Utiliser setAdminCredentials() ou Supabase Auth
+  CONFIG.ADMIN_PASS_HASH = null;
 
   // ============================================================================
   // UTILITAIRES
   // ============================================================================
   
   /**
-   * Hash simple pour mot de passe (NON sÃ©curisÃ© - OK pour site statique)
+   * Hash SHA-256 pour mot de passe (plus securise que simpleHash)
+   * Utilise SubtleCrypto si disponible, sinon fallback
+   */
+  async function secureHash(str) {
+    if (window.crypto && window.crypto.subtle) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(str + '_mistral_salt_2024');
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    // Fallback si SubtleCrypto non disponible
+    return simpleHash(str);
+  }
+
+  /**
+   * Hash simple (fallback uniquement)
    */
   function simpleHash(str) {
     let hash = 0;
@@ -49,6 +67,54 @@
     }
     return hash.toString(16);
   }
+
+  /**
+   * Configure les credentials admin (a appeler une seule fois)
+   */
+  async function setAdminCredentials(username, password) {
+    if (!username || !password) {
+      console.error('Username et password requis');
+      return false;
+    }
+    if (password.length < 8) {
+      console.error('Le mot de passe doit faire au moins 8 caracteres');
+      return false;
+    }
+
+    const hash = await secureHash(password);
+    const creds = { user: username, hash: hash };
+    localStorage.setItem('mistral_admin_credentials', JSON.stringify(creds));
+
+    // Mettre a jour la config en memoire
+    CONFIG.ADMIN_USER = username;
+    CONFIG.ADMIN_PASS_HASH = hash;
+
+    console.log('Credentials admin configures avec succes');
+    return true;
+  }
+
+  /**
+   * Verifie si les credentials sont configures
+   */
+  function isCredentialsConfigured() {
+    return CONFIG.ADMIN_USER !== null && CONFIG.ADMIN_PASS_HASH !== null;
+  }
+
+  // Charger les credentials depuis localStorage au demarrage
+  (function loadStoredCredentials() {
+    const stored = localStorage.getItem('mistral_admin_credentials');
+    if (stored) {
+      try {
+        const creds = JSON.parse(stored);
+        if (creds.user && creds.hash) {
+          CONFIG.ADMIN_USER = creds.user;
+          CONFIG.ADMIN_PASS_HASH = creds.hash;
+        }
+      } catch (e) {
+        console.warn('Credentials stockes invalides');
+      }
+    }
+  })();
 
   /**
    * GÃ©nÃ¨re un ID unique
@@ -131,10 +197,17 @@
     },
 
     /**
-     * Connexion admin
+     * Connexion admin (async pour hash securise)
      */
-    login(username, password) {
-      if (username === CONFIG.ADMIN_USER && simpleHash(password) === CONFIG.ADMIN_PASS_HASH) {
+    async login(username, password) {
+      // Verifier si les credentials sont configures
+      if (!isCredentialsConfigured()) {
+        console.error('Credentials admin non configures. Utilisez MistralAdmin.setCredentials(user, pass)');
+        return false;
+      }
+
+      const hash = await secureHash(password);
+      if (username === CONFIG.ADMIN_USER && hash === CONFIG.ADMIN_PASS_HASH) {
         const session = {
           user: CONFIG.ADMIN_USER,
           expiry: Date.now() + CONFIG.SESSION_EXPIRY,
@@ -144,6 +217,13 @@
         return true;
       }
       return false;
+    },
+
+    /**
+     * Verifie si les credentials sont configures
+     */
+    isConfigured() {
+      return isCredentialsConfigured();
     },
 
     /**
@@ -1036,9 +1116,14 @@
     // Config
     CONFIG,
 
+    // Setup credentials (a appeler une seule fois pour configurer l'admin)
+    setCredentials: setAdminCredentials,
+    isCredentialsConfigured,
+
     // Utils
     utils: {
       simpleHash,
+      secureHash,
       generateId,
       formatDate,
       formatPrice,
