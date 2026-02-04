@@ -20,23 +20,33 @@
   // Ne pas recharger si déjà présent (ex: admin.html)
   if (window.MistralSync || window.supabaseLoading) return;
   window.supabaseLoading = true;
-  
-  // Charger le SDK Supabase
-  const supabaseSDK = document.createElement('script');
-  supabaseSDK.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-  supabaseSDK.onload = function() {
-    // Charger supabase-client.js
-    const clientScript = document.createElement('script');
-    clientScript.src = 'js/supabase-client.js';
-    clientScript.onload = function() {
-      // Charger supabase-sync.js
-      const syncScript = document.createElement('script');
-      syncScript.src = 'js/supabase-sync.js';
-      document.head.appendChild(syncScript);
+
+  // Charger config.js d'abord
+  const configScript = document.createElement('script');
+  configScript.src = 'js/config.js';
+  configScript.onload = function() {
+    // Charger le SDK Supabase
+    const supabaseSDK = document.createElement('script');
+    supabaseSDK.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    supabaseSDK.onload = function() {
+      // Charger supabase-client.js
+      const clientScript = document.createElement('script');
+      clientScript.src = 'js/supabase-client.js';
+      clientScript.onload = function() {
+        // Charger supabase-sync.js
+        const syncScript = document.createElement('script');
+        syncScript.src = 'js/supabase-sync.js';
+        document.head.appendChild(syncScript);
+      };
+      document.head.appendChild(clientScript);
     };
-    document.head.appendChild(clientScript);
+    document.head.appendChild(supabaseSDK);
   };
-  document.head.appendChild(supabaseSDK);
+  // Si config.js échoue, continuer quand même (mode dégradé)
+  configScript.onerror = function() {
+    console.warn('[Main] config.js non trouvé, Supabase désactivé');
+  };
+  document.head.appendChild(configScript);
 })();
 
 
