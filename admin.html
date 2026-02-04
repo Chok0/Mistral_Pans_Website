@@ -82,7 +82,7 @@
       </div>
       <div id="login-error" class="login-error">Identifiants incorrects</div>
       <form id="login-form">
-        <div class="admin-form__group"><label class="admin-form__label">Identifiant</label><input type="email" class="admin-form__input" id="username" placeholder="email" autocomplete="email" required></div>
+        <div class="admin-form__group"><label class="admin-form__label">Email</label><input type="email" class="admin-form__input" id="username" placeholder="admin@example.com" autocomplete="email" required></div>
         <div class="admin-form__group"><label class="admin-form__label">Mot de passe</label><input type="password" class="admin-form__input" id="password" autocomplete="current-password" required></div>
         <button type="submit" class="admin-btn admin-btn--primary" style="width:100%;">Connexion</button>
       </form>
@@ -994,10 +994,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <!-- Cookie Consent -->
   <script src="js/cookie-consent.js"></script>
+  <!-- Configuration Supabase (copier config.example.js vers config.js) -->
+  <script src="js/config.js"></script>
   <!-- Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-client.js"></script>
-<script src="js/supabase-auth.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/supabase-auth.js"></script>
   <script src="js/admin-core.js"></script>
   <script src="js/gestion.js"></script>
   <script src="js/gestion-pdf.js"></script>
@@ -1044,52 +1046,38 @@ loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         const email = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
-        
-        // Utiliser Supabase Auth si c'est un email
-        if (email.includes('@') && typeof MistralAuth !== 'undefined') {
-          const btn = loginForm.querySelector('button[type="submit"]');
-          btn.textContent = 'Connexion...';
-          btn.disabled = true;
-          
-          const result = await MistralAuth.login(email, password);
-          
-          if (result.success) {
-            loginError.classList.remove('show');
-            updateView();
-          } else {
-            loginError.textContent = result.error || 'Identifiants incorrects';
-            loginError.classList.add('show');
-            document.getElementById('password').value = '';
-          }
-          
-          btn.textContent = 'Connexion';
-          btn.disabled = false;
-        } else {
-          // Systeme local avec MistralAdmin
-          if (!MistralAdmin.isCredentialsConfigured()) {
-            loginError.textContent = 'Admin non configure. Executez MistralAdmin.setCredentials(user, pass) dans la console.';
-            loginError.classList.add('show');
-            return;
-          }
 
-          const btn = loginForm.querySelector('button[type="submit"]');
-          btn.textContent = 'Connexion...';
-          btn.disabled = true;
-
-          const success = await Auth.login(email, password);
-
-          if (success) {
-            loginError.classList.remove('show');
-            updateView();
-          } else {
-            loginError.textContent = 'Identifiants incorrects';
-            loginError.classList.add('show');
-            document.getElementById('password').value = '';
-          }
-
-          btn.textContent = 'Connexion';
-          btn.disabled = false;
+        // Vérifier que c'est un email valide
+        if (!email.includes('@')) {
+          loginError.textContent = 'Veuillez entrer une adresse email valide';
+          loginError.classList.add('show');
+          return;
         }
+
+        // Vérifier que MistralAuth est disponible
+        if (typeof MistralAuth === 'undefined') {
+          loginError.textContent = 'Service d\'authentification non disponible';
+          loginError.classList.add('show');
+          return;
+        }
+
+        const btn = loginForm.querySelector('button[type="submit"]');
+        btn.textContent = 'Connexion...';
+        btn.disabled = true;
+
+        const result = await MistralAuth.login(email, password);
+
+        if (result.success) {
+          loginError.classList.remove('show');
+          updateView();
+        } else {
+          loginError.textContent = result.error || 'Identifiants incorrects';
+          loginError.classList.add('show');
+          document.getElementById('password').value = '';
+        }
+
+        btn.textContent = 'Connexion';
+        btn.disabled = false;
       });
       
       document.getElementById('btn-logout').addEventListener('click', function() { Auth.logout(); updateView(); });

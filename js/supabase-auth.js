@@ -218,34 +218,11 @@
   }
 
   /**
-   * Login avec l'ancien système (fallback)
-   * Pour compatibilité avec le code existant qui utilise username/password
+   * Legacy login désactivé - utiliser Supabase Auth
+   * @deprecated Utilisez login() avec un email Supabase
    */
   function legacyLogin(username, password) {
-    // L'ancien système utilisait un hash simple
-    // On le garde en fallback mais on encourage l'utilisation de Supabase
-    const LEGACY_HASH = 1632636498; // Hash de 'mistral2024'
-    
-    function simpleHash(str) {
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-      }
-      return hash;
-    }
-    
-    if (username === 'admin' && simpleHash(password) === LEGACY_HASH) {
-      const session = {
-        user: 'admin',
-        expiry: Date.now() + (24 * 60 * 60 * 1000),
-        legacy: true
-      };
-      localStorage.setItem(AUTH_CONFIG.legacySessionKey, JSON.stringify(session));
-      return true;
-    }
-    
+    log('Legacy login désactivé. Utilisez un compte Supabase (email).', 'warning');
     return false;
   }
 
@@ -377,18 +354,14 @@
   // Alias pour compatibilité avec l'ancien code MistralAdmin.Auth
   if (window.MistralAdmin) {
     window.MistralAdmin.Auth = {
-      login: function(username, password) {
-        // Si c'est un email, utiliser Supabase
-        if (username.includes('@')) {
-          login(username, password).then(result => {
-            if (result.success) {
-              window.location.reload();
-            }
-          });
-          return false; // Retourne false immédiatement car async
+      login: async function(username, password) {
+        // Supabase Auth requiert un email
+        if (!username.includes('@')) {
+          log('Connexion requiert un email Supabase valide', 'error');
+          return false;
         }
-        // Sinon, fallback sur l'ancien système
-        return legacyLogin(username, password);
+        const result = await login(username, password);
+        return result.success;
       },
       logout: logout,
       isLoggedIn: isLoggedInSync
