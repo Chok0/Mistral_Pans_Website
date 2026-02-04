@@ -113,7 +113,7 @@
         <!-- Matériau -->
         <div class="option-group">
           <label class="option-label">Matériau</label>
-          <div class="option-cards option-cards--3" id="cards-material">
+          <div class="option-chips" id="chips-material">
             <!-- Populated dynamically by JS -->
           </div>
         </div>
@@ -539,13 +539,7 @@
       const sizeMultiplier = 1 + (sizeMalus[size] || 0);
       price = price * sizeMultiplier;
 
-      // Malus matériau (en %)
-      const materialMalus = typeof MistralMateriaux !== 'undefined'
-        ? MistralMateriaux.getPrixMalus(materialCode)
-        : 0;
-      if (materialMalus > 0) {
-        price = price * (1 + materialMalus / 100);
-      }
+      // Note: tous les matériaux sont au même prix (pas de malus)
 
       // Pourcentage selon difficulté
       if (feasibilityStatus === 'warning') {
@@ -1109,41 +1103,34 @@
       document.getElementById('btn-order').dataset.originalHref = orderUrl;
     }
     
-    // ===== RENDER MATERIAL CARDS =====
+    // ===== RENDER MATERIAL CHIPS =====
     function renderMaterialCards() {
-      const container = document.getElementById('cards-material');
+      const container = document.getElementById('chips-material');
       if (!container) return;
 
       // Récupérer les matériaux depuis le module
       const materiaux = typeof MistralMateriaux !== 'undefined'
         ? MistralMateriaux.getForConfigurateur()
         : [
-            { code: 'NS', nom: 'Acier Nitruré', nom_court: 'Nitrure', prix_malus: 0 },
-            { code: 'ES', nom: 'Ember Steel', nom_court: 'Ember Steel', prix_malus: 5 },
-            { code: 'SS', nom: 'Acier Inoxydable', nom_court: 'Inox', prix_malus: 10 }
+            { code: 'NS', nom: 'Acier Nitruré', nom_court: 'Nitrure' },
+            { code: 'ES', nom: 'Ember Steel', nom_court: 'Ember Steel' },
+            { code: 'SS', nom: 'Acier Inoxydable', nom_court: 'Inox' }
           ];
 
       let html = '';
       materiaux.forEach(mat => {
         const isActive = mat.code === state.material ? ' active' : '';
-        const priceInfo = mat.prix_malus > 0 ? `<div class="radio-card__price">+${mat.prix_malus}%</div>` : '';
-        html += `
-          <div class="radio-card${isActive}" data-value="${mat.code}">
-            <div class="radio-card__value">${mat.nom_court || mat.nom}</div>
-            <div class="radio-card__label">${mat.nom}</div>
-            ${priceInfo}
-          </div>
-        `;
+        html += `<button class="chip${isActive}" data-value="${mat.code}">${mat.nom_court || mat.nom}</button>`;
       });
 
       container.innerHTML = html;
 
       // Bind events
-      container.querySelectorAll('.radio-card').forEach(card => {
-        card.addEventListener('click', () => {
-          container.querySelectorAll('.radio-card').forEach(c => c.classList.remove('active'));
-          card.classList.add('active');
-          state.material = card.dataset.value;
+      container.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          state.material = chip.dataset.value;
           updateDisplay();
         });
       });
