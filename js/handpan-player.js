@@ -1,19 +1,20 @@
 /* ==========================================================================
    MISTRAL PANS - Scale Player Component
    Virtual Handpan with Web Audio API
+   Uses MistralScales from scales-data.js when available
    ========================================================================== */
 
 class HandpanPlayer {
   constructor(container, options = {}) {
-    this.container = typeof container === 'string' 
-      ? document.querySelector(container) 
+    this.container = typeof container === 'string'
+      ? document.querySelector(container)
       : container;
-    
+
     if (!this.container) {
       console.error('HandpanPlayer: Container not found');
       return;
     }
-    
+
     // Options
     this.options = {
       scale: options.scale || 'kurd',
@@ -23,50 +24,13 @@ class HandpanPlayer {
       size: options.size || 300,
       ...options
     };
-    
+
     // Audio context (created on first interaction)
     this.audioContext = null;
     this.gainNode = null;
-    
-    // Scale definitions
-    this.scales = {
-      kurd: {
-        name: 'D Kurd',
-        description: 'La plus populaire. Douce et méditative.',
-        mood: 'Mélancolique, introspectif',
-        notes: ['D3', 'A3', 'Bb3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4']
-      },
-      celtic: {
-        name: 'D Celtic Minor',
-        description: 'Sonorités celtiques et médiévales.',
-        mood: 'Mystique, nostalgique',
-        notes: ['D3', 'A3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5']
-      },
-      pygmy: {
-        name: 'D Pygmy',
-        description: 'Gamme africaine. Joyeuse et entraînante.',
-        mood: 'Joyeux, tribal',
-        notes: ['D3', 'A3', 'Bb3', 'C4', 'D4', 'F4', 'G4', 'A4']
-      },
-      hijaz: {
-        name: 'D Hijaz',
-        description: 'Sonorités orientales. Envoûtante.',
-        mood: 'Oriental, mystique',
-        notes: ['D3', 'A3', 'Bb3', 'C#4', 'D4', 'E4', 'F4', 'G4', 'A4']
-      },
-      amara: {
-        name: 'D Amara',
-        description: 'Variante douce du Celtic. Idéale pour débuter.',
-        mood: 'Doux, apaisant',
-        notes: ['D3', 'A3', 'C4', 'D4', 'E4', 'F4', 'A4', 'C5']
-      },
-      equinox: {
-        name: 'F Equinox',
-        description: 'Gamme grave et profonde.',
-        mood: 'Profond, méditatif',
-        notes: ['F3', 'Ab3', 'C4', 'Db4', 'Eb4', 'F4', 'G4', 'Ab4', 'C5']
-      }
-    };
+
+    // Scale definitions - use unified MistralScales if available
+    this.scales = this._buildScalesFromMistralScales();
     
     // Note frequencies (A4 = 440Hz)
     this.noteFrequencies = {
@@ -84,23 +48,59 @@ class HandpanPlayer {
     this.activeNotes = new Set();
     this.audioCache = {};
     this.audioPath = options.audioPath || 'ressources/audio/';
-    
+
     this.init();
   }
-  
+
+  // Build scales object from MistralScales (unified source) or use fallback
+  _buildScalesFromMistralScales() {
+    // Use MistralScales if available (from scales-data.js)
+    if (typeof MistralScales !== 'undefined' && MistralScales.SCALES_DATA) {
+      const scales = {};
+      for (const [key, data] of Object.entries(MistralScales.SCALES_DATA)) {
+        if (data.baseNotes && data.baseNotes.length > 0) {
+          // Convert notes to display notation for this scale
+          const useFlats = data.useFlats || false;
+          const notes = data.baseNotes.map(n => MistralScales.toDisplayNotation(n, useFlats));
+          scales[key] = {
+            name: `${MistralScales.toDisplayNotation(data.baseRoot, useFlats)} ${data.name}`,
+            description: data.description || '',
+            mood: data.mood || '',
+            notes: notes
+          };
+        }
+      }
+      return scales;
+    }
+
+    // Fallback if MistralScales not loaded
+    return {
+      kurd: { name: 'D Kurd', description: 'La plus populaire.', mood: 'Melancolique', notes: ['D3', 'A3', 'Bb3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4'] },
+      amara: { name: 'D Amara', description: 'Variante douce.', mood: 'Doux', notes: ['D3', 'A3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'] },
+      hijaz: { name: 'D Hijaz', description: 'Orientale.', mood: 'Mystique', notes: ['D3', 'A3', 'Bb3', 'C#4', 'D4', 'E4', 'F4', 'G4', 'A4'] },
+      equinox: { name: 'F Equinox', description: 'Grave et profonde.', mood: 'Meditatif', notes: ['F3', 'Ab3', 'C4', 'Db4', 'Eb4', 'F4', 'G4', 'Ab4', 'C5'] }
+    };
+  }
+
   init() {
     this.render();
     this.bindEvents();
     this.preloadCurrentScale();
   }
-  
-  // Convertir le nom de note vers le nom de fichier (C#4 → Cs4, Bb3 → As3)
+
+  // Convert note name to audio file name (C#4 -> Cs4, Bb3 -> As3)
   noteToFileName(noteName) {
+    // Use MistralScales if available
+    if (typeof MistralScales !== 'undefined' && MistralScales.noteToFileName) {
+      return MistralScales.noteToFileName(noteName);
+    }
+
+    // Fallback
     const flatToSharp = {
       'Db': 'Cs', 'Eb': 'Ds', 'Fb': 'E', 'Gb': 'Fs',
       'Ab': 'Gs', 'Bb': 'As', 'Cb': 'B'
     };
-    
+
     let fileName = noteName;
     for (const [flat, sharp] of Object.entries(flatToSharp)) {
       if (fileName.startsWith(flat)) {
@@ -146,43 +146,45 @@ class HandpanPlayer {
         
         <div class="handpan-visual">
           <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
-            <!-- Outer shell -->
+            <!-- Outer shell - Golden/Copper finish -->
             <defs>
               <radialGradient id="shell-gradient" cx="30%" cy="30%">
-                <stop offset="0%" stop-color="#5a5a5a"/>
-                <stop offset="100%" stop-color="#3a3a3a"/>
+                <stop offset="0%" stop-color="#D4A855"/>
+                <stop offset="70%" stop-color="#A67C52"/>
+                <stop offset="100%" stop-color="#8B5A2B"/>
               </radialGradient>
               <filter id="note-shadow" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.2"/>
               </filter>
             </defs>
-            
+
             <!-- Main shell -->
             <circle cx="${center}" cy="${center}" r="${size * 0.46}" fill="url(#shell-gradient)" />
-            <circle cx="${center}" cy="${center}" r="${size * 0.44}" fill="none" stroke="#555" stroke-width="1"/>
-            
+            <circle cx="${center}" cy="${center}" r="${size * 0.44}" fill="none" stroke="#9A7B4F" stroke-width="1.5"/>
+
             <!-- Notes -->
             ${notePositions.map((pos, i) => `
               <g class="note-group" data-note="${notes[i]}" data-index="${i}">
-                <circle 
-                  cx="${pos.x}" 
-                  cy="${pos.y}" 
+                <circle
+                  cx="${pos.x}"
+                  cy="${pos.y}"
                   r="${i === 0 ? noteRadius * 1.3 : noteRadius}"
                   class="note-circle"
-                  fill="#3d3d3d"
-                  stroke="#555"
-                  stroke-width="1"
+                  fill="${i === 0 ? '#C9A227' : '#B8860B'}"
+                  stroke="#8B6914"
+                  stroke-width="1.5"
                   filter="url(#note-shadow)"
                 />
                 ${this.options.showNoteNames ? `
-                  <text 
-                    x="${pos.x}" 
-                    y="${pos.y}" 
-                    text-anchor="middle" 
+                  <text
+                    x="${pos.x}"
+                    y="${pos.y}"
+                    text-anchor="middle"
                     dominant-baseline="central"
                     class="note-label"
-                    fill="#999"
+                    fill="#3D2914"
                     font-size="${size * 0.035}px"
+                    font-weight="600"
                     font-family="system-ui, sans-serif"
                   >${notes[i]}</text>
                 ` : ''}
@@ -331,7 +333,7 @@ class HandpanPlayer {
       }
       
       .note-group:hover .note-circle {
-        fill: #5a5a5a;
+        fill: #D4A855;  /* Brighter gold on hover */
       }
       
       .note-group.active .note-circle {

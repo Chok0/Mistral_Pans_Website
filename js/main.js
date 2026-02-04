@@ -247,52 +247,45 @@ function initContactModal() {
 /* --------------------------------------------------------------------------
    Scale Selector (for boutique page)
    -------------------------------------------------------------------------- */
+
+// Build scales object from MistralScales (unified source) or use fallback
+function _buildScalesForSelector() {
+  // Use MistralScales if available (from scales-data.js)
+  if (typeof MistralScales !== 'undefined' && MistralScales.SCALES_DATA) {
+    const scales = {};
+    for (const [key, data] of Object.entries(MistralScales.SCALES_DATA)) {
+      if (data.baseNotes && data.baseNotes.length > 0) {
+        const useFlats = data.useFlats || false;
+        const notesArray = data.baseNotes.map(n => MistralScales.toDisplayNotation(n, useFlats));
+        scales[key] = {
+          name: `${MistralScales.toDisplayNotation(data.baseRoot, useFlats)} ${data.name}`,
+          notes: notesArray.join(' '),
+          description: data.description || '',
+          mood: data.mood || ''
+        };
+      }
+    }
+    return scales;
+  }
+
+  // Fallback if MistralScales not loaded
+  return {
+    'kurd': { name: 'D Kurd', notes: 'D3 A3 Bb3 C4 D4 E4 F4 G4 A4', description: 'La gamme la plus populaire.', mood: 'Melancolique, introspectif' },
+    'amara': { name: 'D Amara', notes: 'D3 A3 C4 D4 E4 F4 A4 C5', description: 'Variante douce.', mood: 'Doux, apaisant' },
+    'hijaz': { name: 'D Hijaz', notes: 'D3 A3 Bb3 C#4 D4 E4 F4 G4 A4', description: 'Orientale.', mood: 'Oriental, mystique' },
+    'equinox': { name: 'F Equinox', notes: 'F3 Ab3 C4 Db4 Eb4 F4 G4 Ab4 C5', description: 'Grave et profonde.', mood: 'Profond, meditatif' }
+  };
+}
+
 function initScaleSelector() {
   const scaleButtons = document.querySelectorAll('.scale-btn');
   const scaleInfo = document.querySelector('.scale-info');
-  
+
   if (scaleButtons.length === 0) return;
-  
-  // Scale data
-  const scales = {
-    'kurd': {
-      name: 'D Kurd',
-      notes: 'D3 A3 Bb3 C4 D4 E4 F4 G4 A4',
-      description: 'La gamme la plus populaire. Douce, méditative, accessible à tous.',
-      mood: 'Mélancolique, introspectif'
-    },
-    'celtic': {
-      name: 'D Celtic Minor',
-      notes: 'D3 A3 C4 D4 E4 F4 G4 A4 C5',
-      description: 'Sonorités celtiques et médiévales. Très mélodique.',
-      mood: 'Mystique, nostalgique'
-    },
-    'pygmy': {
-      name: 'D Pygmy',
-      notes: 'D3 A3 Bb3 C4 D4 F4 G4 A4',
-      description: 'Gamme pentatonique africaine. Joyeuse et entraînante.',
-      mood: 'Joyeux, tribal'
-    },
-    'hijaz': {
-      name: 'D Hijaz',
-      notes: 'D3 A3 Bb3 C#4 D4 E4 F4 G4 A4',
-      description: 'Sonorités orientales. Mystérieuse et envoûtante.',
-      mood: 'Oriental, mystique'
-    },
-    'amara': {
-      name: 'D Amara',
-      notes: 'D3 A3 C4 D4 E4 F4 A4 C5',
-      description: 'Variante du Celtic, plus douce. Idéale pour débuter.',
-      mood: 'Doux, apaisant'
-    },
-    'equinox': {
-      name: 'F Equinox',
-      notes: 'F3 Ab3 C4 Db4 Eb4 F4 G4 Ab4 C5',
-      description: 'Gamme grave et profonde. Sonorités riches.',
-      mood: 'Profond, méditatif'
-    }
-  };
-  
+
+  // Scale data - use MistralScales if available, otherwise fallback
+  const scales = _buildScalesForSelector();
+
   scaleButtons.forEach(btn => {
     btn.addEventListener('click', () => {
       // Update active state
