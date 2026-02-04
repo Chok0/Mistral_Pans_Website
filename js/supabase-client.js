@@ -21,9 +21,32 @@
   // ============================================================================
   // CONFIGURATION SUPABASE
   // ============================================================================
-  
-  const SUPABASE_URL = 'https://qnkyzhccudtaduqduoxn.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFua3l6aGNjdWR0YWR1cWR1b3huIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4OTg4NjAsImV4cCI6MjA4NTQ3NDg2MH0.c4tH7OMAeDf8FmeezZPJUhF_-8jBOUru2gRBrGi5Gds';
+
+  // IMPORTANT: Ces clés doivent être configurées via window.MISTRAL_CONFIG
+  // avant le chargement de ce script, ou via les attributs data-* du script tag.
+  // Exemple dans le HTML:
+  // <script>
+  //   window.MISTRAL_CONFIG = {
+  //     SUPABASE_URL: 'https://votre-projet.supabase.co',
+  //     SUPABASE_ANON_KEY: 'votre-clé-anon'
+  //   };
+  // </script>
+
+  const config = window.MISTRAL_CONFIG || {};
+  const scriptTag = document.currentScript;
+
+  const SUPABASE_URL = config.SUPABASE_URL
+    || (scriptTag && scriptTag.dataset.supabaseUrl)
+    || '';
+
+  const SUPABASE_ANON_KEY = config.SUPABASE_ANON_KEY
+    || (scriptTag && scriptTag.dataset.supabaseKey)
+    || '';
+
+  // Avertissement si les clés ne sont pas configurées
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('⚠️ MISTRAL: Supabase non configuré. Définissez window.MISTRAL_CONFIG avant de charger ce script.');
+  }
   
   // Initialiser le client Supabase
   let supabase = null;
