@@ -8,9 +8,6 @@
   <title>Article — Mistral Pans</title>
   
   <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
   <!-- Styles -->
   <link rel="stylesheet" href="css/style.css">
@@ -392,7 +389,7 @@ document.addEventListener('keydown', function(e) {
       <article>
         <div class="article-hero">
           ${article.coverImage ? `
-            <img src="${article.coverImage}" alt="" class="article-hero__image">
+            <img src="${article.coverImage}" alt="${escapeHtml(article.title)} - Image de couverture" class="article-hero__image">
           ` : ''}
           <div class="article-hero__overlay"></div>
           <div class="article-hero__content">
@@ -452,7 +449,8 @@ document.addEventListener('keydown', function(e) {
 </script>
 
 <!-- Scripts -->
-<script src="js/main.js"></script>
+<script src="js/cookie-consent.js"></script>
+  <script src="js/main.js"></script>
 <script src="js/admin-core.js"></script>
 <script src="js/mistral-stats.js"></script>
 </body>

@@ -6,9 +6,6 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Administration – Mistral Pans</title>
   
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/admin.css">
@@ -189,14 +186,14 @@
       
       <!-- CLIENTS -->
       <section class="gestion-section" id="section-clients">
-        <div class="section-header"><h2 class="section-title">Gestion des clients</h2><div class="section-actions"><input type="text" class="admin-form__input" style="max-width:250px;" placeholder="Rechercher..." id="search-clients" oninput="AdminUI.searchClients(this.value)"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('client')">+ Nouveau client</button></div></div>
+        <div class="section-header"><h2 class="section-title">Gestion des clients</h2><div class="section-actions"><input type="text" class="admin-form__input" style="max-width:250px;" placeholder="Rechercher..." id="search-clients" aria-label="Rechercher un client" oninput="AdminUI.searchClients(this.value)"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('client')">+ Nouveau client</button></div></div>
         <div class="gestion-table-container"><table class="gestion-table"><thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Locations</th><th>Crédit fidélité</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="table-clients"></tbody></table></div>
         <div class="gestion-empty" id="empty-clients" style="display:none;"><p class="gestion-empty__text">Aucun client</p></div>
       </section>
       
       <!-- INSTRUMENTS -->
       <section class="gestion-section" id="section-instruments">
-        <div class="section-header"><h2 class="section-title">Gestion des instruments</h2><div class="section-actions"><input type="text" class="admin-form__input" style="max-width:250px;" placeholder="Rechercher..." id="search-instruments" oninput="AdminUI.searchInstruments(this.value)"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('instrument')">+ Nouvel instrument</button></div></div>
+        <div class="section-header"><h2 class="section-title">Gestion des instruments</h2><div class="section-actions"><input type="text" class="admin-form__input" style="max-width:250px;" placeholder="Rechercher..." id="search-instruments" aria-label="Rechercher un instrument" oninput="AdminUI.searchInstruments(this.value)"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('instrument')">+ Nouvel instrument</button></div></div>
         <div class="gestion-table-container"><table class="gestion-table"><thead><tr><th>Référence</th><th>Nom</th><th>Gamme</th><th>Statut</th><th>Prix</th><th>Boutique</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="table-instruments"></tbody></table></div>
         <div class="gestion-empty" id="empty-instruments" style="display:none;"><p class="gestion-empty__text">Aucun instrument</p></div>
       </section>
@@ -995,6 +992,8 @@
   <!-- SCRIPTS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Cookie Consent -->
+  <script src="js/cookie-consent.js"></script>
   <!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
@@ -1008,7 +1007,14 @@
   <script src="js/teacher-form.js"></script>
   <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
   <script src="js/materiaux-data.js"></script>
-  <script src="js/admin-ui.js"></script>
+  <!-- Admin UI Modulaire -->
+  <script src="js/admin-ui-core.js"></script>
+  <script src="js/admin-ui-gestion.js"></script>
+  <script src="js/admin-ui-boutique.js"></script>
+  <script src="js/admin-ui-content.js"></script>
+  <script src="js/admin-ui-config.js"></script>
+  <script src="js/admin-ui-modals.js"></script>
+  <script src="js/admin-ui-compta.js"></script>
   
   <script>
     (function() {

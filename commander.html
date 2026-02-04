@@ -4,13 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Commander votre handpan Mistral Pans. Réservez avec un acompte ou prenez rendez-vous pour personnaliser votre projet.">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mistralpans.fr/commander.html">
+  <meta property="og:title" content="Commander un Handpan - Mistral Pans">
+  <meta property="og:description" content="Commandez votre handpan sur mesure fabriqué en Île-de-France.">
+  <meta property="og:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
+  <meta property="og:locale" content="fr_FR">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Commander un Handpan - Mistral Pans">
+  <meta name="twitter:description" content="Commandez votre handpan sur mesure.">
+  <meta name="twitter:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
   
   <title>Commander - Mistral Pans</title>
   
   <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
   <!-- Styles -->
   <link rel="stylesheet" href="css/style.css">
@@ -267,7 +278,7 @@
       <div class="order-options">
         
         <!-- Option 1: Acompte -->
-        <div class="order-option" data-option="deposit" onclick="selectOption('deposit')">
+        <div class="order-option" data-option="deposit" onclick="selectOption('deposit')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('deposit')" tabindex="0" role="button" aria-label="Réserver avec acompte de 300€">
           <span class="order-option__badge">Populaire</span>
           <div class="order-option__icon">💳</div>
           <h3 class="order-option__title">Réserver avec acompte</h3>
@@ -283,7 +294,7 @@
         </div>
         
         <!-- Option 2: RDV -->
-        <div class="order-option" data-option="appointment" onclick="selectOption('appointment')">
+        <div class="order-option" data-option="appointment" onclick="selectOption('appointment')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('appointment')" tabindex="0" role="button" aria-label="Personnaliser mon projet avec un rendez-vous">
           <div class="order-option__icon">📅</div>
           <h3 class="order-option__title">Personnaliser mon projet</h3>
           <p class="order-option__description">
@@ -540,7 +551,8 @@ document.addEventListener('keydown', function(e) {
 </script>
 
 <!-- Scripts -->
-<script src="js/main.js"></script>
+<script src="js/cookie-consent.js"></script>
+  <script src="js/main.js"></script>
 
 <!-- Commander specific JS -->
 <script>
