@@ -226,6 +226,30 @@
   }
 
   /**
+   * Determine if we should use flats based on BOTH tonality AND scale
+   * Rule: Sharp roots (F#, C#, G#, D#, A#) always use sharps
+   *       Natural roots use the scale's preference
+   * @param {string} tonality - Root note with octave like "C#3" or "D3"
+   * @param {object} scaleData - Scale data object with useFlats property
+   * @returns {boolean} - True if should display as flats
+   */
+  function shouldUseFlats(tonality, scaleData) {
+    if (!scaleData) return false;
+
+    // Extract root note from tonality (e.g., "C#3" -> "C#", "D3" -> "D")
+    const match = tonality.match(/^([A-G]#?)(\d)$/);
+    if (!match) return scaleData.useFlats || false;
+
+    const root = match[1];
+
+    // Sharp roots always use sharps (C# Equinox, not Db Equinox with mixed notation)
+    if (root.includes('#')) return false;
+
+    // Natural roots use the scale's preference
+    return scaleData.useFlats || false;
+  }
+
+  /**
    * Get base notes for a scale, converted to display notation
    * @param {string} scaleKey - Scale key like "kurd"
    * @param {boolean} [forceFlats] - Override useFlats setting
@@ -297,6 +321,7 @@
     toDisplayNotation: toDisplayNotation,
     toSharpNotation: toSharpNotation,
     noteToFileName: noteToFileName,
+    shouldUseFlats: shouldUseFlats,
     getScaleNotes: getScaleNotes,
     getScaleDisplayName: getScaleDisplayName,
     hasConfiguratorSupport: hasConfiguratorSupport,

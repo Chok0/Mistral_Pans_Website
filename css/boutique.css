@@ -137,11 +137,12 @@ body {
 }
 
 .note-group.active .note-circle {
-  fill: var(--color-accent) !important;
+  fill: white !important;
+  filter: brightness(1.1);
 }
 
 .note-group.active .note-label {
-  fill: white !important;
+  fill: #2C1810 !important;  /* Dark brown on white background */
 }
 
 /* Note type colors - Golden/Copper handpan */

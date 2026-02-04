@@ -337,13 +337,13 @@ class HandpanPlayer {
       }
       
       .note-group.active .note-circle {
-        fill: var(--accent) !important;
+        fill: white !important;
         transform-origin: center;
         animation: note-pulse 0.4s ease;
       }
-      
+
       .note-group.active .note-label {
-        fill: white !important;
+        fill: #2C1810 !important;  /* Dark brown on white */
       }
       
       @keyframes note-pulse {
