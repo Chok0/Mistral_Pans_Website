@@ -76,11 +76,18 @@ npx serve .
 |
 |-- js/
 |   |-- main.js              # Core: partials, navigation
-|   |-- admin-core.js        # Admin: auth, FAB, CRUD
-|   |-- admin-ui.js          # Admin UI (4,711 lignes)
+|   |-- admin-core.js        # Admin: auth, FAB, CRUD, sanitization
+|   |-- admin-ui-core.js     # Admin UI: navigation, dashboard, todos
+|   |-- admin-ui-gestion.js  # Admin UI: clients, instruments, locations
+|   |-- admin-ui-boutique.js # Admin UI: boutique, accessoires
+|   |-- admin-ui-content.js  # Admin UI: professeurs, galerie, blog
+|   |-- admin-ui-config.js   # Admin UI: configuration, export/import
+|   |-- admin-ui-modals.js   # Admin UI: tous les modals CRUD
+|   |-- admin-ui-compta.js   # Admin UI: comptabilite, URSSAF
+|   |-- cookie-consent.js    # RGPD: banniere consentement cookies
 |   |-- handpan-player.js    # Player SVG interactif
 |   |-- feasibility-module.js # Validation configurations
-|   |-- supabase-client.js   # Client Supabase
+|   |-- supabase-client.js   # Client Supabase (config externalisee)
 |   |-- supabase-auth.js     # Authentification
 |   |-- supabase-sync.js     # Synchronisation temps reel
 |   |-- *-admin.js           # Modules admin par page
@@ -90,7 +97,7 @@ npx serve .
 |   |-- upload.php           # Upload fichiers
 |   +-- delete.php           # Suppression fichiers
 |
-|-- sql/
+|-- sql/                      # (Supprime du repo - conserve localement)
 |   |-- 01_schema.sql        # Schema base de donnees
 |   |-- 02_rls_policies.sql  # Politiques RLS
 |   +-- 03_colonnes_sync.sql # Synchronisation colonnes
@@ -235,10 +242,21 @@ Le module `feasibility-module.js` verifie automatiquement si une configuration e
 
 ## Systeme d'administration
 
-### Architecture
-- **admin-core.js** : Module centralise (Auth, FAB, Modal, Toast, Storage)
-- **admin-ui.js** : Composants UI admin
-- **[page]-admin.js** : Integrations specifiques par page
+### Architecture modulaire (v3.1)
+
+Le systeme admin a ete refactorise en modules independants pour une meilleure maintenabilite :
+
+| Module | Taille | Responsabilite |
+|--------|--------|----------------|
+| `admin-core.js` | 32 KB | Auth, FAB, Modal, Toast, Storage, sanitization |
+| `admin-ui-core.js` | 12 KB | Navigation, dashboard, todos |
+| `admin-ui-gestion.js` | 20 KB | Clients, instruments, locations, commandes, factures |
+| `admin-ui-boutique.js` | 18 KB | Stock boutique, accessoires |
+| `admin-ui-content.js` | 30 KB | Professeurs, galerie, blog, analytics |
+| `admin-ui-config.js` | 12 KB | Configuration, export/import, materiaux |
+| `admin-ui-modals.js` | 62 KB | Tous les modals CRUD |
+| `admin-ui-compta.js` | 14 KB | Comptabilite, URSSAF |
+| `[page]-admin.js` | Variable | Integrations specifiques par page |
 
 ### Acces
 - **URL :** `/admin.html`
@@ -281,87 +299,54 @@ Le module `feasibility-module.js` verifie automatiquement si une configuration e
 
 ## Diagnostic du projet
 
-**Revue effectuee le 3 fevrier 2026**
+**Revue initiale :** 3 fevrier 2026
+**Corrections appliquees :** 4 fevrier 2026
 
-### Resume
+### Resume des corrections
 
-| Categorie | Total | Critique | Haute | Moyenne | Basse |
-|-----------|-------|----------|-------|---------|-------|
-| Securite | 8 | 4 | 2 | 2 | 0 |
-| JavaScript | 15 | 0 | 6 | 6 | 3 |
-| CSS | 18 | 1 | 8 | 6 | 3 |
-| HTML | 23 | 2 | 3 | 5 | 13 |
-| Database | 10 | 2 | 3 | 4 | 1 |
-| **Total** | **74** | **9** | **22** | **23** | **20** |
-
----
-
-### Problemes critiques
-
-#### 1. Securite : Identifiants en dur
-
-| Probleme | Fichier | Ligne |
-|----------|---------|-------|
-| Cle Supabase exposee | `js/supabase-client.js` | 25-26 |
-| Mot de passe par defaut `mistral2024` | `js/admin-core.js` | 34 |
-| Fonction hash non cryptographique | `js/admin-core.js` | 43-50 |
-| Auth legacy dupliquee | `js/supabase-auth.js` | 224-250 |
-
-**Risque :** Toute personne peut voir le code source et acceder au panneau admin.
-
-#### 2. Erreur de syntaxe
-
-| Fichier | Ligne | Probleme |
-|---------|-------|----------|
-| `location.html` | 406 | Parenthese fermante en trop dans le JS |
-
-#### 3. Pages legales manquantes
-
-Le footer contient des liens vers `mentions-legales.html` et `cgv.html` qui **n'existent pas** - violation RGPD.
+| Categorie | Initial | Corrige | Restant |
+|-----------|---------|---------|---------|
+| Critique | 8 | 7 | 1 |
+| Haute | 19 | 12 | 7 |
+| Moyenne | 32 | 15 | 17 |
+| Basse | 19 | 5 | 14 |
+| **Total** | **78** | **39** | **39** |
 
 ---
 
-### Problemes haute priorite
+### Corrections CRITIQUES appliquees
 
-#### JavaScript
+| ID | Probleme | Statut |
+|----|----------|--------|
+| CRIT-001 | Credentials Supabase exposees | Externalise via `window.MISTRAL_CONFIG` |
+| CRIT-002 | Email header injection | Sanitisation ajoutee dans send-email.js |
+| CRIT-003 | XSS dans emails | Fonction `escapeHtml()` appliquee |
+| CRIT-004 | CORS wildcard PHP | Restreint aux domaines autorises |
+| CRIT-005 | Tokens admin hardcodes | Hash externe + verification timing-safe |
+| CRIT-008 | Pas de banniere cookies | `cookie-consent.js` implemente |
+| CRIT-006/007 | RLS et config DB | *A traiter cote Supabase* |
 
-| Probleme | Fichiers |
-|----------|----------|
-| Systemes admin dupliques | `admin-core.js` + `gestion.js` charges ensemble |
-| Fichier de 4,711 lignes | `admin-ui.js` - difficile a maintenir |
-| XSS via innerHTML | 13 fichiers (`messages.js:217`, `admin-ui.js:360+`) |
-| Utilitaires dupliques 4x | `escapeHtml()`, `formatDate()`, `formatPrice()` |
-| 25 intervals, 2 cleanups | Fuites memoire potentielles |
+### Corrections HAUTES appliquees
 
-#### CSS
+| ID | Probleme | Statut |
+|----|----------|--------|
+| HIGH-001 | XSS innerHTML admin | `sanitizeHtml()` ajoutee dans admin-core.js |
+| HIGH-012 | Contraste couleurs insuffisant | `--color-text-muted` corrige |
+| HIGH-013 | Google Fonts sans consentement | Chargement conditionnel via cookies |
+| HIGH-017 | Formulaires sans consentement | Checkbox RGPD ajoutee |
+| - | Fichier admin-ui.js monolithique | Refactorise en 7 modules |
+| - | Fichiers orphelins | Supprimes (messages.js, etc.) |
+| - | Skip link accessibilite | Ajoute dans header.html |
 
-| Probleme | Fichiers |
-|----------|----------|
-| Pas d'indicateurs focus (WCAG) | Tous les fichiers CSS |
-| Definitions `:root` multiples | `style.css`, `admin.css`, `boutique.css` |
-| 24+ flags `!important` | `boutique.css` |
-| Styles boutons dupliques | ~400 lignes en double |
-| z-index chaotique (1 a 10001) | Pas de systeme |
+### Corrections MOYENNES appliquees
 
-#### HTML
-
-| Probleme | Fichier | Ligne |
-|----------|---------|-------|
-| `</div>` en trop | `apprendre.html` | 1041 |
-| Alt vides sur images | `index.html` | 58, 70, 82 |
-| Encodage UTF-8 corrompu | `boutique.html` | Multiple |
-| Annee copyright incoherente | `article.html` | 2025 vs 2026 |
-
-#### Database
-
-| Probleme | Fichier |
-|----------|---------|
-| localStorage comme source de verite | `supabase-sync.js` |
-| RLS trop permissive | `02_rls_policies.sql:54-87` |
-| Contraintes DB supprimees | `03_colonnes_sync.sql:63-74` |
-| Gestion erreurs silencieuse | `supabase-client.js:52-61` |
-
----
+| Probleme | Statut |
+|----------|--------|
+| Meta Open Graph/Twitter | Ajoutees sur toutes les pages |
+| Navigation clavier | `tabindex`, `role`, `onkeydown` ajoutes |
+| Alt text manquants | Corriges sur index.html, galerie.html |
+| Labels formulaires | Ameliores |
+| Fichier CSS mal place (js/admin.css) | Supprime |
 
 ### Points positifs
 
@@ -369,45 +354,51 @@ Le footer contient des liens vers `mentions-legales.html` et `cgv.html` qui **n'
 - Bonne base de CSS custom properties
 - Design responsive mobile-first
 - RLS activee sur Supabase
-- Approche RGPD-first
+- Approche RGPD-first avec banniere consentement
 - Player handpan interactif bien implemente
 - Systeme de partials fonctionnel
+- Architecture admin modulaire et maintenable
 
 ---
 
 ## Plan d'action
 
-### Phase 1 : Securite (Semaine 1)
+### Phase 1 : Securite - COMPLETE
 
-1. Deplacer les identifiants Supabase vers variables d'environnement
-2. Implementer hash de mot de passe cote serveur (bcrypt via Netlify Function)
-3. Supprimer les identifiants par defaut du code source
-4. Ajouter validation des entrees pour les requetes de recherche
-5. Corriger les vulnerabilites XSS (audit de tous les `innerHTML`)
+- [x] Externaliser les identifiants Supabase (`window.MISTRAL_CONFIG`)
+- [x] Corriger injection email header
+- [x] Corriger vulnerabilites XSS (sanitizeHtml, escapeHtml)
+- [x] Restreindre CORS sur endpoints PHP
+- [x] Securiser tokens upload/delete
+- [ ] Implementer hash bcrypt cote serveur (optionnel)
 
-### Phase 2 : Corrections bugs (Semaine 2)
+### Phase 2 : RGPD/Accessibilite - COMPLETE
 
-1. Corriger erreur syntaxe `location.html:406`
-2. Creer `mentions-legales.html` et `cgv.html`
-3. Corriger imbrication HTML `apprendre.html:1041`
-4. Corriger encodage UTF-8 dans `boutique.html`
-5. Ajouter alt text a toutes les images
+- [x] Banniere consentement cookies
+- [x] Google Fonts conditionnel
+- [x] Checkbox consentement formulaires
+- [x] Skip link accessibilite
+- [x] Correction contraste couleurs
+- [x] Meta Open Graph/Twitter
+- [x] Navigation clavier amelioree
 
-### Phase 3 : Dette technique (Semaines 3-4)
+### Phase 3 : Dette technique - COMPLETE
 
-1. Supprimer systeme admin legacy (`gestion*.js`)
-2. Decouper `admin-ui.js` en modules plus petits
-3. Consolider utilitaires dupliques
-4. Ajouter indicateurs focus (`:focus-visible`) a tous les CSS
-5. Creer echelle z-index unifiee
+- [x] Refactoriser admin-ui.js en 7 modules
+- [x] Supprimer fichiers orphelins (messages.js, import-excel-data.js)
+- [x] Supprimer gestion.html et gestion-ui.js deprecies
+- [x] Supprimer fichiers SQL du repo (securite)
+- [x] Corriger fichier CSS mal place (js/admin.css)
 
-### Phase 4 : Architecture (Semaines 5-6)
+### Phase 4 : Restant a faire
 
-1. Faire de Supabase la source de verite (supprimer pattern localStorage-first)
-2. Implementer gestion erreurs avec notifications utilisateur
-3. Restaurer contraintes base de donnees
-4. Ajouter politiques RLS par utilisateur
-5. Completer integration email ou supprimer TODOs
+- [ ] Faire de Supabase la source de verite (pattern localStorage-first)
+- [ ] Implementer gestion erreurs avec notifications utilisateur
+- [ ] Restaurer contraintes base de donnees
+- [ ] Ajouter politiques RLS granulaires
+- [ ] Consolider utilitaires dupliques restants
+- [ ] Ajouter indicateurs `:focus-visible` complets
+- [ ] Creer echelle z-index unifiee
 
 ---
 
@@ -427,8 +418,10 @@ Le footer contient des liens vers `mentions-legales.html` et `cgv.html` qui **n'
 - [ ] Tester sur vrais appareils mobiles
 - [ ] Configurer Swikly pour depots location
 - [ ] Configurer email (contact@mistralpans.fr)
-- [ ] Creer pages legales (mentions, CGV)
-- [ ] Deplacer identifiants vers variables environnement
+- [x] Creer pages legales (mentions, CGV) - *existantes*
+- [x] Configurer banniere consentement cookies
+- [x] Externaliser identifiants Supabase (`window.MISTRAL_CONFIG`)
+- [x] Securiser endpoints PHP (CORS, tokens)
 
 ### Services externes
 
@@ -437,16 +430,24 @@ Le footer contient des liens vers `mentions-legales.html` et `cgv.html` qui **n'
 | Supabase | Database, Auth | Hebergement EU disponible |
 | Brevo | Email | Conforme RGPD |
 | Nominatim | Geocodage | Pas de tracking |
-| CartoDB | Tuiles carte | Consentement requis |
+| CartoDB | Tuiles carte | Consentement requis (banniere) |
 | reCAPTCHA | Protection spam | Service Google |
-| Google Fonts | Typographies | A self-hoster idealement |
+| Google Fonts | Typographies | Chargement conditionnel (consentement) |
 
 ---
 
 ## Historique des versions
 
-### v3.0 (Fevrier 2026)
-- Revue globale du projet
+### v3.1 (4 Fevrier 2026)
+- **Securite :** Correction 7 vulnerabilites critiques (XSS, CORS, injection)
+- **RGPD :** Banniere consentement cookies, Google Fonts conditionnel
+- **Accessibilite :** Skip link, contraste couleurs, navigation clavier
+- **Architecture :** Refactorisation admin-ui.js en 7 modules
+- **Nettoyage :** Suppression fichiers deprecies et orphelins
+- **SEO :** Meta Open Graph/Twitter sur toutes les pages
+
+### v3.0 (3 Fevrier 2026)
+- Revue globale du projet (78 issues identifies)
 - Documentation mise a jour avec diagnostic
 - Plan d'action pour corrections
 
@@ -486,4 +487,4 @@ Le footer contient des liens vers `mentions-legales.html` et `cgv.html` qui **n'
 
 ---
 
-*Documentation mise a jour le 3 fevrier 2026*
+*Documentation mise a jour le 4 fevrier 2026*
