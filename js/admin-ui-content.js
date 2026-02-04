@@ -117,11 +117,10 @@
       </div>
     `).join('');
   }
-  
-  // Variables pour upload média
-  let mediaUploadedImage = null;
+
+  // Variable pour l'upload de vidéo média (image déjà déclarée en haut du module)
   let mediaUploadedVideo = null;
-  
+
   function initMediaUpload() {
     mediaUploadedImage = null;
     mediaUploadedVideo = null;
@@ -327,11 +326,9 @@
       </div>
     `).join('');
   }
-  
-  // Variable pour l'upload d'image article
-  let articleUploadedImage = null;
-  let articleQuillEditor = null;
-  
+
+  // Note: articleUploadedImage et articleQuillEditor déclarés en haut du module
+
   function initArticleUpload() {
     articleUploadedImage = null;
     

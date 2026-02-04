@@ -424,6 +424,62 @@
   // CRUD INSTRUMENTS
   // ============================================================================
   
+  // ============================================================================
+  // VALIDATION DES TRANSITIONS DE STATUT D'INSTRUMENT
+  // ============================================================================
+
+  /**
+   * Définit les transitions de statut valides pour les instruments
+   * Clé = statut actuel, Valeur = tableau des statuts autorisés
+   */
+  const VALID_STATUS_TRANSITIONS = {
+    'en_fabrication': ['disponible', 'reserve'],
+    'disponible': ['en_ligne', 'en_location', 'vendu', 'reserve', 'prete'],
+    'en_ligne': ['disponible', 'en_location', 'vendu', 'reserve'],
+    'reserve': ['disponible', 'en_ligne', 'vendu', 'en_location'],
+    'en_location': ['disponible'],
+    'prete': ['disponible'],
+    'vendu': [] // Statut final, pas de transition possible
+  };
+
+  /**
+   * Vérifie si une transition de statut est valide
+   * @param {string} currentStatus - Statut actuel
+   * @param {string} newStatus - Nouveau statut souhaité
+   * @returns {{ valid: boolean, message?: string }}
+   */
+  function validateStatusTransition(currentStatus, newStatus) {
+    // Même statut = toujours valide
+    if (currentStatus === newStatus) {
+      return { valid: true };
+    }
+
+    const allowedTransitions = VALID_STATUS_TRANSITIONS[currentStatus];
+
+    if (!allowedTransitions) {
+      return {
+        valid: false,
+        message: `Statut actuel "${currentStatus}" non reconnu`
+      };
+    }
+
+    if (allowedTransitions.length === 0) {
+      return {
+        valid: false,
+        message: `L'instrument est "${currentStatus}" et ne peut plus changer de statut`
+      };
+    }
+
+    if (!allowedTransitions.includes(newStatus)) {
+      return {
+        valid: false,
+        message: `Transition de "${currentStatus}" vers "${newStatus}" non autorisée. Transitions possibles: ${allowedTransitions.join(', ')}`
+      };
+    }
+
+    return { valid: true };
+  }
+
   const Instruments = {
     /**
      * Liste tous les instruments
@@ -517,10 +573,53 @@
     },
 
     /**
-     * Change le statut d'un instrument
+     * Change le statut d'un instrument avec validation
+     * @param {string} id - ID de l'instrument
+     * @param {string} statut - Nouveau statut
+     * @param {boolean} force - Forcer le changement sans validation (défaut: false)
+     * @returns {Object|null} - Instrument mis à jour ou null si erreur
      */
-    setStatut(id, statut) {
+    setStatut(id, statut, force = false) {
+      const instrument = this.get(id);
+      if (!instrument) return null;
+
+      // Validation de la transition (sauf si forcée)
+      if (!force) {
+        const validation = validateStatusTransition(instrument.statut, statut);
+        if (!validation.valid) {
+          console.warn(`[Gestion] Transition de statut refusée: ${validation.message}`);
+          // Dispatch un événement pour notifier l'UI
+          window.dispatchEvent(new CustomEvent('mistral-status-error', {
+            detail: {
+              instrumentId: id,
+              currentStatus: instrument.statut,
+              requestedStatus: statut,
+              message: validation.message
+            }
+          }));
+          return null;
+        }
+      }
+
       return this.update(id, { statut });
+    },
+
+    /**
+     * Vérifie si une transition de statut est valide
+     */
+    canTransitionTo(id, newStatus) {
+      const instrument = this.get(id);
+      if (!instrument) return false;
+      return validateStatusTransition(instrument.statut, newStatus).valid;
+    },
+
+    /**
+     * Retourne les transitions possibles pour un instrument
+     */
+    getPossibleTransitions(id) {
+      const instrument = this.get(id);
+      if (!instrument) return [];
+      return VALID_STATUS_TRANSITIONS[instrument.statut] || [];
     }
   };
 
@@ -1134,7 +1233,7 @@
     CONFIG,
     getConfig,
     setConfigValue,
-    
+
     // Utilitaires
     utils: {
       generateUUID,
@@ -1147,17 +1246,23 @@
       escapeHtml,
       deepClone
     },
-    
+
+    // Validation des statuts d'instruments
+    StatusValidation: {
+      VALID_TRANSITIONS: VALID_STATUS_TRANSITIONS,
+      validate: validateStatusTransition
+    },
+
     // CRUD
     Clients,
     Instruments,
     Locations,
     Commandes,
     Factures,
-    
+
     // Data management
     DataManager,
-    
+
     // Stats
     Stats
   };

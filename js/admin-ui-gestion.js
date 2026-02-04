@@ -163,6 +163,9 @@
         }
       }
       
+      // Déterminer si l'instrument peut être vendu
+      const canSell = ['disponible', 'en_ligne', 'reserve'].includes(i.statut);
+
       return `
         <tr>
           <td><code>${escapeHtml(i.reference || '-')}</code></td>
@@ -172,6 +175,14 @@
           <td>${formatPrice(i.prix_vente)}</td>
           <td>${boutiqueCell}</td>
           <td class="gestion-table__actions">
+            ${canSell ? `
+              <button class="admin-btn admin-btn--primary admin-btn--sm" onclick="AdminUI.vendreInstrument('${i.id}')" title="Vendre cet instrument">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                </svg>
+              </button>
+            ` : ''}
             <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editInstrument('${i.id}')" title="Modifier">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>

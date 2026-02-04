@@ -358,7 +358,86 @@
       Toast.success('Instrument supprimé');
     }
   }
-  
+
+  // Variable pour stocker l'instrument en cours de vente
+  let instrumentEnVente = null;
+
+  /**
+   * Lance le processus de vente d'un instrument
+   * Ouvre le modal de facture pré-rempli avec l'instrument
+   * @param {string} id - ID de l'instrument à vendre
+   */
+  async function vendreInstrument(id) {
+    if (typeof MistralGestion === 'undefined') return;
+
+    const instrument = MistralGestion.Instruments.get(id);
+    if (!instrument) {
+      Toast.error('Instrument non trouvé');
+      return;
+    }
+
+    // Vérifier que l'instrument peut être vendu
+    const statutsVendables = ['disponible', 'en_ligne', 'reserve'];
+    if (!statutsVendables.includes(instrument.statut)) {
+      Toast.error(`Impossible de vendre : statut actuel "${instrument.statut}"`);
+      return;
+    }
+
+    // Vérifier qu'il n'est pas en location
+    const locations = MistralGestion.Locations.list();
+    const locationEnCours = locations.find(l => l.instrument_id === id && l.statut === 'en_cours');
+    if (locationEnCours) {
+      Toast.error('Impossible de vendre : cet instrument est actuellement en location');
+      return;
+    }
+
+    // Stocker l'instrument pour la vente
+    instrumentEnVente = instrument;
+
+    // Ouvrir le modal de facture
+    showModal('facture');
+
+    // Configurer le modal pour la vente
+    $('#modal-facture-title').textContent = 'Facturer la vente';
+    $('#facture-type').value = 'vente';
+
+    // Pré-remplir avec l'instrument
+    setTimeout(() => {
+      // Vider les lignes existantes
+      renderFactureLignes([]);
+
+      // Ajouter l'instrument comme ligne
+      addFactureLigneFromInstrument(id);
+
+      Toast.info('Sélectionnez le client pour finaliser la vente');
+    }, 100);
+  }
+
+  /**
+   * Finalise la vente après paiement de la facture
+   * Met à jour le statut de l'instrument à 'vendu'
+   * @param {string} instrumentId - ID de l'instrument vendu
+   */
+  function finaliserVenteInstrument(instrumentId) {
+    if (typeof MistralGestion === 'undefined') return;
+
+    const instrument = MistralGestion.Instruments.get(instrumentId);
+    if (!instrument) return;
+
+    // Mettre à jour le statut
+    MistralGestion.Instruments.update(instrumentId, {
+      statut: 'vendu',
+      date_vente: new Date().toISOString().split('T')[0]
+    });
+
+    // Rafraîchir les affichages
+    if (typeof renderInstruments === 'function') renderInstruments();
+    if (typeof renderBoutique === 'function') renderBoutique();
+    if (typeof refreshDashboard === 'function') refreshDashboard();
+
+    Toast.success('Instrument marqué comme vendu');
+  }
+
   // ============================================================================
   // UPLOADS D'INSTRUMENT
   // ============================================================================
@@ -1186,40 +1265,50 @@
   
   function saveFacture() {
     if (typeof MistralGestion === 'undefined') return;
-    
+
     const id = $('#facture-id')?.value;
     const clientId = $('#facture-client-id')?.value;
-    
+
     if (!clientId) {
       Toast.error('Client requis');
       return;
     }
-    
-    // Collecter les lignes
+
+    // Collecter les lignes et les IDs d'instruments liés
     const lignes = [];
+    const instrumentIds = [];
     $$('#facture-lignes .facture-ligne').forEach(row => {
       const desc = row.querySelector('[name="ligne-desc"]')?.value.trim();
       const qte = parseInt(row.querySelector('[name="ligne-qte"]')?.value) || 1;
       const pu = parseFloat(row.querySelector('[name="ligne-pu"]')?.value) || 0;
       if (desc && pu > 0) {
-        lignes.push({ description: desc, quantite: qte, prix_unitaire: pu });
+        const ligne = { description: desc, quantite: qte, prix_unitaire: pu };
+        // Récupérer l'ID d'instrument si présent
+        if (row.dataset.instrumentId) {
+          ligne.instrument_id = row.dataset.instrumentId;
+          instrumentIds.push(row.dataset.instrumentId);
+        }
+        lignes.push(ligne);
       }
     });
-    
+
     const montantHT = lignes.reduce((sum, l) => sum + (l.quantite * l.prix_unitaire), 0);
-    
+    const typeFacture = $('#facture-type')?.value || 'vente';
+    const statutPaiement = $('#facture-paiement-statut')?.value || 'en_attente';
+
     const data = {
       client_id: clientId,
       date_emission: $('#facture-date')?.value || new Date().toISOString().split('T')[0],
-      type: $('#facture-type')?.value || 'vente',
+      type: typeFacture,
       lignes: lignes,
+      instrument_ids: instrumentIds, // Stocker les IDs d'instruments liés
       montant_ht: montantHT,
       montant_ttc: montantHT, // Pas de TVA (auto-entrepreneur)
-      statut_paiement: $('#facture-paiement-statut')?.value || 'en_attente',
+      statut_paiement: statutPaiement,
       date_echeance: $('#facture-echeance')?.value || null,
       notes: $('#facture-notes')?.value.trim()
     };
-    
+
     if (id) {
       MistralGestion.Factures.update(id, data);
       Toast.success('Facture modifiée');
@@ -1227,11 +1316,21 @@
       MistralGestion.Factures.create(data);
       Toast.success('Facture créée');
     }
-    
+
+    // Si c'est une vente payée, marquer les instruments comme vendus
+    if (typeFacture === 'vente' && statutPaiement === 'paye' && instrumentIds.length > 0) {
+      instrumentIds.forEach(instrumentId => {
+        finaliserVenteInstrument(instrumentId);
+      });
+    }
+
+    // Reset de l'instrument en vente
+    instrumentEnVente = null;
+
     closeModal('facture');
     renderFactures();
     refreshDashboard();
-    
+
     // Reset
     $('#facture-id').value = '';
     $('#facture-client-id').value = '';
@@ -1243,7 +1342,7 @@
   function addFactureLigne() {
     const container = $('#facture-lignes');
     if (!container) return;
-    
+
     const row = document.createElement('div');
     row.className = 'facture-ligne';
     row.innerHTML = `
@@ -1258,10 +1357,66 @@
       </button>
     `;
     container.appendChild(row);
-    
+
     // Auto-resize textarea
     const textarea = row.querySelector('textarea');
     textarea.addEventListener('input', autoResizeTextarea);
+  }
+
+  /**
+   * Ajoute une ligne de facture pré-remplie avec les données d'un instrument
+   * @param {string} instrumentId - ID de l'instrument à ajouter
+   */
+  function addFactureLigneFromInstrument(instrumentId) {
+    if (typeof MistralGestion === 'undefined') {
+      Toast.error('Module gestion non chargé');
+      return;
+    }
+
+    const instrument = MistralGestion.Instruments.get(instrumentId);
+    if (!instrument) {
+      Toast.error('Instrument non trouvé');
+      return;
+    }
+
+    const container = $('#facture-lignes');
+    if (!container) return;
+
+    // Construire la description
+    const nom = instrument.nom || `${instrument.tonalite || ''} ${instrument.gamme || ''}`.trim() || 'Handpan';
+    const specs = [];
+    if (instrument.nombre_notes) specs.push(`${instrument.nombre_notes} notes`);
+    if (instrument.taille) specs.push(`${instrument.taille}cm`);
+    if (instrument.materiau) specs.push(instrument.materiau);
+    const description = specs.length > 0 ? `${nom} (${specs.join(', ')})` : nom;
+
+    const prix = instrument.prix_vente || 0;
+    const total = formatPrice(prix);
+
+    const row = document.createElement('div');
+    row.className = 'facture-ligne';
+    row.dataset.instrumentId = instrumentId; // Stocker l'ID pour le lien
+    row.innerHTML = `
+      <textarea name="ligne-desc" class="admin-form__input facture-ligne__desc" rows="1">${escapeHtml(description)}</textarea>
+      <input type="number" name="ligne-qte" value="1" min="1" class="admin-form__input" onchange="AdminUI.updateFactureTotaux()">
+      <input type="number" name="ligne-pu" value="${prix}" min="0" step="0.01" class="admin-form__input" onchange="AdminUI.updateFactureTotaux()">
+      <input type="text" name="ligne-total" readonly value="${total}" class="admin-form__input" style="background: var(--admin-border);">
+      <button type="button" class="facture-ligne__remove" onclick="this.parentElement.remove(); AdminUI.updateFactureTotaux();">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    `;
+    container.appendChild(row);
+
+    // Auto-resize textarea
+    const textarea = row.querySelector('textarea');
+    textarea.addEventListener('input', autoResizeTextarea);
+
+    // Mettre à jour les totaux
+    updateFactureTotaux();
+
+    Toast.success('Instrument ajouté à la facture');
   }
   
   function autoResizeTextarea(e) {
@@ -1344,11 +1499,34 @@
   
   function marquerPayee(id) {
     if (typeof MistralGestion !== 'undefined') {
-      MistralGestion.Factures.update(id, { 
-        statut_paiement: 'paye', 
-        date_paiement: new Date().toISOString().split('T')[0] 
+      const facture = MistralGestion.Factures.get(id);
+
+      MistralGestion.Factures.update(id, {
+        statut_paiement: 'paye',
+        date_paiement: new Date().toISOString().split('T')[0]
       });
+
+      // Si c'est une vente avec des instruments liés, les marquer comme vendus
+      if (facture && facture.type === 'vente') {
+        const instrumentIds = facture.instrument_ids || [];
+        // Aussi vérifier les IDs dans les lignes (rétrocompatibilité)
+        if (facture.lignes) {
+          facture.lignes.forEach(ligne => {
+            if (ligne.instrument_id && !instrumentIds.includes(ligne.instrument_id)) {
+              instrumentIds.push(ligne.instrument_id);
+            }
+          });
+        }
+
+        if (instrumentIds.length > 0) {
+          instrumentIds.forEach(instrumentId => {
+            finaliserVenteInstrument(instrumentId);
+          });
+        }
+      }
+
       renderFactures();
+      renderInstruments();
       refreshDashboard();
       Toast.success('Facture marquée comme payée');
     }
@@ -1761,6 +1939,8 @@
     editInstrument,
     saveInstrument,
     deleteInstrument,
+    vendreInstrument,
+    finaliserVenteInstrument,
     updateInstrumentReference,
     parseHandpanerUrl,
     removeInstrumentImage,
