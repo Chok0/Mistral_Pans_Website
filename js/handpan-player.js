@@ -146,43 +146,45 @@ class HandpanPlayer {
         
         <div class="handpan-visual">
           <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
-            <!-- Outer shell -->
+            <!-- Outer shell - Golden/Copper finish -->
             <defs>
               <radialGradient id="shell-gradient" cx="30%" cy="30%">
-                <stop offset="0%" stop-color="#5a5a5a"/>
-                <stop offset="100%" stop-color="#3a3a3a"/>
+                <stop offset="0%" stop-color="#D4A855"/>
+                <stop offset="70%" stop-color="#A67C52"/>
+                <stop offset="100%" stop-color="#8B5A2B"/>
               </radialGradient>
               <filter id="note-shadow" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.2"/>
               </filter>
             </defs>
-            
+
             <!-- Main shell -->
             <circle cx="${center}" cy="${center}" r="${size * 0.46}" fill="url(#shell-gradient)" />
-            <circle cx="${center}" cy="${center}" r="${size * 0.44}" fill="none" stroke="#555" stroke-width="1"/>
-            
+            <circle cx="${center}" cy="${center}" r="${size * 0.44}" fill="none" stroke="#9A7B4F" stroke-width="1.5"/>
+
             <!-- Notes -->
             ${notePositions.map((pos, i) => `
               <g class="note-group" data-note="${notes[i]}" data-index="${i}">
-                <circle 
-                  cx="${pos.x}" 
-                  cy="${pos.y}" 
+                <circle
+                  cx="${pos.x}"
+                  cy="${pos.y}"
                   r="${i === 0 ? noteRadius * 1.3 : noteRadius}"
                   class="note-circle"
-                  fill="#3d3d3d"
-                  stroke="#555"
-                  stroke-width="1"
+                  fill="${i === 0 ? '#C9A227' : '#B8860B'}"
+                  stroke="#8B6914"
+                  stroke-width="1.5"
                   filter="url(#note-shadow)"
                 />
                 ${this.options.showNoteNames ? `
-                  <text 
-                    x="${pos.x}" 
-                    y="${pos.y}" 
-                    text-anchor="middle" 
+                  <text
+                    x="${pos.x}"
+                    y="${pos.y}"
+                    text-anchor="middle"
                     dominant-baseline="central"
                     class="note-label"
-                    fill="#999"
+                    fill="#3D2914"
                     font-size="${size * 0.035}px"
+                    font-weight="600"
                     font-family="system-ui, sans-serif"
                   >${notes[i]}</text>
                 ` : ''}
@@ -331,7 +333,7 @@ class HandpanPlayer {
       }
       
       .note-group:hover .note-circle {
-        fill: #5a5a5a;
+        fill: #D4A855;  /* Brighter gold on hover */
       }
       
       .note-group.active .note-circle {

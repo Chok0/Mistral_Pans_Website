@@ -625,21 +625,22 @@
         <svg viewBox="${viewBoxX} ${viewBoxY} ${viewBoxW} ${viewBoxH}" width="${size}" height="${size * 1.1}" style="overflow: visible;">
           <defs>
             <radialGradient id="shell-grad" cx="30%" cy="30%">
-              <stop offset="0%" stop-color="#5a5a5a"/>
-              <stop offset="100%" stop-color="#3a3a3a"/>
+              <stop offset="0%" stop-color="#D4A855"/>
+              <stop offset="70%" stop-color="#A67C52"/>
+              <stop offset="100%" stop-color="#8B5A2B"/>
             </radialGradient>
           </defs>
-          
+
           <circle cx="${center}" cy="${center}" r="${shellRadius}" fill="url(#shell-grad)"/>
-          <circle cx="${center}" cy="${center}" r="${shellRadius - 2}" fill="none" stroke="#555" stroke-width="1"/>
+          <circle cx="${center}" cy="${center}" r="${shellRadius - 2}" fill="none" stroke="#9A7B4F" stroke-width="1.5"/>
       `;
-      
+
       if (ding) {
         const dingDisplay = toDisplayNotation(`${ding.note}${ding.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${ding.note}${ding.octave}" data-freq="${ding.freq}">
-            <circle cx="${center}" cy="${center}" r="${dingSize}" class="note-circle note-ding" stroke="#555" stroke-width="1"/>
-            <text x="${center}" y="${center}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#bbb" font-size="16" font-family="system-ui">${dingDisplay}</text>
+            <circle cx="${center}" cy="${center}" r="${dingSize}" class="note-circle note-ding" stroke="#8B6914" stroke-width="1.5"/>
+            <text x="${center}" y="${center}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#3D2914" font-size="16" font-weight="600" font-family="system-ui">${dingDisplay}</text>
           </g>
         `;
       }
@@ -649,8 +650,8 @@
         const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
-            <circle cx="${pos.x}" cy="${pos.y}" r="${mutantNoteSize}" class="note-circle note-mutant" stroke="#6a5a4a" stroke-width="1"/>
-            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#bbb" font-size="13" font-family="system-ui">${noteDisplay}</text>
+            <circle cx="${pos.x}" cy="${pos.y}" r="${mutantNoteSize}" class="note-circle note-mutant" stroke="#8B5A2B" stroke-width="1.5"/>
+            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#3D2914" font-size="13" font-weight="600" font-family="system-ui">${noteDisplay}</text>
           </g>
         `;
       });
@@ -660,8 +661,8 @@
         const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
-            <circle cx="${pos.x}" cy="${pos.y}" r="${noteSize}" class="note-circle note-tonal" stroke="#555" stroke-width="1"/>
-            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#aaa" font-size="14" font-family="system-ui">${noteDisplay}</text>
+            <circle cx="${pos.x}" cy="${pos.y}" r="${noteSize}" class="note-circle note-tonal" stroke="#8B6914" stroke-width="1.5"/>
+            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#3D2914" font-size="14" font-weight="600" font-family="system-ui">${noteDisplay}</text>
           </g>
         `;
       });
@@ -671,8 +672,8 @@
         const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
         svg += `
           <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
-            <circle cx="${pos.x}" cy="${pos.y}" r="${bottomNoteSize}" class="note-circle note-bottom" fill="#2d2d2d" stroke="#666" stroke-width="1" stroke-dasharray="3 2"/>
-            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#888" font-size="13" font-family="system-ui">${noteDisplay}</text>
+            <circle cx="${pos.x}" cy="${pos.y}" r="${bottomNoteSize}" class="note-circle note-bottom" stroke="#6B4423" stroke-width="1.5" stroke-dasharray="3 2"/>
+            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#F5E6D3" font-size="13" font-weight="600" font-family="system-ui">${noteDisplay}</text>
           </g>
         `;
       });
