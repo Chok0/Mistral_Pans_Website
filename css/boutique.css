@@ -168,8 +168,8 @@ body {
 @media (max-width: 768px) {
   .player-visual svg {
     max-height: none;
-    width: 100%;
-    max-width: 480px;
+    width: 95vw;
+    max-width: 95vw;
   }
 
   .note-group .note-circle {
@@ -185,7 +185,8 @@ body {
 
 @media (max-width: 500px) {
   .player-visual svg {
-    max-width: 380px;
+    width: 92vw;
+    max-width: 92vw;
   }
 }
 
