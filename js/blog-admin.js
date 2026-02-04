@@ -107,7 +107,7 @@
           ${article.excerpt ? `
             <p class="blog-card__excerpt">${utils.escapeHtml(article.excerpt)}</p>
           ` : ''}
-          <a href="article.html?slug=${article.slug}" class="blog-card__link">Lire la suite â†'</a>
+          <a href="article.html?slug=${article.slug}" class="blog-card__link">Lire la suite →</a>
         </div>
       </article>
     `).join('');

@@ -780,7 +780,7 @@
       if (data && data.features && data.features.length > 0) {
         const coords = data.features[0].geometry.coordinates;
         const label = data.features[0].properties.label;
-        console.log(`Géocodage: ${postalcode} ${city} â†' ${coords[1]}, ${coords[0]} (${label})`);
+        console.log(`Géocodage: ${postalcode} ${city} → ${coords[1]}, ${coords[0]} (${label})`);
         return {
           lat: coords[1],  // L'API retourne [lng, lat]
           lng: coords[0]
@@ -802,7 +802,7 @@
       if (nominatimResponse.ok) {
         const nominatimData = await nominatimResponse.json();
         if (nominatimData && nominatimData.length > 0) {
-          console.log(`Géocodage Nominatim: ${postalcode} ${city} â†' ${nominatimData[0].lat}, ${nominatimData[0].lon}`);
+          console.log(`Géocodage Nominatim: ${postalcode} ${city} → ${nominatimData[0].lat}, ${nominatimData[0].lon}`);
           return {
             lat: parseFloat(nominatimData[0].lat),
             lng: parseFloat(nominatimData[0].lon)
