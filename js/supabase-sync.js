@@ -36,7 +36,6 @@
       { local: 'mistral_gestion_commandes', remote: 'commandes', idField: 'id' },
       { local: 'mistral_gestion_factures', remote: 'factures', idField: 'id' },
       { local: 'mistral_teachers', remote: 'professeurs', idField: 'id' },
-      { local: 'mistral_pending_teachers', remote: 'professeurs_pending', idField: 'id' },
       { local: 'mistral_gallery', remote: 'galerie', idField: 'id' },
       { local: 'mistral_blog_articles', remote: 'articles', idField: 'id' }
     ],
