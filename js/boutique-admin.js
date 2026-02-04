@@ -168,50 +168,53 @@
 
   function renderInstrumentCard(instrument) {
     const hasImage = instrument.images && instrument.images.length > 0;
-    const imageContent = hasImage 
+    const imageContent = hasImage
       ? '<img src="' + instrument.images[0] + '" alt="' + utils.escapeHtml(instrument.nom || '') + '" style="width:100%;height:100%;object-fit:cover;">'
       : '<span style="font-size: 4rem; opacity: 0.2;">🎵</span>';
-    
+
     const videoIndicator = hasValue(instrument.video)
       ? '<span class="flash-card__video-badge" style="position:absolute;bottom:0.5rem;left:0.5rem;background:rgba(0,0,0,0.7);color:white;padding:0.25rem 0.5rem;border-radius:4px;font-size:0.75rem;">▶ Vidéo</span>'
       : '';
-    
+
+    const photoCount = (instrument.images && instrument.images.length > 1)
+      ? '<span class="flash-card__photo-count" style="position:absolute;top:0.5rem;right:0.5rem;background:rgba(0,0,0,0.7);color:white;padding:0.25rem 0.5rem;border-radius:4px;font-size:0.75rem;">' + instrument.images.length + ' photos</span>'
+      : '';
+
     const specs = [];
     if (hasValue(instrument.nombre_notes)) specs.push(instrument.nombre_notes + ' notes');
     if (hasValue(instrument.taille)) specs.push(instrument.taille + 'cm');
     if (hasValue(instrument.accordage)) specs.push(instrument.accordage + 'Hz');
     if (hasValue(instrument.materiau)) {
-      const materiauLabels = { 'NS': 'Nitrure', 'ES': 'Ember Steel', 'SS': 'Inox' };
-      specs.push(materiauLabels[instrument.materiau] || instrument.materiau);
+      // Use centralized material labels from MistralMateriaux module
+      const label = typeof MistralMateriaux !== 'undefined'
+        ? MistralMateriaux.getLabel(instrument.materiau, 'short')
+        : instrument.materiau;
+      specs.push(label);
     }
     const specsHtml = specs.length > 0 ? '<p class="flash-card__specs">' + specs.join(' · ') + '</p>' : '';
-    
+
     const notesHtml = hasValue(instrument.notes_layout)
-      ? '<p class="flash-card__notes">' + instrument.notes_layout.split(' ').filter(function(n) { return n.trim(); }).join(' · ') + '</p>' 
+      ? '<p class="flash-card__notes">' + instrument.notes_layout.split(' ').filter(function(n) { return n.trim(); }).join(' · ') + '</p>'
       : '';
-    
+
     const descHtml = hasValue(instrument.description)
       ? '<p class="flash-card__desc" style="font-size:0.875rem;color:var(--color-text-muted);margin:0.5rem 0;line-height:1.4;">' + utils.escapeHtml(instrument.description.substring(0, 100)) + (instrument.description.length > 100 ? '...' : '') + '</p>'
       : '';
-    
+
     const priceHtml = hasValue(instrument.prix_vente)
       ? '<span class="flash-card__price">' + formatPrice(instrument.prix_vente) + '</span>'
       : '<span class="flash-card__price" style="font-size:0.875rem;">Prix sur demande</span>';
-    
-    const handpanerLink = hasValue(instrument.handpaner_url)
-      ? '<a href="' + instrument.handpaner_url + '" target="_blank" rel="noopener" class="flash-card__handpaner" style="display:inline-flex;align-items:center;gap:0.25rem;font-size:0.75rem;color:var(--color-accent);text-decoration:none;margin-top:0.5rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Voir sur Handpaner</a>'
-      : '';
-    
+
     const displayName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || instrument.reference || 'Instrument';
-    
-    return '<div class="flash-card" data-type="instrument" data-id="' + instrument.id + '">' +
-      '<div class="flash-card__image" style="position:relative;">' + imageContent + videoIndicator + '</div>' +
+
+    return '<div class="flash-card" data-type="instrument" data-id="' + instrument.id + '" onclick="BoutiqueAdmin.openInstrumentModal(\'' + instrument.id + '\')" style="position:relative;">' +
+      '<div class="flash-card__image" style="position:relative;">' + imageContent + videoIndicator + photoCount + '</div>' +
       '<div class="flash-card__content">' +
         '<h3 class="flash-card__name">' + utils.escapeHtml(displayName) + '</h3>' +
         specsHtml + notesHtml + descHtml +
         '<div class="flash-card__footer">' + priceHtml +
-          '<button class="flash-card__cta" onclick="BoutiqueAdmin.contacterPourInstrument(\'' + instrument.id + '\')">Me contacter</button>' +
-        '</div>' + handpanerLink +
+          '<span class="flash-card__cta-hint" style="font-size:0.75rem;color:var(--color-text-muted);">Cliquez pour voir</span>' +
+        '</div>' +
       '</div></div>';
   }
 
@@ -356,6 +359,377 @@
   }
 
   // ============================================================================
+  // MODALE DÉTAIL INSTRUMENT
+  // ============================================================================
+
+  let currentInstrument = null;
+  let currentGalleryIndex = 0;
+
+  function openInstrumentModal(id) {
+    const instruments = getInstrumentsEnLigne();
+    const instrument = instruments.find(function(i) { return i.id === id; });
+
+    if (!instrument) {
+      console.warn('[Boutique Admin] Instrument non trouvé:', id);
+      return;
+    }
+
+    currentInstrument = instrument;
+    currentGalleryIndex = 0;
+
+    const modal = document.getElementById('annonce-modal');
+    if (!modal) return;
+
+    // Title
+    const displayName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || 'Instrument';
+    document.getElementById('modal-annonce-title').textContent = displayName;
+
+    // Gallery
+    setupModalGallery(instrument.images || []);
+
+    // Specs
+    document.getElementById('modal-spec-gamme').textContent = instrument.gamme || '—';
+    document.getElementById('modal-spec-notes').textContent = instrument.nombre_notes ? instrument.nombre_notes + ' notes' : '—';
+    document.getElementById('modal-spec-tonalite').textContent = instrument.tonalite || '—';
+    document.getElementById('modal-spec-accordage').textContent = instrument.accordage ? instrument.accordage + ' Hz' : '—';
+    document.getElementById('modal-spec-taille').textContent = instrument.taille ? instrument.taille + ' cm' : '—';
+
+    // Material
+    const matLabel = hasValue(instrument.materiau) && typeof MistralMateriaux !== 'undefined'
+      ? MistralMateriaux.getLabel(instrument.materiau, 'full')
+      : (instrument.materiau || '—');
+    document.getElementById('modal-spec-materiau').textContent = matLabel;
+
+    // Notes layout
+    const notesLayout = document.getElementById('modal-notes-layout');
+    const notesValue = document.getElementById('modal-notes-value');
+    if (hasValue(instrument.notes_layout)) {
+      notesLayout.style.display = 'block';
+      notesValue.textContent = instrument.notes_layout;
+    } else {
+      notesLayout.style.display = 'none';
+    }
+
+    // Description
+    const descContainer = document.getElementById('modal-description-container');
+    const descEl = document.getElementById('modal-description');
+    if (hasValue(instrument.description)) {
+      descContainer.style.display = 'block';
+      descEl.textContent = instrument.description;
+    } else {
+      descContainer.style.display = 'none';
+    }
+
+    // Video link
+    const videoLink = document.getElementById('modal-video-link');
+    if (hasValue(instrument.video)) {
+      videoLink.style.display = 'inline-flex';
+      videoLink.href = instrument.video;
+    } else {
+      videoLink.style.display = 'none';
+    }
+
+    // Handpaner link
+    const handpanerLink = document.getElementById('modal-handpaner-link');
+    if (hasValue(instrument.handpaner_url)) {
+      handpanerLink.style.display = 'inline-flex';
+      handpanerLink.href = instrument.handpaner_url;
+    } else {
+      handpanerLink.style.display = 'none';
+    }
+
+    // Housse options
+    setupModalHousse(instrument.taille);
+
+    // Reset livraison
+    const livraisonCheckbox = document.getElementById('modal-livraison-checkbox');
+    if (livraisonCheckbox) livraisonCheckbox.checked = false;
+
+    // Price
+    updateModalPrice();
+
+    // Show modal
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeAnnonceModal() {
+    const modal = document.getElementById('annonce-modal');
+    if (modal) {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    currentInstrument = null;
+  }
+
+  function setupModalGallery(images) {
+    const mainImage = document.getElementById('modal-main-image');
+    const noImageEl = document.getElementById('modal-no-image');
+    const thumbsContainer = document.getElementById('modal-gallery-thumbs');
+    const prevBtn = document.getElementById('modal-gallery-prev');
+    const nextBtn = document.getElementById('modal-gallery-next');
+
+    if (!images || images.length === 0) {
+      mainImage.style.display = 'none';
+      noImageEl.style.display = 'flex';
+      thumbsContainer.innerHTML = '';
+      prevBtn.style.display = 'none';
+      nextBtn.style.display = 'none';
+      return;
+    }
+
+    mainImage.style.display = 'block';
+    noImageEl.style.display = 'none';
+    mainImage.src = images[0];
+
+    // Navigation buttons
+    if (images.length > 1) {
+      prevBtn.style.display = 'flex';
+      nextBtn.style.display = 'flex';
+    } else {
+      prevBtn.style.display = 'none';
+      nextBtn.style.display = 'none';
+    }
+
+    // Thumbnails
+    let thumbsHtml = '';
+    images.forEach(function(img, idx) {
+      const activeClass = idx === 0 ? ' active' : '';
+      thumbsHtml += '<div class="annonce-gallery__thumb' + activeClass + '" data-index="' + idx + '"><img src="' + img + '" alt="Photo ' + (idx + 1) + '"></div>';
+    });
+    thumbsContainer.innerHTML = thumbsHtml;
+
+    // Bind thumbnail clicks
+    thumbsContainer.querySelectorAll('.annonce-gallery__thumb').forEach(function(thumb) {
+      thumb.addEventListener('click', function() {
+        const idx = parseInt(this.dataset.index);
+        setGalleryIndex(idx, images);
+      });
+    });
+
+    updateGalleryNav(images);
+  }
+
+  function setGalleryIndex(idx, images) {
+    if (!images) {
+      images = currentInstrument && currentInstrument.images ? currentInstrument.images : [];
+    }
+
+    if (idx < 0) idx = images.length - 1;
+    if (idx >= images.length) idx = 0;
+
+    currentGalleryIndex = idx;
+
+    const mainImage = document.getElementById('modal-main-image');
+    if (mainImage) mainImage.src = images[idx];
+
+    // Update active thumbnail
+    document.querySelectorAll('.annonce-gallery__thumb').forEach(function(thumb, i) {
+      thumb.classList.toggle('active', i === idx);
+    });
+
+    updateGalleryNav(images);
+  }
+
+  function updateGalleryNav(images) {
+    const prevBtn = document.getElementById('modal-gallery-prev');
+    const nextBtn = document.getElementById('modal-gallery-next');
+
+    if (prevBtn) prevBtn.disabled = currentGalleryIndex === 0;
+    if (nextBtn) nextBtn.disabled = currentGalleryIndex === images.length - 1;
+  }
+
+  function navigateGallery(direction) {
+    const images = currentInstrument && currentInstrument.images ? currentInstrument.images : [];
+    if (images.length === 0) return;
+
+    const newIndex = currentGalleryIndex + direction;
+    setGalleryIndex(newIndex, images);
+  }
+
+  function setupModalHousse(taille) {
+    const housseContainer = document.getElementById('modal-housse-container');
+    const housseSelect = document.getElementById('modal-housse-select');
+
+    if (!housseContainer || !housseSelect) return;
+
+    // Get compatible accessories
+    const accessoires = getHoussesForTaille(taille);
+
+    if (accessoires.length === 0) {
+      housseContainer.style.display = 'none';
+      return;
+    }
+
+    housseContainer.style.display = 'block';
+
+    let optionsHtml = '<option value="">Sans housse</option>';
+    accessoires.forEach(function(acc) {
+      optionsHtml += '<option value="' + acc.id + '" data-prix="' + acc.prix + '">' +
+        utils.escapeHtml(acc.nom) + ' (+' + formatPrice(acc.prix) + ')' +
+        '</option>';
+    });
+
+    housseSelect.innerHTML = optionsHtml;
+    housseSelect.value = '';
+  }
+
+  function getHoussesForTaille(taille) {
+    try {
+      const stored = localStorage.getItem(ACCESSOIRES_KEY);
+      if (stored) {
+        const accessoires = JSON.parse(stored);
+        return accessoires.filter(function(a) {
+          return a.statut === 'actif' &&
+                 a.visible_configurateur === true &&
+                 a.tailles_compatibles &&
+                 a.tailles_compatibles.includes(taille);
+        });
+      }
+    } catch (e) {
+      console.warn('[Boutique Admin] Erreur lecture housses:', e);
+    }
+    return [];
+  }
+
+  function updateModalPrice() {
+    if (!currentInstrument) return;
+
+    const instrumentPrice = currentInstrument.prix_vente || 0;
+    const livraisonCheckbox = document.getElementById('modal-livraison-checkbox');
+    const housseSelect = document.getElementById('modal-housse-select');
+
+    let houssePrice = 0;
+    let housseName = null;
+    if (housseSelect && housseSelect.value) {
+      const selectedOption = housseSelect.options[housseSelect.selectedIndex];
+      houssePrice = parseFloat(selectedOption.dataset.prix) || 0;
+      housseName = selectedOption.textContent.split(' (+')[0];
+    }
+
+    const livraisonPrice = (livraisonCheckbox && livraisonCheckbox.checked) ? 50 : 0;
+    const totalPrice = instrumentPrice + houssePrice + livraisonPrice;
+
+    // Update display
+    document.getElementById('modal-price-instrument').textContent = formatPrice(instrumentPrice);
+
+    const housseLine = document.getElementById('modal-price-housse-line');
+    const housseEl = document.getElementById('modal-price-housse');
+    if (houssePrice > 0) {
+      housseLine.style.display = 'flex';
+      housseEl.textContent = formatPrice(houssePrice);
+    } else {
+      housseLine.style.display = 'none';
+    }
+
+    const livraisonLine = document.getElementById('modal-price-livraison-line');
+    if (livraisonPrice > 0) {
+      livraisonLine.style.display = 'flex';
+    } else {
+      livraisonLine.style.display = 'none';
+    }
+
+    document.getElementById('modal-price-total').textContent = formatPrice(totalPrice);
+
+    // Update order button URL
+    updateModalOrderUrl(totalPrice, housseSelect ? housseSelect.value : null, housseName, houssePrice, livraisonCheckbox ? livraisonCheckbox.checked : false);
+  }
+
+  function updateModalOrderUrl(totalPrice, housseId, housseName, houssePrice, livraison) {
+    if (!currentInstrument) return;
+
+    const orderBtn = document.getElementById('modal-order-btn');
+    if (!orderBtn) return;
+
+    const params = new URLSearchParams({
+      type: 'stock',
+      instrument_id: currentInstrument.id,
+      name: currentInstrument.nom || ((currentInstrument.tonalite || '') + ' ' + (currentInstrument.gamme || '')).trim(),
+      gamme: currentInstrument.gamme || '',
+      tonalite: currentInstrument.tonalite || '',
+      notes: currentInstrument.nombre_notes || '',
+      accordage: currentInstrument.accordage || '',
+      taille: currentInstrument.taille || '',
+      materiau: currentInstrument.materiau || '',
+      price: totalPrice,
+      instrument_price: currentInstrument.prix_vente || 0
+    });
+
+    if (housseId) {
+      params.set('housse_id', housseId);
+      if (housseName) params.set('housse_nom', housseName);
+      params.set('housse_prix', houssePrice);
+    }
+
+    if (livraison) {
+      params.set('livraison', '1');
+    }
+
+    orderBtn.href = 'commander.html?' + params.toString();
+  }
+
+  function initAnnonceModalListeners() {
+    // Close button
+    const closeBtn = document.getElementById('modal-annonce-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeAnnonceModal);
+    }
+
+    // Overlay click
+    const overlay = document.querySelector('.annonce-modal__overlay');
+    if (overlay) {
+      overlay.addEventListener('click', closeAnnonceModal);
+    }
+
+    // Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeAnnonceModal();
+      }
+    });
+
+    // Gallery navigation
+    const prevBtn = document.getElementById('modal-gallery-prev');
+    const nextBtn = document.getElementById('modal-gallery-next');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        navigateGallery(-1);
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        navigateGallery(1);
+      });
+    }
+
+    // Housse change
+    const housseSelect = document.getElementById('modal-housse-select');
+    if (housseSelect) {
+      housseSelect.addEventListener('change', updateModalPrice);
+    }
+
+    // Livraison change
+    const livraisonCheckbox = document.getElementById('modal-livraison-checkbox');
+    if (livraisonCheckbox) {
+      livraisonCheckbox.addEventListener('change', updateModalPrice);
+    }
+
+    // Keyboard navigation for gallery
+    document.addEventListener('keydown', function(e) {
+      const modal = document.getElementById('annonce-modal');
+      if (!modal || !modal.classList.contains('open')) return;
+
+      if (e.key === 'ArrowLeft') {
+        navigateGallery(-1);
+      } else if (e.key === 'ArrowRight') {
+        navigateGallery(1);
+      }
+    });
+  }
+
+  // ============================================================================
   // FAB ADMIN
   // ============================================================================
 
@@ -399,14 +773,15 @@
     console.log('[Boutique Admin v2] Rendu initial...');
     renderFlashCards();
     setupAdminFAB();
-    
+    initAnnonceModalListeners();
+
     window.addEventListener('storage', function(e) {
       if (e.key === INSTRUMENTS_KEY || e.key === ACCESSOIRES_KEY) {
         console.log('[Boutique Admin v2] Données modifiées, rafraîchissement...');
         renderFlashCards();
       }
     });
-    
+
     console.log('[Boutique Admin v2] Prêt');
   }
 
@@ -428,6 +803,8 @@
     retirerAccessoire: retirerAccessoire,
     contacterPourInstrument: contacterPourInstrument,
     contacterPourAccessoire: contacterPourAccessoire,
+    openInstrumentModal: openInstrumentModal,
+    closeAnnonceModal: closeAnnonceModal,
     init: init
   };
 

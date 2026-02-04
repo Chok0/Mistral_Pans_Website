@@ -98,7 +98,15 @@
             <button class="chip" data-value="equinox">Equinox</button>
           </div>
         </div>
-        
+
+        <!-- Matériau -->
+        <div class="option-group">
+          <label class="option-label">Matériau</label>
+          <div class="option-cards option-cards--3" id="cards-material">
+            <!-- Populated dynamically by JS -->
+          </div>
+        </div>
+
         <!-- Nombre de notes -->
         <div class="option-group">
           <label class="option-label">Nombre de notes</label>
@@ -190,15 +198,29 @@
             
           </div>
         </div>
+
+        <!-- Accessoires (Housse) -->
+        <div class="option-group option-group--accessoires" id="accessoires-section" style="display: none;">
+          <label class="option-label">Ajouter une housse</label>
+          <div class="accessoires-list" id="accessoires-list">
+            <!-- Populated dynamically by JS -->
+          </div>
+        </div>
       </div>
-      
+
       <!-- FOOTER: Price & CTA -->
       <div class="config-footer">
         <div class="price-display">
-          <span class="price-label">Prix total</span>
-          <span class="price-value" id="total-price">1 080 €</span>
+          <div class="price-breakdown" id="price-breakdown" style="display: none;">
+            <span class="price-line">Instrument: <span id="price-instrument">1 080 €</span></span>
+            <span class="price-line" id="price-housse-line" style="display: none;">Housse: <span id="price-housse">0 €</span></span>
+          </div>
+          <div class="price-total">
+            <span class="price-label">Prix total</span>
+            <span class="price-value" id="total-price">1 080 €</span>
+          </div>
         </div>
-        
+
         <a href="commander.html" class="btn btn-primary" id="btn-order">
           Commander cet instrument
         </a>
@@ -270,8 +292,171 @@
   <!-- Contact modal dynamique -->
   <div id="contact-modal-container"></div>
 
+  <!-- ===== MODALE DÉTAIL ANNONCE ===== -->
+  <div class="annonce-modal" id="annonce-modal">
+    <div class="annonce-modal__overlay"></div>
+    <div class="annonce-modal__content">
+      <!-- Header -->
+      <div class="annonce-modal__header">
+        <h2 class="annonce-modal__title" id="modal-annonce-title">D Kurd</h2>
+        <button class="annonce-modal__close" id="modal-annonce-close" aria-label="Fermer">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="annonce-modal__body">
+        <!-- Left: Gallery -->
+        <div class="annonce-modal__gallery">
+          <div class="annonce-gallery__main" id="modal-gallery-main">
+            <img src="" alt="Photo principale" id="modal-main-image">
+            <span class="annonce-gallery__no-image" id="modal-no-image" style="display:none;">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              <span>Aucune photo</span>
+            </span>
+            <button class="annonce-gallery__nav annonce-gallery__nav--prev" id="modal-gallery-prev" aria-label="Photo précédente">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button class="annonce-gallery__nav annonce-gallery__nav--next" id="modal-gallery-next" aria-label="Photo suivante">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
+          <div class="annonce-gallery__thumbs" id="modal-gallery-thumbs">
+            <!-- Thumbnails populated by JS -->
+          </div>
+        </div>
+
+        <!-- Right: Details -->
+        <div class="annonce-modal__details">
+          <!-- Specs -->
+          <div class="annonce-specs" id="modal-specs">
+            <div class="annonce-spec">
+              <span class="annonce-spec__label">Gamme</span>
+              <span class="annonce-spec__value" id="modal-spec-gamme">—</span>
+            </div>
+            <div class="annonce-spec">
+              <span class="annonce-spec__label">Notes</span>
+              <span class="annonce-spec__value" id="modal-spec-notes">—</span>
+            </div>
+            <div class="annonce-spec">
+              <span class="annonce-spec__label">Tonalité</span>
+              <span class="annonce-spec__value" id="modal-spec-tonalite">—</span>
+            </div>
+            <div class="annonce-spec">
+              <span class="annonce-spec__label">Accordage</span>
+              <span class="annonce-spec__value" id="modal-spec-accordage">—</span>
+            </div>
+            <div class="annonce-spec">
+              <span class="annonce-spec__label">Taille</span>
+              <span class="annonce-spec__value" id="modal-spec-taille">—</span>
+            </div>
+            <div class="annonce-spec">
+              <span class="annonce-spec__label">Matériau</span>
+              <span class="annonce-spec__value" id="modal-spec-materiau">—</span>
+            </div>
+          </div>
+
+          <!-- Notes layout -->
+          <div class="annonce-notes-layout" id="modal-notes-layout">
+            <span class="annonce-notes-layout__label">Disposition des notes</span>
+            <span class="annonce-notes-layout__value" id="modal-notes-value">—</span>
+          </div>
+
+          <!-- Description -->
+          <div class="annonce-description" id="modal-description-container" style="display:none;">
+            <p id="modal-description"></p>
+          </div>
+
+          <!-- Video link -->
+          <a href="#" class="annonce-video-link" id="modal-video-link" target="_blank" rel="noopener" style="display:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Voir la vidéo
+          </a>
+
+          <!-- Handpaner link -->
+          <a href="#" class="annonce-handpaner-link" id="modal-handpaner-link" target="_blank" rel="noopener" style="display:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            Voir sur Handpaner
+          </a>
+
+          <!-- Options -->
+          <div class="annonce-options">
+            <!-- Housse -->
+            <div class="annonce-option" id="modal-housse-container" style="display:none;">
+              <label class="annonce-option__label" for="modal-housse-select">Ajouter une housse</label>
+              <select class="annonce-option__select" id="modal-housse-select">
+                <option value="">Sans housse</option>
+                <!-- Options populated by JS -->
+              </select>
+            </div>
+
+            <!-- Livraison -->
+            <div class="annonce-option">
+              <label class="annonce-option__checkbox">
+                <input type="checkbox" id="modal-livraison-checkbox">
+                <span class="annonce-option__checkmark"></span>
+                <span>Livraison (+50€)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Price -->
+          <div class="annonce-price">
+            <div class="annonce-price__breakdown" id="modal-price-breakdown">
+              <div class="annonce-price__line">
+                <span>Instrument</span>
+                <span id="modal-price-instrument">0 €</span>
+              </div>
+              <div class="annonce-price__line" id="modal-price-housse-line" style="display:none;">
+                <span>Housse</span>
+                <span id="modal-price-housse">0 €</span>
+              </div>
+              <div class="annonce-price__line" id="modal-price-livraison-line" style="display:none;">
+                <span>Livraison</span>
+                <span>50 €</span>
+              </div>
+            </div>
+            <div class="annonce-price__total">
+              <span class="annonce-price__label">Prix total</span>
+              <span class="annonce-price__value" id="modal-price-total">0 €</span>
+            </div>
+          </div>
+
+          <!-- CTA -->
+          <a href="commander.html" class="btn btn-primary annonce-cta" id="modal-order-btn">
+            Commander cet instrument
+          </a>
+
+          <p class="annonce-contact-note">
+            Des questions ? <a href="#" data-modal="contact">Contactez-moi</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Scales data (unified source) -->
   <script src="js/scales-data.js"></script>
+
+  <!-- Matériaux data (unified source) -->
+  <script src="js/materiaux-data.js"></script>
 
   <!-- Module de faisabilité -->
   <script src="js/feasibility-module.js"></script>
@@ -309,7 +494,9 @@
       notes: 9,
       tonality: 'D3',
       tuning: '440',
-      size: '53'
+      size: '53',
+      material: 'NS',  // Default material: Acier Nitruré
+      housse: null     // Selected housse accessory (null = none)
     };
     
     // ===== PRICING =====
@@ -318,10 +505,10 @@
     const priceBottomBonus = 25;   // +25€ si l'instrument a des bottoms
     const sizeMalus = { '53': 0, '50': 0.025, '45': 0.05 };  // +2.5% pour 50cm, +5% pour 45cm
     
-    function calculatePrice(notes, size, feasibilityStatus) {
+    function calculatePrice(notes, size, feasibilityStatus, materialCode) {
       let price = 0;
       let hasBottom = false;
-      
+
       notes.forEach(note => {
         price += pricePerNote;
         if (note.octave === 2) {
@@ -331,23 +518,31 @@
           hasBottom = true;
         }
       });
-      
+
       // Bonus bottom (une seule fois)
       if (hasBottom) {
         price += priceBottomBonus;
       }
-      
+
       // Malus taille (en %)
       const sizeMultiplier = 1 + (sizeMalus[size] || 0);
       price = price * sizeMultiplier;
-      
+
+      // Malus matériau (en %)
+      const materialMalus = typeof MistralMateriaux !== 'undefined'
+        ? MistralMateriaux.getPrixMalus(materialCode)
+        : 0;
+      if (materialMalus > 0) {
+        price = price * (1 + materialMalus / 100);
+      }
+
       // Pourcentage selon difficulté
       if (feasibilityStatus === 'warning') {
         price = price * 1.05;
       } else if (feasibilityStatus === 'difficult') {
         price = price * 1.10;
       }
-      
+
       // Arrondir à la tranche de 5€ inférieure
       return Math.floor(price / 5) * 5;
     }
@@ -829,35 +1024,219 @@
         const result = FeasibilityModule.checkFeasibility(notes, state.size);
         feasibilityStatus = result.status;
       }
-      
-      // Calculer le prix avec le status de faisabilité
-      const price = calculatePrice(notes, state.size, feasibilityStatus);
-      document.getElementById('total-price').textContent = price.toLocaleString('fr-FR') + ' €';
-      
-      // Préparer le lien de commande
-      const orderParams = new URLSearchParams({
-        scale: state.scale,
-        tonality: state.tonality,
-        notes: state.notes,
-        tuning: state.tuning,
-        size: state.size,
-        price: price,
-        name: `${rootDisplay} ${scaleData.name}`
-      });
-      const orderUrl = `commander.html?${orderParams.toString()}`;
-      document.getElementById('btn-order').href = orderUrl;
-      document.getElementById('btn-order').dataset.originalHref = orderUrl;
-      
+
+      // Store instrument price for later use
+      state._instrumentPrice = calculatePrice(notes, state.size, feasibilityStatus, state.material);
+      state._feasibilityStatus = feasibilityStatus;
+      state._configName = configName;
+      state._rootDisplay = rootDisplay;
+      state._scaleData = scaleData;
+
+      // Render accessoires section (depends on size)
+      renderAccessoiresSection();
+
+      // Update price display (includes housse if selected)
+      updatePriceDisplay();
+
       // Mettre à jour l'UI de faisabilité (chips, hint, bouton)
       if (typeof FeasibilityModule !== 'undefined') {
         FeasibilityModule.update(state, notes, SCALES_DATA, parsePattern, {
           configName: configName
         });
       }
-      
+
       renderPlayer();
     }
+
+    // ===== UPDATE PRICE DISPLAY =====
+    function updatePriceDisplay() {
+      const instrumentPrice = state._instrumentPrice || 0;
+      const houssePrice = state.housse ? (state.housse.prix || 0) : 0;
+      const totalPrice = instrumentPrice + houssePrice;
+
+      // Update price breakdown
+      const priceBreakdown = document.getElementById('price-breakdown');
+      const priceInstrument = document.getElementById('price-instrument');
+      const priceHousseLine = document.getElementById('price-housse-line');
+      const priceHousse = document.getElementById('price-housse');
+
+      if (state.housse && priceBreakdown) {
+        priceBreakdown.style.display = 'block';
+        if (priceInstrument) priceInstrument.textContent = instrumentPrice.toLocaleString('fr-FR') + ' €';
+        if (priceHousseLine) priceHousseLine.style.display = 'block';
+        if (priceHousse) priceHousse.textContent = houssePrice.toLocaleString('fr-FR') + ' €';
+      } else if (priceBreakdown) {
+        priceBreakdown.style.display = 'none';
+        if (priceHousseLine) priceHousseLine.style.display = 'none';
+      }
+
+      // Update total price
+      document.getElementById('total-price').textContent = totalPrice.toLocaleString('fr-FR') + ' €';
+
+      // Update order URL
+      const orderParams = new URLSearchParams({
+        scale: state.scale,
+        tonality: state.tonality,
+        notes: state.notes,
+        tuning: state.tuning,
+        size: state.size,
+        material: state.material,
+        price: totalPrice,
+        instrument_price: instrumentPrice,
+        name: `${state._rootDisplay || ''} ${state._scaleData?.name || ''}`
+      });
+
+      // Add housse info if selected
+      if (state.housse) {
+        orderParams.set('housse_id', state.housse.id);
+        orderParams.set('housse_nom', state.housse.nom);
+        orderParams.set('housse_prix', state.housse.prix);
+      }
+
+      const orderUrl = `commander.html?${orderParams.toString()}`;
+      document.getElementById('btn-order').href = orderUrl;
+      document.getElementById('btn-order').dataset.originalHref = orderUrl;
+    }
     
+    // ===== RENDER MATERIAL CARDS =====
+    function renderMaterialCards() {
+      const container = document.getElementById('cards-material');
+      if (!container) return;
+
+      // Récupérer les matériaux depuis le module
+      const materiaux = typeof MistralMateriaux !== 'undefined'
+        ? MistralMateriaux.getForConfigurateur()
+        : [
+            { code: 'NS', nom: 'Acier Nitruré', nom_court: 'Nitrure', prix_malus: 0 },
+            { code: 'ES', nom: 'Ember Steel', nom_court: 'Ember Steel', prix_malus: 5 },
+            { code: 'SS', nom: 'Acier Inoxydable', nom_court: 'Inox', prix_malus: 10 }
+          ];
+
+      let html = '';
+      materiaux.forEach(mat => {
+        const isActive = mat.code === state.material ? ' active' : '';
+        const priceInfo = mat.prix_malus > 0 ? `<div class="radio-card__price">+${mat.prix_malus}%</div>` : '';
+        html += `
+          <div class="radio-card${isActive}" data-value="${mat.code}">
+            <div class="radio-card__value">${mat.nom_court || mat.nom}</div>
+            <div class="radio-card__label">${mat.nom}</div>
+            ${priceInfo}
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+
+      // Bind events
+      container.querySelectorAll('.radio-card').forEach(card => {
+        card.addEventListener('click', () => {
+          container.querySelectorAll('.radio-card').forEach(c => c.classList.remove('active'));
+          card.classList.add('active');
+          state.material = card.dataset.value;
+          updateDisplay();
+        });
+      });
+    }
+
+    // ===== RENDER ACCESSOIRES (HOUSSE) =====
+    function getAccessoiresForConfigurateur(size) {
+      // Get accessoires from localStorage (same source as boutique-admin)
+      try {
+        const stored = localStorage.getItem('mistral_accessoires');
+        if (stored) {
+          const accessoires = JSON.parse(stored);
+          return accessoires.filter(a =>
+            a.statut === 'actif' &&
+            a.visible_configurateur === true &&
+            a.tailles_compatibles &&
+            a.tailles_compatibles.includes(size)
+          );
+        }
+      } catch (e) {
+        console.warn('[Configurateur] Erreur lecture accessoires:', e);
+      }
+      return [];
+    }
+
+    function renderAccessoiresSection() {
+      const section = document.getElementById('accessoires-section');
+      const container = document.getElementById('accessoires-list');
+      if (!section || !container) return;
+
+      const accessoires = getAccessoiresForConfigurateur(state.size);
+
+      // Hide section if no accessoires available
+      if (accessoires.length === 0) {
+        section.style.display = 'none';
+        // Reset housse selection if current housse is not available
+        if (state.housse) {
+          state.housse = null;
+        }
+        return;
+      }
+
+      section.style.display = 'block';
+
+      // Check if current housse is still available for this size
+      if (state.housse && !accessoires.find(a => a.id === state.housse.id)) {
+        state.housse = null;
+      }
+
+      let html = `
+        <div class="accessoire-card accessoire-card--none${!state.housse ? ' active' : ''}" data-id="">
+          <div class="accessoire-card__content">
+            <div class="accessoire-card__name">Sans housse</div>
+            <div class="accessoire-card__price">—</div>
+          </div>
+        </div>
+      `;
+
+      accessoires.forEach(acc => {
+        const isActive = state.housse && state.housse.id === acc.id ? ' active' : '';
+        const hasImage = acc.image;
+        const imageHtml = hasImage
+          ? `<div class="accessoire-card__image"><img src="${acc.image}" alt="${escapeHtmlForAccessoire(acc.nom)}"></div>`
+          : '';
+
+        html += `
+          <div class="accessoire-card${isActive}" data-id="${acc.id}">
+            ${imageHtml}
+            <div class="accessoire-card__content">
+              <div class="accessoire-card__name">${escapeHtmlForAccessoire(acc.nom)}</div>
+              <div class="accessoire-card__price">+${Number(acc.prix).toLocaleString('fr-FR')} €</div>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+
+      // Bind events
+      container.querySelectorAll('.accessoire-card').forEach(card => {
+        card.addEventListener('click', () => {
+          container.querySelectorAll('.accessoire-card').forEach(c => c.classList.remove('active'));
+          card.classList.add('active');
+
+          const id = card.dataset.id;
+          if (id) {
+            state.housse = accessoires.find(a => a.id === id) || null;
+          } else {
+            state.housse = null;
+          }
+          updatePriceDisplay();
+        });
+      });
+    }
+
+    function escapeHtmlForAccessoire(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
     // ===== BIND EVENTS =====
     function bindEvents() {
       const toggleBtn = document.getElementById('toggle-advanced');
@@ -1152,9 +1531,16 @@
     
     // ===== INIT =====
     document.addEventListener('DOMContentLoaded', () => {
+      renderMaterialCards();  // Render material cards first
       bindEvents();
       updateTonalityChipsLabels();  // Set chip labels based on default scale (Kurd = flats)
       updateDisplay();
+
+      // Listen for material updates from admin
+      window.addEventListener('materiauxUpdated', () => {
+        renderMaterialCards();
+        updateDisplay();
+      });
     });
   </script>
   

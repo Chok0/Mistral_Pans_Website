@@ -310,6 +310,7 @@
         break;
       case 'config':
         loadConfig();
+        renderMateriaux();
         break;
     }
   }
@@ -1135,7 +1136,13 @@
   
   function saveAccessoire() {
     const id = $('#accessoire-id')?.value;
-    
+
+    // Collect compatible sizes
+    const taillesCompatibles = [];
+    if ($('#accessoire-taille-45')?.checked) taillesCompatibles.push('45');
+    if ($('#accessoire-taille-50')?.checked) taillesCompatibles.push('50');
+    if ($('#accessoire-taille-53')?.checked) taillesCompatibles.push('53');
+
     const data = {
       nom: $('#accessoire-nom')?.value.trim(),
       categorie: $('#accessoire-categorie')?.value || 'accessoire',
@@ -1143,7 +1150,9 @@
       stock: parseInt($('#accessoire-stock')?.value),
       description: $('#accessoire-description')?.value.trim(),
       image: getAccessoireImageForSave(),
-      statut: $('#accessoire-statut')?.value || 'actif'
+      statut: $('#accessoire-statut')?.value || 'actif',
+      visible_configurateur: $('#accessoire-visible-config')?.checked || false,
+      tailles_compatibles: taillesCompatibles
     };
     
     // Validation
@@ -1186,7 +1195,7 @@
     const accessoires = Storage.get('mistral_accessoires', []);
     const accessoire = accessoires.find(a => a.id === id);
     if (!accessoire) return;
-    
+
     $('#modal-accessoire-title').textContent = 'Modifier l\'accessoire';
     $('#accessoire-id').value = accessoire.id;
     $('#accessoire-nom').value = accessoire.nom || '';
@@ -1195,12 +1204,39 @@
     $('#accessoire-stock').value = accessoire.stock ?? -1;
     $('#accessoire-description').value = accessoire.description || '';
     $('#accessoire-statut').value = accessoire.statut || 'actif';
-    
+
+    // Load configurator options
+    const visibleConfig = accessoire.visible_configurateur || false;
+    $('#accessoire-visible-config').checked = visibleConfig;
+    toggleAccessoireConfigOptions(visibleConfig);
+
+    // Load compatible sizes
+    const tailles = accessoire.tailles_compatibles || [];
+    $('#accessoire-taille-45').checked = tailles.includes('45');
+    $('#accessoire-taille-50').checked = tailles.includes('50');
+    $('#accessoire-taille-53').checked = tailles.includes('53');
+
     showModal('accessoire');
-    
+
     // Initialiser l'upload et charger l'image existante
     initAccessoireUpload();
     loadAccessoireImageForEdit(accessoire);
+  }
+
+  function toggleAccessoireConfigOptions(show) {
+    const optionsDiv = $('#accessoire-config-options');
+    if (optionsDiv) {
+      optionsDiv.style.display = show ? 'block' : 'none';
+    }
+  }
+
+  function initAccessoireConfigToggle() {
+    const checkbox = $('#accessoire-visible-config');
+    if (checkbox) {
+      checkbox.addEventListener('change', () => {
+        toggleAccessoireConfigOptions(checkbox.checked);
+      });
+    }
   }
   
   function toggleAccessoire(id) {
@@ -2113,6 +2149,213 @@
   }
 
   // ============================================================================
+  // MATÉRIAUX MANAGEMENT
+  // ============================================================================
+
+  function renderMateriaux() {
+    const container = $('#materiaux-list');
+    if (!container) return;
+
+    if (typeof MistralMateriaux === 'undefined') {
+      container.innerHTML = '<p style="color: var(--admin-text-muted);">Module matériaux non chargé</p>';
+      return;
+    }
+
+    const materiaux = MistralMateriaux.getAll();
+
+    if (materiaux.length === 0) {
+      container.innerHTML = '<p style="color: var(--admin-text-muted);">Aucun matériau configuré</p>';
+      return;
+    }
+
+    let html = '';
+    materiaux.forEach(mat => {
+      const statusBadge = mat.disponible
+        ? '<span style="color: var(--color-success, #4A7C59); font-size: 0.75rem;">✓ Disponible</span>'
+        : '<span style="color: var(--admin-text-muted); font-size: 0.75rem;">✗ Indisponible</span>';
+
+      const configBadge = mat.visible_configurateur
+        ? '<span style="background: var(--admin-accent); color: white; font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px;">Configurateur</span>'
+        : '';
+
+      const colorPreview = mat.couleur
+        ? `<span style="display: inline-block; width: 16px; height: 16px; background: ${mat.couleur}; border-radius: 3px; vertical-align: middle; margin-right: 0.5rem; border: 1px solid rgba(0,0,0,0.1);"></span>`
+        : '';
+
+      const prixMalusDisplay = mat.prix_malus > 0
+        ? `<span style="color: var(--color-warning, #F59E0B); font-size: 0.8rem;">+${mat.prix_malus}%</span>`
+        : '<span style="color: var(--admin-text-muted); font-size: 0.8rem;">Inclus</span>';
+
+      html += `
+        <div class="materiau-card" style="background: var(--admin-surface); border: 1px solid var(--admin-border); border-radius: 8px; padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <div>
+              <div style="font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                ${colorPreview}
+                ${escapeHtml(mat.nom)}
+                <code style="background: var(--admin-surface-hover); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.75rem;">${mat.code}</code>
+              </div>
+              <div style="font-size: 0.85rem; color: var(--admin-text-muted); margin-top: 0.25rem;">
+                ${mat.nom_court ? escapeHtml(mat.nom_court) : ''}
+              </div>
+            </div>
+            ${prixMalusDisplay}
+          </div>
+          ${mat.description ? `<p style="font-size: 0.8rem; color: var(--admin-text-muted); margin: 0.5rem 0; line-height: 1.4;">${escapeHtml(mat.description.substring(0, 100))}${mat.description.length > 100 ? '...' : ''}</p>` : ''}
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--admin-border);">
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              ${statusBadge}
+              ${configBadge}
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="AdminUI.editMateriau('${mat.id}')" title="Modifier">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="admin-btn admin-btn--sm admin-btn--danger" onclick="AdminUI.deleteMateriau('${mat.id}')" title="Supprimer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function initMateriauColorSync() {
+    const picker = $('#materiau-couleur-picker');
+    const input = $('#materiau-couleur');
+    if (picker && input) {
+      picker.addEventListener('input', () => {
+        input.value = picker.value;
+      });
+      input.addEventListener('input', () => {
+        if (/^#[0-9A-Fa-f]{6}$/.test(input.value)) {
+          picker.value = input.value;
+        }
+      });
+    }
+  }
+
+  function populateMateriauxSelect(selectedCode = 'NS') {
+    const select = $('#instrument-materiau');
+    if (!select) return;
+
+    if (typeof MistralMateriaux !== 'undefined') {
+      select.innerHTML = MistralMateriaux.toSelectOptions(selectedCode);
+    } else {
+      // Fallback if module not loaded
+      select.innerHTML = `
+        <option value="NS" ${selectedCode === 'NS' ? 'selected' : ''}>Acier nitruré (NS)</option>
+        <option value="ES" ${selectedCode === 'ES' ? 'selected' : ''}>Ember Steel (ES)</option>
+        <option value="SS" ${selectedCode === 'SS' ? 'selected' : ''}>Inox</option>
+      `;
+    }
+  }
+
+  function editMateriau(id) {
+    if (typeof MistralMateriaux === 'undefined') return;
+
+    const materiau = MistralMateriaux.getById(id);
+    if (!materiau) return;
+
+    $('#modal-materiau-title').textContent = 'Modifier le matériau';
+    $('#materiau-id').value = materiau.id;
+    $('#materiau-code').value = materiau.code || '';
+    $('#materiau-nom').value = materiau.nom || '';
+    $('#materiau-nom-court').value = materiau.nom_court || '';
+    $('#materiau-prix-malus').value = materiau.prix_malus || 0;
+    $('#materiau-description').value = materiau.description || '';
+    $('#materiau-couleur').value = materiau.couleur || '#C9A227';
+    $('#materiau-couleur-picker').value = materiau.couleur || '#C9A227';
+    $('#materiau-ordre').value = materiau.ordre || 1;
+    $('#materiau-disponible').checked = materiau.disponible !== false;
+    $('#materiau-visible-config').checked = materiau.visible_configurateur !== false;
+
+    initMateriauColorSync();
+    showModal('materiau');
+  }
+
+  function saveMateriau() {
+    if (typeof MistralMateriaux === 'undefined') {
+      Toast.error('Module matériaux non chargé');
+      return;
+    }
+
+    const id = $('#materiau-id')?.value;
+    const code = $('#materiau-code')?.value?.toUpperCase().trim();
+    const nom = $('#materiau-nom')?.value?.trim();
+
+    if (!code || !nom) {
+      Toast.error('Le code et le nom sont requis');
+      return;
+    }
+
+    // Check for duplicate code (except when editing same material)
+    const existing = MistralMateriaux.getByCode(code);
+    if (existing && existing.id !== id) {
+      Toast.error(`Le code "${code}" existe déjà`);
+      return;
+    }
+
+    const materiau = {
+      id: id || null,
+      code: code,
+      nom: nom,
+      nom_court: $('#materiau-nom-court')?.value?.trim() || '',
+      prix_malus: parseFloat($('#materiau-prix-malus')?.value) || 0,
+      description: $('#materiau-description')?.value?.trim() || '',
+      couleur: $('#materiau-couleur')?.value?.trim() || '',
+      ordre: parseInt($('#materiau-ordre')?.value) || 1,
+      disponible: $('#materiau-disponible')?.checked,
+      visible_configurateur: $('#materiau-visible-config')?.checked
+    };
+
+    MistralMateriaux.save(materiau);
+    closeModal('materiau');
+    renderMateriaux();
+    Toast.success(id ? 'Matériau modifié' : 'Matériau créé');
+  }
+
+  async function deleteMateriau(id) {
+    if (typeof MistralMateriaux === 'undefined') return;
+
+    const materiau = MistralMateriaux.getById(id);
+    if (!materiau) return;
+
+    const confirmed = await Confirm.show({
+      title: 'Supprimer le matériau',
+      message: `Voulez-vous vraiment supprimer "${materiau.nom}" (${materiau.code}) ?`,
+      confirmText: 'Supprimer',
+      type: 'danger'
+    });
+
+    if (confirmed) {
+      MistralMateriaux.remove(id);
+      renderMateriaux();
+      Toast.success('Matériau supprimé');
+    }
+  }
+
+  async function resetMateriaux() {
+    if (typeof MistralMateriaux === 'undefined') return;
+
+    const confirmed = await Confirm.show({
+      title: 'Réinitialiser les matériaux',
+      message: 'Ceci remplacera tous les matériaux par les valeurs par défaut (NS, ES, SS). Continuer ?',
+      confirmText: 'Réinitialiser',
+      type: 'warning'
+    });
+
+    if (confirmed) {
+      MistralMateriaux.reset();
+      renderMateriaux();
+      Toast.success('Matériaux réinitialisés');
+    }
+  }
+
+  // ============================================================================
   // MODALS (stubs - à compléter)
   // ============================================================================
 
@@ -2135,7 +2378,8 @@
           instrument: 'Nouvel instrument',
           location: 'Nouvelle location',
           commande: 'Nouvelle commande',
-          facture: 'Nouvelle facture'
+          facture: 'Nouvelle facture',
+          materiau: 'Nouveau matériau'
         };
         if (titleEl && titles[name]) {
           titleEl.textContent = titles[name];
@@ -2185,6 +2429,14 @@
         if (name === 'accessoire') {
           // Initialiser l'upload d'image
           initAccessoireUpload();
+          // Initialiser le toggle des options configurateur
+          initAccessoireConfigToggle();
+          // Reset config options
+          $('#accessoire-visible-config').checked = false;
+          toggleAccessoireConfigOptions(false);
+          $('#accessoire-taille-45').checked = false;
+          $('#accessoire-taille-50').checked = false;
+          $('#accessoire-taille-53').checked = false;
         }
         
         if (name === 'media') {
@@ -2204,8 +2456,29 @@
           $('#article-id').value = '';
           $('#form-article')?.reset();
         }
+
+        if (name === 'materiau') {
+          // Reset du formulaire
+          $('#modal-materiau-title').textContent = 'Nouveau matériau';
+          $('#materiau-id').value = '';
+          $('#form-materiau')?.reset();
+          // Valeurs par défaut
+          $('#materiau-prix-malus').value = 0;
+          $('#materiau-ordre').value = 1;
+          $('#materiau-couleur').value = '#C9A227';
+          $('#materiau-couleur-picker').value = '#C9A227';
+          $('#materiau-disponible').checked = true;
+          $('#materiau-visible-config').checked = true;
+          // Sync color picker
+          initMateriauColorSync();
+        }
+
+        if (name === 'instrument') {
+          // Populate material select with dynamic options
+          populateMateriauxSelect();
+        }
       }
-      
+
       // Focus premier champ
       setTimeout(() => {
         const firstInput = modal.querySelector('input:not([type="hidden"]), select, textarea');
@@ -2378,7 +2651,7 @@
     $('#instrument-gamme').value = instrument.gamme || '';
     $('#instrument-notes').value = instrument.nombre_notes || 9;
     $('#instrument-taille').value = instrument.taille || '53';
-    $('#instrument-materiau').value = instrument.materiau || 'NS';
+    populateMateriauxSelect(instrument.materiau || 'NS');
     $('#instrument-accordage').value = instrument.accordage || '440';
     $('#instrument-prix').value = instrument.prix_vente || '';
     $('#instrument-statut').value = instrument.statut || 'disponible';
@@ -4705,7 +4978,15 @@ Pensez à joindre le PDF du rapport détaillé.
     saveConfig,
     exportAllData,
     importData,
-    resetAllData
+    resetAllData,
+
+    // Matériaux
+    renderMateriaux,
+    editMateriau,
+    saveMateriau,
+    deleteMateriau,
+    resetMateriaux,
+    populateMateriauxSelect
   };
 
 })(window);
