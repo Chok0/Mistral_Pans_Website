@@ -317,11 +317,8 @@
   // ============================================================================
 
   function init() {
-    // Vérifier l'authentification
-    if (!Auth.isLoggedIn()) {
-      window.location.href = 'index.html';
-      return;
-    }
+    // Note: L'authentification est gérée par admin.html qui appelle init() après login
+    // Ne pas vérifier ici car cela empêcherait l'affichage du formulaire de connexion
 
     // Initialiser la navigation
     initNavigation();
@@ -340,12 +337,7 @@
     console.log('[Admin UI Core] Initialisé');
   }
 
-  // Auto-init quand le DOM est prêt
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  // Note: Pas d'auto-init - admin.html gère le flow de login et appelle AdminUI.init()
 
   // ============================================================================
   // EXPORT - BASE ADMINUI
