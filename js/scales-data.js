@@ -24,6 +24,28 @@
   };
 
   // ============================================================================
+  // MUSIC THEORY: FLAT vs SHARP KEYS (Cycle of Fifths)
+  // ============================================================================
+  // In music theory, each key signature has a standard notation:
+  // - Sharp keys: C, G, D, A, E, B, F#, C#
+  // - Flat keys: F, Bb, Eb, Ab, Db, Gb, Cb
+  //
+  // For altered root notes (enharmonic equivalents):
+  // - D#/Eb → Always Eb (D# major would need 9 sharps - impossible)
+  // - G#/Ab → Always Ab (G# major would need 8 sharps - impossible)
+  // - A#/Bb → Always Bb (A# major would need 10 sharps - impossible)
+  // - C#/Db → Db is more common (5 flats vs 7 sharps), but C# exists
+  // - F#/Gb → Both are common (6 sharps vs 6 flats)
+
+  // Roots that should ALWAYS be displayed as flats (no matter the scale)
+  const ALWAYS_FLAT_ROOTS = ['D#', 'G#', 'A#'];
+
+  // Roots that are preferably flats but can be sharps in sharp-heavy scales
+  const PREFER_FLAT_ROOTS = ['C#'];
+
+  // F# vs Gb depends on scale preference (both are equally valid)
+
+  // ============================================================================
   // SCALES DATA
   // ============================================================================
 
@@ -226,9 +248,12 @@
   }
 
   /**
-   * Determine if we should use flats based on BOTH tonality AND scale
-   * Rule: Sharp roots (F#, C#, G#, D#, A#) always use sharps
-   *       Natural roots use the scale's preference
+   * Determine if we should use flats for displaying notes in a scale
+   * Based on music theory rules:
+   * - D#/Eb, G#/Ab, A#/Bb roots → ALWAYS use flats (flat keys)
+   * - C#/Db root → use flats (Db is more practical than C# with 7 sharps)
+   * - F#/Gb root → depends on scale preference
+   * - Natural roots → use the scale's preference
    * @param {string} tonality - Root note with octave like "C#3" or "D3"
    * @param {object} scaleData - Scale data object with useFlats property
    * @returns {boolean} - True if should display as flats
@@ -242,11 +267,56 @@
 
     const root = match[1];
 
-    // Sharp roots always use sharps (C# Equinox, not Db Equinox with mixed notation)
-    if (root.includes('#')) return false;
+    // Eb, Ab, Bb roots → ALWAYS flat keys (music theory standard)
+    if (ALWAYS_FLAT_ROOTS.includes(root)) return true;
+
+    // Db root → preferably flat (5 flats is easier than 7 sharps)
+    if (PREFER_FLAT_ROOTS.includes(root)) return true;
+
+    // F# root → use scale preference (both F# and Gb are valid)
+    if (root === 'F#') return scaleData.useFlats || false;
 
     // Natural roots use the scale's preference
     return scaleData.useFlats || false;
+  }
+
+  /**
+   * Get the correct notation for a tonality chip based on music theory
+   * This determines how each individual chip should be displayed
+   * Rules:
+   * - D#→Eb, G#→Ab, A#→Bb (always flat, music theory standard)
+   * - C#→Db (preferably flat for most scales)
+   * - F#/Gb depends on scale's useFlats preference
+   * @param {string} tonalityValue - Note in sharp notation like "A#3"
+   * @param {object} scaleData - Scale data object with useFlats property
+   * @returns {string} - Display notation like "Bb3"
+   */
+  function getTonalityChipNotation(tonalityValue, scaleData) {
+    const match = tonalityValue.match(/^([A-G]#?)(\d)$/);
+    if (!match) return tonalityValue;
+
+    const note = match[1];
+    const octave = match[2];
+
+    // Natural notes - no conversion needed
+    if (!note.includes('#')) return tonalityValue;
+
+    // D#, G#, A# → ALWAYS convert to flat (Eb, Ab, Bb)
+    if (ALWAYS_FLAT_ROOTS.includes(note)) {
+      return SHARPS_TO_FLATS[note] + octave;
+    }
+
+    // C# → Convert to Db (more practical notation)
+    if (PREFER_FLAT_ROOTS.includes(note)) {
+      return SHARPS_TO_FLATS[note] + octave;
+    }
+
+    // F# → Depends on scale preference (Gb for flat scales, F# for sharp scales)
+    if (note === 'F#' && scaleData && scaleData.useFlats) {
+      return SHARPS_TO_FLATS[note] + octave;
+    }
+
+    return tonalityValue;
   }
 
   /**
@@ -316,12 +386,15 @@
     NOTE_NAMES: NOTE_NAMES,
     FLATS_TO_SHARPS: FLATS_TO_SHARPS,
     SHARPS_TO_FLATS: SHARPS_TO_FLATS,
+    ALWAYS_FLAT_ROOTS: ALWAYS_FLAT_ROOTS,
+    PREFER_FLAT_ROOTS: PREFER_FLAT_ROOTS,
 
     // Functions
     toDisplayNotation: toDisplayNotation,
     toSharpNotation: toSharpNotation,
     noteToFileName: noteToFileName,
     shouldUseFlats: shouldUseFlats,
+    getTonalityChipNotation: getTonalityChipNotation,
     getScaleNotes: getScaleNotes,
     getScaleDisplayName: getScaleDisplayName,
     hasConfiguratorSupport: hasConfiguratorSupport,
