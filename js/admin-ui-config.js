@@ -14,11 +14,11 @@
   const { $, $$, escapeHtml, Toast, Confirm, Modal, Storage } = window.AdminUIHelpers || {};
 
 
-  function loadConfig() {
+  function renderConfiguration() {
     if (typeof MistralGestion !== 'undefined') {
       const config = MistralGestion.getConfig();
       const entreprise = MistralGestion.CONFIG.ENTREPRISE;
-      
+
       // Remplir les champs
       if ($('#config-nom')) $('#config-nom').value = entreprise.marque || '';
       if ($('#config-siret')) $('#config-siret').value = entreprise.siret || '';
