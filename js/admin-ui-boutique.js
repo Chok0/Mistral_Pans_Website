@@ -265,10 +265,9 @@
   // ============================================================================
   // GESTION DES ACCESSOIRES
   // ============================================================================
-  
-  // Stockage temporaire de l'image uploadée
-  let accessoireUploadedImage = null;
-  
+
+  // Note: accessoireUploadedImage est déclaré en haut du module (ligne 17)
+
   function initAccessoireUpload() {
     if (typeof MistralUpload === 'undefined') {
       console.warn('[Admin UI] MistralUpload non disponible');
