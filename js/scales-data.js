@@ -72,6 +72,12 @@
     'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'
   };
 
+  // Roots that should ALWAYS use flat spelling
+  // A# (position 10) and D# (position 9) are theoretical only - their major keys
+  // would require double sharps, which don't exist in standard notation.
+  // In practice, musicians always use Bb and Eb instead.
+  const ALWAYS_FLAT_ROOTS = ['A#', 'D#'];
+
   // ============================================================================
   // SCALES DATA
   // ============================================================================
@@ -305,6 +311,12 @@
     const sharpRoot = root.includes('b') ? (FLATS_TO_SHARPS[root] || root) : root;
     const flatRoot = SHARP_TO_FLAT_ROOT[sharpRoot] || null;
 
+    // A# and D# are NEVER valid key centers - always use Bb and Eb
+    // These roots have circle positions (10, 9) that would require double sharps
+    if (ALWAYS_FLAT_ROOTS.includes(sharpRoot)) {
+      return true;
+    }
+
     // Get mode offset (default to aeolian if not specified)
     const mode = scaleData.mode || 'aeolian';
     const modeOffset = MODE_OFFSETS[mode] !== undefined ? MODE_OFFSETS[mode] : -3;
@@ -458,6 +470,7 @@
     MODE_OFFSETS: MODE_OFFSETS,
     SHARP_TO_FLAT_ROOT: SHARP_TO_FLAT_ROOT,
     FLAT_TO_SHARP_ROOT: FLAT_TO_SHARP_ROOT,
+    ALWAYS_FLAT_ROOTS: ALWAYS_FLAT_ROOTS,
 
     // Functions
     toDisplayNotation: toDisplayNotation,
