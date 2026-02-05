@@ -17,6 +17,20 @@
   let instrumentImages = [];
   let instrumentVideo = null;
 
+  // État pour les callbacks de modales imbriquées
+  let pendingClientCallback = null;
+  let pendingClientModalSource = null;
+  let pendingInstrumentCallback = null;
+  let pendingInstrumentModalSource = null;
+  let currentEditingTeacherId = null;
+  let instrumentEnVente = false;
+
+  // Utilitaire de validation email
+  function isValidEmail(email) {
+    if (!email) return true; // Email optionnel
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
 
   function showModal(name) {
     const modal = $(`#modal-${name}`);
@@ -205,7 +219,7 @@
       if (confirmed) {
         MistralGestion.Clients.update(id, { archived: true, archived_at: new Date().toISOString() });
         renderClients();
-        refreshDashboard();
+        AdminUI.refreshDashboard();
         Toast.info('Client archivé');
       }
     } else {
@@ -220,7 +234,7 @@
       if (confirmed) {
         MistralGestion.Clients.delete(id);
         renderClients();
-        refreshDashboard();
+        AdminUI.refreshDashboard();
         Toast.success('Client supprimé');
       }
     }
@@ -251,7 +265,12 @@
       Toast.error('Prénom et nom requis');
       return;
     }
-    
+
+    if (data.email && !isValidEmail(data.email)) {
+      Toast.error('Format d\'email invalide');
+      return;
+    }
+
     let client;
     if (id) {
       client = MistralGestion.Clients.update(id, data);
@@ -263,7 +282,7 @@
     
     closeModal('client');
     renderClients();
-    refreshDashboard();
+    AdminUI.refreshDashboard();
     
     // Reset form
     $('#client-id').value = '';
@@ -354,7 +373,7 @@
       // Supprimer l'instrument
       MistralGestion.Instruments.delete(id);
       renderInstruments();
-      refreshDashboard();
+      AdminUI.refreshDashboard();
       Toast.success('Instrument supprimé');
     }
   }
@@ -433,7 +452,7 @@
     // Rafraîchir les affichages
     if (typeof renderInstruments === 'function') renderInstruments();
     if (typeof renderBoutique === 'function') renderBoutique();
-    if (typeof refreshDashboard === 'function') refreshDashboard();
+    if (AdminUI.refreshDashboard) AdminUI.refreshDashboard();
 
     Toast.success('Instrument marqué comme vendu');
   }
@@ -1037,7 +1056,7 @@
     
     closeModal('instrument');
     renderInstruments();
-    refreshDashboard();
+    AdminUI.refreshDashboard();
     
     // Reset
     $('#instrument-id').value = '';
@@ -1156,7 +1175,7 @@
     closeModal('location');
     renderLocations();
     renderInstruments();
-    refreshDashboard();
+    AdminUI.refreshDashboard();
     
     // Reset
     $('#location-id').value = '';
@@ -1225,7 +1244,7 @@
     
     closeModal('commande');
     renderCommandes();
-    refreshDashboard();
+    AdminUI.refreshDashboard();
     
     // Reset
     $('#commande-id').value = '';
@@ -1329,7 +1348,7 @@
 
     closeModal('facture');
     renderFactures();
-    refreshDashboard();
+    AdminUI.refreshDashboard();
 
     // Reset
     $('#facture-id').value = '';
@@ -1490,10 +1509,19 @@
   }
   
   function downloadFacture(id) {
-    if (typeof MistralGestionPDF !== 'undefined') {
-      MistralGestionPDF.generateFacture(id);
-    } else {
+    if (typeof MistralGestionPDF === 'undefined') {
       Toast.error('Module PDF non chargé');
+      return;
+    }
+
+    try {
+      const result = MistralGestionPDF.generateFacture(id);
+      if (!result) {
+        Toast.error('Erreur lors de la génération du PDF');
+      }
+    } catch (error) {
+      console.error('[downloadFacture] Erreur:', error);
+      Toast.error(`Erreur PDF: ${error.message || 'Génération impossible'}`);
     }
   }
   
@@ -1527,7 +1555,7 @@
 
       renderFactures();
       renderInstruments();
-      refreshDashboard();
+      AdminUI.refreshDashboard();
       Toast.success('Facture marquée comme payée');
     }
   }
@@ -1655,7 +1683,7 @@
         date_annulation: new Date().toISOString().split('T')[0]
       });
       renderFactures();
-      refreshDashboard();
+      AdminUI.refreshDashboard();
       Toast.info('Facture annulée');
     }
   }
@@ -1684,16 +1712,81 @@
       
       renderLocations();
       renderInstruments();
-      refreshDashboard();
+      AdminUI.refreshDashboard();
       Toast.success('Location terminée');
     }
   }
-  
+
+  async function deleteLocation(id) {
+    if (typeof MistralGestion === 'undefined') return;
+
+    const location = MistralGestion.Locations.get(id);
+    if (!location) return;
+
+    // Check if location is in progress
+    if (location.statut === 'en_cours') {
+      Toast.error('Impossible de supprimer une location en cours. Terminez-la d\'abord.');
+      return;
+    }
+
+    const confirmed = await Confirm.show({
+      title: 'Supprimer la location',
+      message: 'Voulez-vous vraiment supprimer cette location ? Cette action est irréversible.',
+      confirmText: 'Supprimer',
+      type: 'danger'
+    });
+
+    if (confirmed) {
+      MistralGestion.Locations.delete(id);
+      renderLocations();
+      AdminUI.refreshDashboard();
+      Toast.success('Location supprimée');
+    }
+  }
+
+  async function deleteCommande(id) {
+    if (typeof MistralGestion === 'undefined') return;
+
+    const commande = MistralGestion.Commandes.get(id);
+    if (!commande) return;
+
+    // Check if commande has linked factures
+    const factures = MistralGestion.Factures.list().filter(f => f.commande_id === id);
+
+    if (factures.length > 0) {
+      Toast.error(`Cette commande a ${factures.length} facture(s) associée(s). Supprimez-les d'abord.`);
+      return;
+    }
+
+    const confirmed = await Confirm.show({
+      title: 'Supprimer la commande',
+      message: 'Voulez-vous vraiment supprimer cette commande ? Cette action est irréversible.',
+      confirmText: 'Supprimer',
+      type: 'danger'
+    });
+
+    if (confirmed) {
+      MistralGestion.Commandes.delete(id);
+      renderCommandes();
+      AdminUI.refreshDashboard();
+      Toast.success('Commande supprimée');
+    }
+  }
+
   function downloadContrat(id) {
-    if (typeof MistralGestionPDF !== 'undefined') {
-      MistralGestionPDF.generateContrat(id);
-    } else {
+    if (typeof MistralGestionPDF === 'undefined') {
       Toast.error('Module PDF non chargé');
+      return;
+    }
+
+    try {
+      const result = MistralGestionPDF.generateContrat(id);
+      if (!result) {
+        Toast.error('Erreur lors de la génération du contrat');
+      }
+    } catch (error) {
+      console.error('[downloadContrat] Erreur:', error);
+      Toast.error(`Erreur PDF: ${error.message || 'Génération impossible'}`);
     }
   }
 
@@ -1707,7 +1800,7 @@
       Storage.set('mistral_teachers', teachers);
       Storage.set('mistral_pending_teachers', pending.filter(t => t.id !== id));
       renderProfesseurs();
-      refreshDashboard();
+      AdminUI.refreshDashboard();
       Toast.success('Professeur approuvé');
     }
   }
@@ -1723,7 +1816,7 @@
       const pending = Storage.get('mistral_pending_teachers', []);
       Storage.set('mistral_pending_teachers', pending.filter(t => t.id !== id));
       renderProfesseurs();
-      refreshDashboard();
+      AdminUI.refreshDashboard();
       Toast.info('Demande rejetée');
     }
   }
@@ -1948,7 +2041,7 @@
     
     // Rafraîchir l'affichage
     renderProfesseurs();
-    refreshDashboard();
+    AdminUI.refreshDashboard();
     
     // Basculer vers l'onglet des professeurs actifs
     const activeTab = document.querySelector('[data-subtab="active"]');
@@ -1978,9 +2071,11 @@
     editLocation,
     saveLocation,
     terminerLocation,
+    deleteLocation,
     downloadContrat,
     editCommande,
     saveCommande,
+    deleteCommande,
     editFacture,
     saveFacture,
     downloadFacture,
