@@ -230,7 +230,7 @@
     $('#materiau-visible-config').checked = materiau.visible_configurateur !== false;
 
     initMateriauColorSync();
-    showModal('materiau');
+    AdminUI.showModal('materiau');
   }
 
   function saveMateriau() {

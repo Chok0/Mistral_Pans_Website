@@ -268,7 +268,7 @@
   // Créer un instrument et le publier
   function creerEtPublierInstrument() {
     publishAfterInstrumentCreation = true;
-    showModal('instrument');
+    AdminUI.showModal('instrument');
   }
   
   // ============================================================================
@@ -454,7 +454,7 @@
     $('#accessoire-taille-50').checked = tailles.includes('50');
     $('#accessoire-taille-53').checked = tailles.includes('53');
 
-    showModal('accessoire');
+    AdminUI.showModal('accessoire');
 
     // Initialiser l'upload et charger l'image existante
     initAccessoireUpload();
