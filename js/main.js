@@ -4,17 +4,8 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   Cookie Consent - Chargement prioritaire pour RGPD
-   -------------------------------------------------------------------------- */
-(function loadCookieConsent() {
-  // Charger le script de consentement cookies en premier
-  const script = document.createElement('script');
-  script.src = 'js/cookie-consent.js';
-  document.head.appendChild(script);
-})();
-
-/* --------------------------------------------------------------------------
    Supabase Sync - Chargement dynamique sur toutes les pages
+   Note: cookie-consent.js est chargé directement dans les pages HTML
    -------------------------------------------------------------------------- */
 (function loadSupabaseSync() {
   // Ne pas recharger si déjà présent (ex: admin.html)

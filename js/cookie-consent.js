@@ -101,6 +101,11 @@
       return;
     }
 
+    // Éviter la création de bannières multiples (si script chargé 2 fois)
+    if (document.getElementById('cookie-consent-banner')) {
+      return;
+    }
+
     const banner = document.createElement('div');
     banner.id = 'cookie-consent-banner';
     banner.className = 'cookie-banner';
