@@ -114,7 +114,9 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 - **Supabase JS SDK 2.x** - Database/Auth
 - **Leaflet 1.9.4** - Maps
 - **Quill.js** - WYSIWYG editor (blog)
-- **Google reCAPTCHA v3** - Form protection
+
+### Anti-Spam
+- **Honeypot** - Invisible form field (no external dependency, RGPD friendly)
 
 ### Backend Services
 - **Database:** Supabase PostgreSQL with RLS
@@ -375,8 +377,10 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 | Brevo | Email delivery | GDPR compliant |
 | Nominatim | Geocoding | No tracking |
 | CartoDB Positron | Map tiles | Consent required |
-| Google reCAPTCHA | Bot protection | Google service |
+| Honeypot | Bot protection | No external data transfer |
 | Google Fonts | Typography | Consider self-hosting |
+| Swikly | Rental deposits | GDPR compliant (permalien) |
+| Payplug | Payments | French provider, GDPR compliant |
 
 ---
 
@@ -389,12 +393,13 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 
 ### Pre-deployment Checklist
 - [ ] Change default admin password
-- [ ] Configure reCAPTCHA keys
+- [ ] Configure Payplug API keys (PAYPLUG_SECRET_KEY)
 - [ ] Verify UTF-8 encoding
 - [ ] Optimize images (WebP)
 - [ ] Test on real mobile devices
-- [ ] Configure Swikly for rental deposits
+- [x] Configure Swikly (using permalien: https://v2.swik.link/DxkC1UD)
 - [ ] Set up email forwarding (contact@mistralpans.fr)
+- [x] Anti-spam: Honeypot configured (no reCAPTCHA)
 
 ---
 

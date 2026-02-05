@@ -13,7 +13,7 @@
    * @param {string} options.formId - ID du formulaire
    * @param {string} options.mode - 'add', 'edit', ou 'signup' (demande d'adhÃ©sion)
    * @param {boolean} options.showPhoto - Afficher le champ photo
-   * @param {boolean} options.showRecaptcha - Afficher reCAPTCHA (pour signup)
+   * @param {boolean} options.showHoneypot - Ajouter champ honeypot anti-spam
    * @returns {string} HTML du formulaire
    */
   function generateTeacherForm(options = {}) {
@@ -22,7 +22,7 @@
       formId = 'teacher-form',
       mode = 'add',
       showPhoto = true,
-      showRecaptcha = false
+      showHoneypot = true
     } = options;
 
     const isEdit = mode === 'edit' && teacher;
@@ -252,11 +252,11 @@
           </div>
         </div>
 
-        ${showRecaptcha ? `
-        <!-- reCAPTCHA -->
-        <div class="teacher-form__section">
-          <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY"></div>
-          <p class="teacher-form__hint">Ce site est protÃ©gÃ© par reCAPTCHA.</p>
+        ${showHoneypot ? `
+        <!-- Honeypot anti-spam -->
+        <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+          <label for="hp-${formId}-website">Site web</label>
+          <input type="text" name="website" id="hp-${formId}-website" autocomplete="off" tabindex="-1">
         </div>
         ` : ''}
       </form>

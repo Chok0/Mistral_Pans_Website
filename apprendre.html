@@ -1263,8 +1263,13 @@ document.addEventListener('keydown', function(e) {
           Vous enseignez le handpan en Île-de-France ? Remplissez ce formulaire 
           pour apparaître sur notre carte. Votre demande sera examinée sous 48h.
         </p>
-        <form id="teacher-form">
-          
+        <form id="teacher-form" data-honeypot>
+          <!-- Honeypot anti-spam -->
+          <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+            <label for="hp-teacher-website">Site web</label>
+            <input type="text" name="website" id="hp-teacher-website" autocomplete="off" tabindex="-1">
+          </div>
+
           <!-- Photo -->
           <div class="form-group">
             <label class="form-label">Photo de profil</label>
@@ -1371,7 +1376,7 @@ document.addEventListener('keydown', function(e) {
           
           <div class="form-group">
             <label class="form-label">Site web</label>
-            <input type="url" id="teacher-website" name="website" class="form-input" placeholder="https://monsite.fr">
+            <input type="url" id="teacher-website" name="site_url" class="form-input" placeholder="https://monsite.fr">
           </div>
           
           <div class="form-group">
@@ -1414,14 +1419,6 @@ document.addEventListener('keydown', function(e) {
             </div>
           </div>
           
-          <!-- reCAPTCHA placeholder -->
-          <div class="form-group">
-            <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY" id="recaptcha-container"></div>
-            <p style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: var(--space-sm);">
-              Ce site est protégé par reCAPTCHA.
-            </p>
-          </div>
-          
           <button type="submit" class="btn btn--primary btn--full" id="teacher-submit-btn">
             Envoyer ma candidature
           </button>
@@ -1453,10 +1450,7 @@ document.addEventListener('keydown', function(e) {
   
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  
-  <!-- reCAPTCHA -->
-  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-  
+
   <!-- Scripts -->
   
   <script src="js/cookie-consent.js"></script>
