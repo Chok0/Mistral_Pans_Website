@@ -6,10 +6,13 @@
       <button class="modal__close" aria-label="Fermer">&times;</button>
     </div>
     <div class="modal__body">
-      <form id="contact-form">
-        <!-- Honeypot anti-spam (champ caché) -->
-        <input type="text" name="website" style="display: none;" tabindex="-1" autocomplete="off">
-        
+      <form id="contact-form" data-honeypot>
+        <!-- Honeypot anti-spam -->
+        <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+          <label for="hp-contact-website">Site web</label>
+          <input type="text" name="website" id="hp-contact-website" autocomplete="off" tabindex="-1">
+        </div>
+
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="contact-firstname">Prénom *</label>

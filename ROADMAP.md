@@ -70,7 +70,7 @@ Ce document définit les tâches prioritaires pour le développement du site Mis
 - `js/admin-ui-compta.js:279-296` - Rapports automatiques
 
 **Tâches:**
-- ⬜ Configurer compte Brevo et clés API
+- ✅ Configurer compte Brevo et clés API (déjà dans Netlify)
 - ✅ Améliorer `send-email.js` avec templates HTML
 - ✅ Implémenter l'envoi de factures PDF en pièce jointe
 - ✅ Implémenter l'envoi de confirmation de commande
@@ -115,10 +115,12 @@ Ce document définit les tâches prioritaires pour le développement du site Mis
 - ⬜ Tests en environnement sandbox
 
 **Flux de location:**
-1. Client remplit formulaire → Swikly bloque la caution
+1. Client remplit formulaire → Redirection vers Swikly pour caution
 2. Admin valide → Création location + facture mensuelle
 3. Fin location → Admin libère caution via Swikly
 4. Si dommages → Prélèvement partiel sur caution
+
+**Swikly Permalien:** https://v2.swik.link/DxkC1UD
 
 **Documentation:**
 - [Swikly API](https://www.swikly.com/fr/api)
@@ -184,36 +186,35 @@ Ce document définit les tâches prioritaires pour le développement du site Mis
 
 ## 🟡 PRIORITÉ MOYENNE
 
-### 6. Intégration reCAPTCHA v3
+### 6. Protection Anti-Spam (Honeypot)
 
-**Objectif:** Protéger les formulaires contre le spam
+**Objectif:** Protéger les formulaires contre le spam sans dépendance externe
+
+**Approche:** Honeypot invisible (pas de reCAPTCHA = pas de données Google)
 
 **Fichiers concernés:**
-- `apprendre.html:1419` - Placeholder existant
-- `js/teacher-form.js` - Formulaire professeur
-- `commander.html` - Formulaires commande
+- `js/honeypot.js` - Module utilitaire honeypot
 - `partials/contact-modal.html` - Formulaire contact
+- `commander.html` - Formulaires commande/RDV
+- `location.html` - Formulaire location
+- `apprendre.html` - Formulaire professeur
 - `netlify/functions/send-email.js` - Validation serveur
 
 **Tâches:**
-- ⬜ Créer projet Google reCAPTCHA v3
-- ⬜ Obtenir clés site + secret
-- ✅ Créer `js/recaptcha.js` - Module de gestion reCAPTCHA
-- ⬜ Remplacer placeholder par vraie clé dans `apprendre.html`
-- ⬜ Intégrer reCAPTCHA dans formulaire professeur
-- ⬜ Intégrer reCAPTCHA dans formulaire contact
-- ⬜ Intégrer reCAPTCHA dans formulaires commande
-- ⬜ Intégrer reCAPTCHA dans formulaire location
-- ⬜ Validation serveur dans `send-email.js`
-- ✅ Créer `netlify/functions/verify-recaptcha.js`
-- ✅ Définir seuil de score (recommandé: 0.5)
-- ✅ Fallback si reCAPTCHA échoue
+- ✅ Créer `js/honeypot.js` - Module utilitaire
+- ✅ Ajouter champ honeypot dans contact modal
+- ✅ Ajouter champ honeypot dans formulaires commander
+- ✅ Ajouter champ honeypot dans formulaire location
+- ✅ Ajouter champ honeypot dans formulaire professeur
+- ✅ Vérification côté serveur dans send-email.js
+- ✅ Supprimer références reCAPTCHA
 
-**Formulaires à protéger:**
-1. Inscription professeur (`apprendre.html`)
-2. Contact général (`contact-modal.html`)
-3. Commande instrument (`commander.html`)
-4. Demande de location (`location.html`)
+**Formulaires protégés:**
+1. ✅ Contact général (`contact-modal.html`)
+2. ✅ Commande instrument (`commander.html`)
+3. ✅ Demande RDV (`commander.html`)
+4. ✅ Demande de location (`location.html`)
+5. ✅ Inscription professeur (`apprendre.html`)
 
 ---
 
@@ -331,38 +332,34 @@ Mai 2026
 ### Variables d'environnement requises
 
 ```env
-# Supabase (existant)
+# Supabase (existant) ✅
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_ANON_KEY=xxx
 
-# Brevo (email)
+# Brevo (email) ✅ DÉJÀ CONFIGURÉ
 BREVO_API_KEY=xxx
-BREVO_SENDER_EMAIL=contact@mistralpans.fr
 
-# Payplug
+# Payplug ⬜ À CONFIGURER
 PAYPLUG_SECRET_KEY=xxx
-PAYPLUG_PUBLIC_KEY=xxx
 
-# Swikly
-SWIKLY_API_KEY=xxx
-SWIKLY_SECRET=xxx
+# Swikly - Utilise permalien, pas d'API
+# Permalien: https://v2.swik.link/DxkC1UD
 
-# reCAPTCHA
-RECAPTCHA_SITE_KEY=xxx
-RECAPTCHA_SECRET_KEY=xxx
+# Anti-spam: Honeypot (pas de reCAPTCHA)
 ```
 
 ### Structure des Netlify Functions
 
 ```
 netlify/functions/
-├── send-email.js          # Existant - À améliorer
-├── payplug-create-payment.js   # À créer
-├── payplug-webhook.js          # À créer
-├── swikly-create-deposit.js    # À créer
-├── swikly-webhook.js           # À créer
-└── verify-recaptcha.js         # Optionnel
+├── send-email.js              # ✅ Email transactionnel (Brevo) + honeypot
+├── payplug-create-payment.js  # ✅ Création paiement
+├── payplug-webhook.js         # ✅ Webhook paiement
+├── swikly-create-deposit.js   # ✅ Création caution (optionnel, utilise permalien)
+└── swikly-webhook.js          # ✅ Webhook caution (optionnel)
 ```
+
+Note: Anti-spam géré par honeypot côté client + serveur (pas de reCAPTCHA)
 
 ---
 

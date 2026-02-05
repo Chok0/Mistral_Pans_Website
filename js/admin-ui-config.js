@@ -11,7 +11,7 @@
     return;
   }
 
-  const { $, $$, escapeHtml, Toast, Confirm, Modal, Storage } = window.AdminUIHelpers || {};
+  const { $, $$, escapeHtml, Toast, Confirm, Modal, Storage, CONFIG } = window.AdminUIHelpers || {};
 
 
   function renderConfiguration() {
@@ -68,7 +68,7 @@
         if (confirmed && typeof MistralGestion !== 'undefined') {
           MistralGestion.DataManager.importAll(data);
           Toast.success('Import réussi');
-          refreshAll();
+          AdminUI.refreshAll();
         }
       } catch (err) {
         Toast.error('Erreur: fichier invalide');

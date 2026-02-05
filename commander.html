@@ -338,11 +338,17 @@
           Paiement en 3x ou 4x disponible.
         </div>
         
-        <form data-form="order">
+        <form data-form="order" data-honeypot>
+          <!-- Honeypot anti-spam -->
+          <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+            <label for="hp-order-website">Site web</label>
+            <input type="text" name="website" id="hp-order-website" autocomplete="off" tabindex="-1">
+          </div>
+
           <input type="hidden" name="type" value="Commande avec acompte">
           <input type="hidden" name="product" id="form-product" value="D Kurd 9 notes">
           <input type="hidden" name="amount" value="300">
-          
+
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="deposit-firstname">Prénom *</label>
@@ -399,10 +405,16 @@
           Discutons de votre projet ! Je vous recontacte sous 48h pour convenir d'un créneau.
         </p>
         
-        <form data-form="appointment">
+        <form data-form="appointment" data-honeypot>
+          <!-- Honeypot anti-spam -->
+          <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+            <label for="hp-rdv-website">Site web</label>
+            <input type="text" name="website" id="hp-rdv-website" autocomplete="off" tabindex="-1">
+          </div>
+
           <input type="hidden" name="type" value="Demande de RDV">
           <input type="hidden" name="product_interest" id="form-product-rdv" value="D Kurd 9 notes">
-          
+
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="rdv-firstname">Prénom *</label>
