@@ -229,7 +229,7 @@
     if (!media) return;
     
     $('#modal-media-title').textContent = 'Modifier le média';
-    showModal('media');
+    AdminUI.showModal('media');
     initMediaUpload();
     
     $('#media-id').value = media.id;
@@ -493,7 +493,7 @@
     if (!article) return;
     
     $('#modal-article-title').textContent = 'Modifier l\'article';
-    showModal('article');
+    AdminUI.showModal('article');
     initArticleUpload();
     
     $('#article-id').value = article.id;

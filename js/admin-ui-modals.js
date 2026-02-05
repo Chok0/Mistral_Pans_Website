@@ -173,12 +173,11 @@
         }
       }
 
-      // Focus premier champ
-      setTimeout(() => {
-        const firstInput = modal.querySelector('input:not([type="hidden"]), select, textarea');
-        if (firstInput) firstInput.focus();
-      }, 100);
-    }
+    // Focus premier champ
+    setTimeout(() => {
+      const firstInput = modal.querySelector('input:not([type="hidden"]), select, textarea');
+      if (firstInput) firstInput.focus();
+    }, 100);
   }
 
   function closeModal(name) {
@@ -398,9 +397,6 @@
       Toast.success('Instrument supprimé');
     }
   }
-
-  // Variable pour stocker l'instrument en cours de vente
-  let instrumentEnVente = null;
 
   /**
    * Lance le processus de vente d'un instrument
@@ -1934,10 +1930,7 @@
       }, 100);
     }
   }
-  
-  // Variable pour stocker l'ID du professeur en cours d'édition
-  let currentEditingTeacherId = null;
-  
+
   async function saveTeacher() {
     if (!currentEditingTeacherId) {
       Toast.error('Aucun professeur en cours d\'édition');
