@@ -70,7 +70,7 @@ Ce document définit les tâches prioritaires pour le développement du site Mis
 - `js/admin-ui-compta.js:279-296` - Rapports automatiques
 
 **Tâches:**
-- ⬜ Configurer compte Brevo et clés API
+- ✅ Configurer compte Brevo et clés API (déjà dans Netlify)
 - ✅ Améliorer `send-email.js` avec templates HTML
 - ✅ Implémenter l'envoi de factures PDF en pièce jointe
 - ✅ Implémenter l'envoi de confirmation de commande
@@ -331,23 +331,21 @@ Mai 2026
 ### Variables d'environnement requises
 
 ```env
-# Supabase (existant)
+# Supabase (existant) ✅
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_ANON_KEY=xxx
 
-# Brevo (email)
+# Brevo (email) ✅ DÉJÀ CONFIGURÉ
 BREVO_API_KEY=xxx
-BREVO_SENDER_EMAIL=contact@mistralpans.fr
 
-# Payplug
+# Payplug ⬜ À CONFIGURER
 PAYPLUG_SECRET_KEY=xxx
-PAYPLUG_PUBLIC_KEY=xxx
 
-# Swikly
+# Swikly ⬜ À CONFIGURER
 SWIKLY_API_KEY=xxx
 SWIKLY_SECRET=xxx
 
-# reCAPTCHA
+# reCAPTCHA ⬜ À CONFIGURER
 RECAPTCHA_SITE_KEY=xxx
 RECAPTCHA_SECRET_KEY=xxx
 ```
@@ -356,12 +354,12 @@ RECAPTCHA_SECRET_KEY=xxx
 
 ```
 netlify/functions/
-├── send-email.js          # Existant - À améliorer
-├── payplug-create-payment.js   # À créer
-├── payplug-webhook.js          # À créer
-├── swikly-create-deposit.js    # À créer
-├── swikly-webhook.js           # À créer
-└── verify-recaptcha.js         # Optionnel
+├── send-email.js              # ✅ Email transactionnel (Brevo)
+├── payplug-create-payment.js  # ✅ Création paiement
+├── payplug-webhook.js         # ✅ Webhook paiement
+├── swikly-create-deposit.js   # ✅ Création caution
+├── swikly-webhook.js          # ✅ Webhook caution
+└── verify-recaptcha.js        # ✅ Vérification anti-spam
 ```
 
 ---
