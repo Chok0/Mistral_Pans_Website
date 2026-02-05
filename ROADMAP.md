@@ -38,16 +38,16 @@ Ce document définit les tâches prioritaires pour le développement du site Mis
 
 **Tâches:**
 - ⬜ Créer compte Payplug et obtenir clés API (test + production)
-- ⬜ Créer `js/payplug-client.js` - Module de paiement côté client
-- ⬜ Créer `netlify/functions/payplug-create-payment.js` - Création de paiement
-- ⬜ Créer `netlify/functions/payplug-webhook.js` - Réception des confirmations
-- ⬜ Intégrer le formulaire de paiement dans `commander.html`
-- ⬜ Implémenter le paiement de l'acompte (300€)
-- ⬜ Implémenter le paiement du solde
-- ⬜ Implémenter le paiement en 3x sans frais
+- ✅ Créer `js/payplug-client.js` - Module de paiement côté client
+- ✅ Créer `netlify/functions/payplug-create-payment.js` - Création de paiement
+- ✅ Créer `netlify/functions/payplug-webhook.js` - Réception des confirmations
+- ✅ Intégrer le formulaire de paiement dans `commander.html`
+- ✅ Implémenter le paiement de l'acompte (300€)
+- ✅ Implémenter le paiement du solde
+- ✅ Implémenter le paiement en 3x sans frais
 - ⬜ Auto-génération de facture sur paiement confirmé
-- ⬜ Email de confirmation automatique post-paiement
-- ⬜ Page de confirmation/échec de paiement
+- ✅ Email de confirmation automatique post-paiement
+- ✅ Page de confirmation/échec de paiement
 - ⬜ Tests en environnement sandbox
 - ⬜ Passage en production
 
@@ -71,20 +71,21 @@ Ce document définit les tâches prioritaires pour le développement du site Mis
 
 **Tâches:**
 - ⬜ Configurer compte Brevo et clés API
-- ⬜ Améliorer `send-email.js` avec templates HTML
-- ⬜ Implémenter l'envoi de factures PDF en pièce jointe
-- ⬜ Implémenter l'envoi de confirmation de commande
-- ⬜ Implémenter l'envoi de confirmation de réservation location
-- ⬜ Créer templates email (confirmation, facture, rappel)
+- ✅ Améliorer `send-email.js` avec templates HTML
+- ✅ Implémenter l'envoi de factures PDF en pièce jointe
+- ✅ Implémenter l'envoi de confirmation de commande
+- ✅ Implémenter l'envoi de confirmation de réservation location
+- ✅ Créer templates email (confirmation, facture, rappel)
 - ⬜ Implémenter rapports mensuels automatiques (optionnel: CRON)
-- ⬜ Ajouter logging des envois d'emails
+- ✅ Ajouter logging des envois d'emails
 - ⬜ Tests d'envoi avec différents clients mail
 
-**Templates à créer:**
-1. `email-order-confirmation.html` - Confirmation de commande
-2. `email-invoice.html` - Envoi de facture
-3. `email-rental-confirmation.html` - Confirmation de location
-4. `email-monthly-report.html` - Rapport mensuel admin
+**Templates créés (intégrés dans send-email.js):**
+1. ✅ `buildOrderConfirmationEmail()` - Confirmation de commande
+2. ✅ `buildInvoiceEmail()` - Envoi de facture avec PDF
+3. ✅ `buildRentalConfirmationEmail()` - Confirmation de location
+4. ✅ `buildPaymentConfirmationEmail()` - Confirmation de paiement
+5. ✅ `buildContactEmail()` - Email de contact
 
 ---
 
@@ -102,13 +103,13 @@ Ce document définit les tâches prioritaires pour le développement du site Mis
 
 **Tâches:**
 - ⬜ Créer compte Swikly Pro et obtenir clés API
-- ⬜ Créer `js/swikly-client.js` - Module caution côté client
-- ⬜ Créer `netlify/functions/swikly-create-deposit.js` - Création caution
-- ⬜ Créer `netlify/functions/swikly-webhook.js` - Notifications Swikly
+- ✅ Créer `js/swikly-client.js` - Module caution côté client
+- ✅ Créer `netlify/functions/swikly-create-deposit.js` - Création caution
+- ✅ Créer `netlify/functions/swikly-webhook.js` - Notifications Swikly
 - ⬜ Modifier formulaire location.html avec intégration Swikly
-- ⬜ Implémenter le blocage de caution (valeur instrument)
-- ⬜ Implémenter la libération de caution (retour instrument)
-- ⬜ Implémenter le prélèvement partiel (dommages)
+- ✅ Implémenter le blocage de caution (valeur instrument)
+- ✅ Implémenter la libération de caution (retour instrument)
+- ✅ Implémenter le prélèvement partiel (dommages)
 - ⬜ Dashboard admin pour suivre les cautions actives
 - ⬜ Notifications automatiques (renouvellement, expiration)
 - ⬜ Tests en environnement sandbox
@@ -197,16 +198,16 @@ Ce document définit les tâches prioritaires pour le développement du site Mis
 **Tâches:**
 - ⬜ Créer projet Google reCAPTCHA v3
 - ⬜ Obtenir clés site + secret
-- ⬜ Créer `js/recaptcha.js` - Module de gestion reCAPTCHA
+- ✅ Créer `js/recaptcha.js` - Module de gestion reCAPTCHA
 - ⬜ Remplacer placeholder par vraie clé dans `apprendre.html`
 - ⬜ Intégrer reCAPTCHA dans formulaire professeur
 - ⬜ Intégrer reCAPTCHA dans formulaire contact
 - ⬜ Intégrer reCAPTCHA dans formulaires commande
 - ⬜ Intégrer reCAPTCHA dans formulaire location
 - ⬜ Validation serveur dans `send-email.js`
-- ⬜ Créer `netlify/functions/verify-recaptcha.js` (optionnel)
-- ⬜ Définir seuil de score (recommandé: 0.5)
-- ⬜ Fallback si reCAPTCHA échoue
+- ✅ Créer `netlify/functions/verify-recaptcha.js`
+- ✅ Définir seuil de score (recommandé: 0.5)
+- ✅ Fallback si reCAPTCHA échoue
 
 **Formulaires à protéger:**
 1. Inscription professeur (`apprendre.html`)

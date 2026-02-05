@@ -333,9 +333,9 @@
           </div>
         </div>
         
-        <div class="paypal-note">
-          <strong>💳 Paiement en 3x sans frais</strong> disponible via PayPal. 
-          Vous recevrez un email avec le lien de paiement apràs validation.
+        <div class="payment-note">
+          <strong>💳 Paiement sécurisé</strong> par carte bancaire.
+          Paiement en 3x ou 4x disponible.
         </div>
         
         <form data-form="order">
@@ -382,11 +382,11 @@
           </div>
           
           <button type="submit" class="btn btn--primary btn--lg btn--full">
-            Valider ma commande
+            Payer l'acompte (300 €)
           </button>
-          
+
           <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
-            Vous recevrez un email de confirmation avec le lien de paiement PayPal.
+            Paiement sécurisé. Vous serez redirigé vers notre plateforme de paiement.
           </p>
         </form>
       </div>
@@ -552,29 +552,13 @@ document.addEventListener('keydown', function(e) {
 
 <!-- Scripts -->
 <script src="js/cookie-consent.js"></script>
-  <script src="js/main.js"></script>
+<script src="js/main.js"></script>
 
-<!-- Commander specific JS -->
-<script>
-    // Récupérer les paramètres de l'URL pour pré-remplir le formulaire
-    document.addEventListener('DOMContentLoaded', function() {
-      const params = new URLSearchParams(window.location.search);
-      const productName = params.get('product') || 'D Kurd 9 notes';
-      const price = params.get('price') || '1400';
-      
-      // Mettre à jour les champs cachés
-      const formProduct = document.getElementById('form-product');
-      const formProductRdv = document.getElementById('form-product-rdv');
-      if (formProduct) formProduct.value = productName;
-      if (formProductRdv) formProductRdv.value = productName;
-      
-      // Mettre à jour l'affichage du résumé si les éléments existent
-      const summaryTotal = document.getElementById('summary-total');
-      const summaryRemaining = document.getElementById('summary-remaining');
-      if (summaryTotal) summaryTotal.textContent = price + ' €';
-      if (summaryRemaining) summaryRemaining.textContent = (parseInt(price) - 300) + ' €';
-    });
-  </script>
+<!-- Payment & Email modules -->
+<script src="js/email-client.js"></script>
+<script src="js/payplug-client.js"></script>
+<script src="js/commander.js"></script>
+
 <script src="js/mistral-stats.js"></script>
 </body>
 </html>
