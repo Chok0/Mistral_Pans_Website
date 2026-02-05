@@ -1534,81 +1534,111 @@
   
   /**
    * Envoyer une facture par email au client
-   * 
-   * TODO: À développer - Intégration email
-   * ========================================
-   * Options possibles pour l'envoi d'emails :
-   * 
-   * 1. API EmailJS (gratuit jusqu'à 200 emails/mois)
-   *    - Pas besoin de backend
-   *    - Configuration via dashboard EmailJS
-   *    - https://www.emailjs.com/
-   * 
-   * 2. API Brevo (ex-Sendinblue) (gratuit jusqu'à 300 emails/jour)
-   *    - API REST simple
-   *    - Templates d'emails
-   *    - https://www.brevo.com/
-   * 
-   * 3. Backend PHP avec mail() ou PHPMailer
-   *    - Nécessite un serveur PHP
-   *    - Plus de contrôle
-   * 
-   * 4. Ouvrir le client email local (mailto:)
-   *    - Solution temporaire simple
-   *    - Pas d'envoi automatique, mais pré-remplit l'email
-   * 
-   * Structure de l'email à envoyer :
-   * - Destinataire : client.email
-   * - Objet : "Facture {numero} - Mistral Pans"
-   * - Corps : Message personnalisé + lien/pièce jointe PDF
-   * - Pièce jointe : PDF de la facture (généré par gestion-pdf.js)
+   * Utilise l'API Brevo via Netlify Function
    */
   async function envoyerFactureMail(id) {
     if (typeof MistralGestion === 'undefined') return;
-    
+
     const facture = MistralGestion.Factures.get(id);
     if (!facture) {
       Toast.error('Facture non trouvée');
       return;
     }
-    
+
     const client = MistralGestion.Clients.get(facture.client_id);
     if (!client) {
       Toast.error('Client non trouvé');
       return;
     }
-    
+
     if (!client.email) {
       Toast.error('Ce client n\'a pas d\'adresse email');
       return;
     }
-    
-    // Pour l'instant : ouvrir le client email local avec mailto:
-    // TODO: Remplacer par un vrai envoi d'email via API
-    const subject = encodeURIComponent(`Facture ${facture.numero} - Mistral Pans`);
-    const body = encodeURIComponent(
-      `Bonjour ${client.prenom},\n\n` +
-      `Veuillez trouver ci-joint la facture ${facture.numero} d'un montant de ${formatPrice(facture.montant_ttc || facture.total || 0)}.\n\n` +
-      `Date d'émission : ${formatDate(facture.date_emission || facture.date)}\n` +
-      `Échéance : ${facture.date_echeance ? formatDate(facture.date_echeance) : 'À réception'}\n\n` +
-      `Merci de votre confiance.\n\n` +
-      `Cordialement,\n` +
-      `Mistral Pans\n\n` +
-      `---\n` +
-      `Note : La facture PDF doit être jointe manuellement à cet email.\n` +
-      `Téléchargez-la depuis l'interface d'administration.`
-    );
-    
-    // Ouvrir le client email
-    window.open(`mailto:${client.email}?subject=${subject}&body=${body}`, '_blank');
-    
-    Toast.info('Client email ouvert - Pensez à joindre le PDF !');
-    
-    // TODO: Quand l'API email sera configurée :
-    // 1. Générer le PDF en base64
-    // 2. Appeler l'API d'envoi avec le PDF en pièce jointe
-    // 3. Enregistrer la date d'envoi dans la facture
-    // 4. Afficher un badge "Envoyée" dans la liste
+
+    // Demander confirmation
+    const confirmed = await Confirm.show({
+      title: 'Envoyer la facture',
+      message: `Envoyer la facture ${facture.numero} à ${client.email} ?`,
+      confirmText: 'Envoyer',
+      type: 'primary'
+    });
+
+    if (!confirmed) return;
+
+    Toast.info('Préparation de l\'envoi...');
+
+    try {
+      // Générer le PDF en base64
+      let pdfBase64 = null;
+      if (typeof MistralPDF !== 'undefined' && MistralPDF.generateFacture) {
+        const doc = MistralPDF.generateFacture(facture, { download: false });
+        if (doc) {
+          // Extraire le base64 du data URI
+          const dataUri = doc.output('datauristring');
+          pdfBase64 = dataUri.split(',')[1]; // Retirer le préfixe "data:application/pdf;base64,"
+        }
+      }
+
+      // Appeler l'API d'envoi
+      const response = await fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emailType: 'invoice',
+          client: {
+            email: client.email,
+            prenom: client.prenom,
+            nom: client.nom
+          },
+          facture: {
+            numero: facture.numero,
+            montant_ttc: facture.montant_ttc || facture.total,
+            date_emission: facture.date_emission || facture.date,
+            date_echeance: facture.date_echeance
+          },
+          pdfBase64: pdfBase64
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Erreur lors de l\'envoi');
+      }
+
+      // Enregistrer la date d'envoi dans la facture
+      MistralGestion.Factures.update(id, {
+        date_envoi: new Date().toISOString(),
+        email_envoye: true
+      });
+
+      renderFactures();
+      Toast.success(`Facture envoyée à ${client.email}`);
+
+    } catch (error) {
+      console.error('Erreur envoi facture:', error);
+
+      // Fallback : ouvrir le client email local
+      const useFallback = await Confirm.show({
+        title: 'Erreur d\'envoi',
+        message: `L'envoi automatique a échoué (${error.message}). Voulez-vous ouvrir votre client email à la place ?`,
+        confirmText: 'Ouvrir email',
+        cancelText: 'Annuler',
+        type: 'warning'
+      });
+
+      if (useFallback) {
+        const subject = encodeURIComponent(`Facture ${facture.numero} - Mistral Pans`);
+        const body = encodeURIComponent(
+          `Bonjour ${client.prenom},\n\n` +
+          `Veuillez trouver ci-joint la facture ${facture.numero} d'un montant de ${formatPrice(facture.montant_ttc || facture.total || 0)}.\n\n` +
+          `Merci de votre confiance.\n\nCordialement,\nMistral Pans`
+        );
+        window.open(`mailto:${client.email}?subject=${subject}&body=${body}`, '_blank');
+        Toast.info('Client email ouvert - Pensez à joindre le PDF !');
+      }
+    }
   }
   
   async function annulerFacture(id) {
