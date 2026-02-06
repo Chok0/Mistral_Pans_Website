@@ -139,9 +139,12 @@
         throw new Error('Nom et prénom requis');
       }
 
-      // Validation montant
-      if (!amount || amount < 100) {
-        throw new Error('Montant invalide (minimum 1€)');
+      // Validation montant (API PayPlug: min 99 cents, max 2 000 000 cents)
+      if (!amount || amount < 99) {
+        throw new Error('Montant invalide (minimum 0,99 €)');
+      }
+      if (amount > 2000000) {
+        throw new Error('Montant invalide (maximum 20 000 €)');
       }
 
       // Construire les URLs de retour
@@ -162,7 +165,14 @@
               firstName: customer.firstName.trim(),
               lastName: customer.lastName.trim(),
               phone: customer.phone || null,
-              address: customer.address || null
+              address: customer.address
+                ? {
+                    line1: customer.address.line1 || customer.address || null,
+                    postalCode: customer.address.postalCode || null,
+                    city: customer.address.city || null,
+                    country: customer.address.country || 'FR'
+                  }
+                : null
             },
             paymentType,
             orderReference,

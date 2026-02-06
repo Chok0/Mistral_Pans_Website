@@ -127,6 +127,14 @@
       }
     };
 
+    // Vérification honeypot anti-spam
+    const honeypotField = form.querySelector('[name="website"]');
+    if (honeypotField && honeypotField.value) {
+      // Silencieusement ignorer les soumissions de bots
+      console.warn('Honeypot déclenché');
+      return;
+    }
+
     // Validation basique
     if (!customer.firstName || !customer.lastName || !customer.email || !customer.phone) {
       showMessage('Veuillez remplir tous les champs obligatoires', 'error');
@@ -137,6 +145,13 @@
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(customer.email)) {
       showMessage('Veuillez entrer une adresse email valide', 'error');
+      return;
+    }
+
+    // Vérifier l'acceptation des CGV
+    const cgvCheckbox = form.querySelector('input[type="checkbox"][required]');
+    if (cgvCheckbox && !cgvCheckbox.checked) {
+      showMessage('Veuillez accepter les conditions générales de vente', 'error');
       return;
     }
 
@@ -379,19 +394,34 @@ ${formData.get('message')}
    */
   function showPaymentCancelled(reference) {
     showMessage(
-      'Paiement annulé. Votre commande n\'a pas été validée. Vous pouvez réessayer.',
+      'Paiement annulé. Votre commande n\'a pas été validée. Vous pouvez réessayer ci-dessous.',
       'warning'
     );
   }
 
   /**
-   * Affiche le message d'erreur
+   * Affiche le message d'erreur avec détail du code PayPlug si disponible
    */
   function showPaymentError(reference) {
-    showMessage(
-      'Une erreur est survenue lors du paiement. Contactez-nous si le problème persiste.',
-      'error'
-    );
+    const urlParams = new URLSearchParams(window.location.search);
+    const failureCode = urlParams.get('failure');
+
+    const failureMessages = {
+      processing_error: 'Erreur de traitement de la carte. Veuillez réessayer.',
+      card_declined: 'Carte refusée. Vérifiez vos informations ou essayez une autre carte.',
+      insufficient_funds: 'Fonds insuffisants sur la carte.',
+      '3ds_declined': 'Authentification 3D Secure refusée.',
+      incorrect_number: 'Numéro de carte incorrect.',
+      fraud_suspected: 'Paiement refusé (suspicion de fraude).',
+      method_unsupported: 'Méthode de paiement non supportée.',
+      timeout: 'Le délai de paiement a expiré. Veuillez réessayer.',
+      aborted: 'Le paiement a été annulé.'
+    };
+
+    const message = failureMessages[failureCode]
+      || 'Une erreur est survenue lors du paiement. Contactez-nous si le problème persiste.';
+
+    showMessage(message, 'error');
   }
 
   // ============================================================================
