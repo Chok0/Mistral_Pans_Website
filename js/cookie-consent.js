@@ -7,18 +7,18 @@
   'use strict';
 
   const CONSENT_KEY = 'mistral_cookie_consent';
-  const CONSENT_VERSION = '1.0'; // Incrémenter si les services changent
+  const CONSENT_VERSION = '1.0';
 
-  // Services tiers nécessitant un consentement
+  // Services tiers necessitant un consentement
   const SERVICES = {
     essential: {
       name: 'Essentiels',
-      description: 'Cookies nécessaires au fonctionnement du site',
+      description: 'Cookies necessaires au fonctionnement du site',
       required: true
     },
     analytics: {
       name: 'Statistiques',
-      description: 'Statistiques anonymes de visite (aucune donnée personnelle)',
+      description: 'Statistiques anonymes de visite (aucune donnee personnelle)',
       default: true
     },
     maps: {
@@ -34,15 +34,14 @@
   };
 
   /**
-   * Récupère le consentement stocké
+   * Recupere le consentement stocke
    */
   function getConsent() {
     try {
-      const stored = localStorage.getItem(CONSENT_KEY);
+      var stored = localStorage.getItem(CONSENT_KEY);
       if (!stored) return null;
 
-      const consent = JSON.parse(stored);
-      // Vérifier la version
+      var consent = JSON.parse(stored);
       if (consent.version !== CONSENT_VERSION) return null;
 
       return consent;
@@ -55,7 +54,7 @@
    * Sauvegarde le consentement
    */
   function saveConsent(choices) {
-    const consent = {
+    var consent = {
       version: CONSENT_VERSION,
       timestamp: new Date().toISOString(),
       choices: choices
@@ -64,120 +63,115 @@
   }
 
   /**
-   * Vérifie si un service spécifique est autorisé
+   * Verifie si un service specifique est autorise
    */
   function isServiceAllowed(serviceName) {
-    const consent = getConsent();
+    var consent = getConsent();
     if (!consent) return false;
 
-    // Les services essentiels sont toujours autorisés
-    if (SERVICES[serviceName]?.required) return true;
+    if (SERVICES[serviceName] && SERVICES[serviceName].required) return true;
 
     return consent.choices[serviceName] === true;
   }
 
   /**
-   * Charge Google Fonts si autorisé
+   * Charge Google Fonts si autorise
    */
   function loadGoogleFonts() {
     if (!isServiceAllowed('fonts')) return;
 
-    // Vérifier si déjà chargé
     if (document.querySelector('link[href*="fonts.googleapis.com"]')) return;
 
-    const link = document.createElement('link');
+    var link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap';
     document.head.appendChild(link);
   }
 
   /**
-   * Crée et affiche la bannière de consentement
+   * Cree et affiche la banniere de consentement
    */
   function showConsentBanner() {
-    // Ne pas afficher si consentement déjà donné
+    // Ne pas afficher si consentement deja donne
     if (getConsent()) {
       applyConsent();
       return;
     }
 
-    // Éviter la création de bannières multiples (si script chargé 2 fois)
+    // Eviter la creation de bannieres multiples (si script charge 2 fois)
     if (document.getElementById('cookie-consent-banner')) {
       return;
     }
 
-    const banner = document.createElement('div');
+    var banner = document.createElement('div');
     banner.id = 'cookie-consent-banner';
     banner.className = 'cookie-banner';
     banner.setAttribute('role', 'dialog');
     banner.setAttribute('aria-labelledby', 'cookie-title');
-    banner.innerHTML = `
-      <div class="cookie-banner__content">
-        <div class="cookie-banner__text">
-          <h3 id="cookie-title">Respect de votre vie privée</h3>
-          <p>
-            Ce site utilise des cookies et services tiers pour améliorer votre expérience.
-            Vous pouvez choisir les services que vous autorisez.
-          </p>
-        </div>
-
-        <div class="cookie-banner__options" id="cookie-options" style="display: none;">
-          <label class="cookie-option">
-            <input type="checkbox" checked disabled>
-            <span><strong>Essentiels</strong> - Fonctionnement du site (obligatoire)</span>
-          </label>
-          <label class="cookie-option">
-            <input type="checkbox" id="consent-analytics" checked>
-            <span><strong>Statistiques</strong> - Statistiques anonymes de visite</span>
-          </label>
-          <label class="cookie-option">
-            <input type="checkbox" id="consent-maps">
-            <span><strong>Cartes</strong> - Cartes interactives (OpenStreetMap)</span>
-          </label>
-          <label class="cookie-option">
-            <input type="checkbox" id="consent-fonts">
-            <span><strong>Polices</strong> - Google Fonts (transfert IP vers Google)</span>
-          </label>
-        </div>
-
-        <div class="cookie-banner__actions">
-          <button type="button" class="cookie-btn cookie-btn--secondary" id="cookie-customize">
-            Personnaliser
-          </button>
-          <button type="button" class="cookie-btn cookie-btn--secondary" id="cookie-reject">
-            Refuser tout
-          </button>
-          <button type="button" class="cookie-btn cookie-btn--primary" id="cookie-accept">
-            Accepter tout
-          </button>
-        </div>
-
-        <p class="cookie-banner__legal">
-          <a href="mentions-legales.html">Mentions légales</a> -
-          <a href="cgv.html">Politique de confidentialité</a>
-        </p>
-      </div>
-    `;
+    banner.innerHTML = [
+      '<div class="cookie-banner__content">',
+      '  <div class="cookie-banner__text">',
+      '    <h3 id="cookie-title">Respect de votre vie privee</h3>',
+      '    <p>',
+      '      Ce site utilise des cookies et services tiers pour ameliorer votre experience.',
+      '      Vous pouvez choisir les services que vous autorisez.',
+      '    </p>',
+      '  </div>',
+      '',
+      '  <div class="cookie-banner__options" id="cookie-options" style="display: none;">',
+      '    <label class="cookie-option">',
+      '      <input type="checkbox" checked disabled>',
+      '      <span><strong>Essentiels</strong> - Fonctionnement du site (obligatoire)</span>',
+      '    </label>',
+      '    <label class="cookie-option">',
+      '      <input type="checkbox" id="consent-analytics" checked>',
+      '      <span><strong>Statistiques</strong> - Statistiques anonymes de visite</span>',
+      '    </label>',
+      '    <label class="cookie-option">',
+      '      <input type="checkbox" id="consent-maps">',
+      '      <span><strong>Cartes</strong> - Cartes interactives (OpenStreetMap)</span>',
+      '    </label>',
+      '    <label class="cookie-option">',
+      '      <input type="checkbox" id="consent-fonts">',
+      '      <span><strong>Polices</strong> - Google Fonts (transfert IP vers Google)</span>',
+      '    </label>',
+      '  </div>',
+      '',
+      '  <div class="cookie-banner__actions">',
+      '    <button type="button" class="cookie-btn cookie-btn--secondary" id="cookie-customize">',
+      '      Personnaliser',
+      '    </button>',
+      '    <button type="button" class="cookie-btn cookie-btn--secondary" id="cookie-reject">',
+      '      Refuser tout',
+      '    </button>',
+      '    <button type="button" class="cookie-btn cookie-btn--primary" id="cookie-accept">',
+      '      Accepter tout',
+      '    </button>',
+      '  </div>',
+      '',
+      '  <p class="cookie-banner__legal">',
+      '    <a href="mentions-legales.html">Mentions legales</a> -',
+      '    <a href="cgv.html">Politique de confidentialite</a>',
+      '  </p>',
+      '</div>'
+    ].join('\n');
 
     document.body.appendChild(banner);
 
     // Event listeners
-    const customizeBtn = document.getElementById('cookie-customize');
-    const rejectBtn = document.getElementById('cookie-reject');
-    const acceptBtn = document.getElementById('cookie-accept');
-    const optionsDiv = document.getElementById('cookie-options');
+    var customizeBtn = document.getElementById('cookie-customize');
+    var rejectBtn = document.getElementById('cookie-reject');
+    var acceptBtn = document.getElementById('cookie-accept');
+    var optionsDiv = document.getElementById('cookie-options');
 
-    customizeBtn.addEventListener('click', () => {
-      optionsDiv.style.display = optionsDiv.style.display === 'none' ? 'block' : 'none';
-      customizeBtn.textContent = optionsDiv.style.display === 'none' ? 'Personnaliser' : 'Valider mes choix';
-
-      if (optionsDiv.style.display === 'block') {
-        // Mode personnalisation
+    customizeBtn.addEventListener('click', function() {
+      if (optionsDiv.style.display === 'none') {
+        optionsDiv.style.display = 'block';
+        customizeBtn.textContent = 'Valider mes choix';
         acceptBtn.style.display = 'none';
         rejectBtn.style.display = 'none';
       } else {
-        // Valider les choix personnalisés
-        const choices = {
+        var choices = {
           essential: true,
           analytics: document.getElementById('consent-analytics').checked,
           maps: document.getElementById('consent-maps').checked,
@@ -189,8 +183,8 @@
       }
     });
 
-    rejectBtn.addEventListener('click', () => {
-      const choices = {
+    rejectBtn.addEventListener('click', function() {
+      var choices = {
         essential: true,
         analytics: false,
         maps: false,
@@ -201,8 +195,8 @@
       closeBanner();
     });
 
-    acceptBtn.addEventListener('click', () => {
-      const choices = {
+    acceptBtn.addEventListener('click', function() {
+      var choices = {
         essential: true,
         analytics: true,
         maps: true,
@@ -213,61 +207,60 @@
       closeBanner();
     });
 
-    // Animation d'entrée
-    requestAnimationFrame(() => {
+    // Animation d'entree
+    requestAnimationFrame(function() {
       banner.classList.add('cookie-banner--visible');
     });
   }
 
   /**
-   * Ferme la bannière
+   * Ferme la banniere
    */
   function closeBanner() {
-    const banner = document.getElementById('cookie-consent-banner');
+    var banner = document.getElementById('cookie-consent-banner');
     if (banner) {
       banner.classList.remove('cookie-banner--visible');
-      setTimeout(() => banner.remove(), 300);
+      setTimeout(function() {
+        banner.remove();
+      }, 300);
     }
   }
 
   /**
-   * Applique le consentement (charge les services autorisés)
+   * Applique le consentement (charge les services autorises)
    */
   function applyConsent() {
-    const consent = getConsent();
+    var consent = getConsent();
     if (!consent) return;
 
-    // Charger Google Fonts si autorisé
     if (consent.choices.fonts) {
       loadGoogleFonts();
     }
 
-    // Émettre un événement pour les autres scripts
     window.dispatchEvent(new CustomEvent('cookieConsentUpdated', {
       detail: consent.choices
     }));
   }
 
   /**
-   * Permet de rouvrir les paramètres de cookies
+   * Permet de rouvrir les parametres de cookies
    */
   function openSettings() {
-    // Supprimer le consentement existant pour reafficher la bannière
     localStorage.removeItem(CONSENT_KEY);
     showConsentBanner();
   }
 
-  // Initialisation
+  /**
+   * Initialisation
+   */
   function init() {
-    // Attendre que le DOM soit prêt
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', showConsentBanner);
     } else {
       showConsentBanner();
     }
 
-    // Écouter les clics sur les liens de paramètres cookies
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', function(e) {
       if (e.target.matches('[data-cookie-settings]')) {
         e.preventDefault();
         openSettings();
@@ -275,12 +268,12 @@
     });
   }
 
-  // Export
+  // Export API
   window.MistralCookies = {
-    isServiceAllowed,
-    getConsent,
-    openSettings,
-    SERVICES
+    isServiceAllowed: isServiceAllowed,
+    getConsent: getConsent,
+    openSettings: openSettings,
+    SERVICES: SERVICES
   };
 
   // Auto-init
