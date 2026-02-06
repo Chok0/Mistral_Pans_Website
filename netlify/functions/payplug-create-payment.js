@@ -204,9 +204,18 @@ exports.handler = async (event, context) => {
       metadata: {
         order_reference: reference,
         payment_type: paymentType || 'full',
+        source: metadata?.source || 'custom',
         customer_id: metadata?.customerId || null,
         instrument_id: metadata?.instrumentId || null,
-        order_id: metadata?.orderId || null
+        order_id: metadata?.orderId || null,
+        product_name: sanitize(metadata?.productName, 100) || null,
+        gamme: sanitize(metadata?.gamme, 50) || null,
+        taille: sanitize(metadata?.taille, 20) || null,
+        total_price_cents: metadata?.totalPrice ? metadata.totalPrice * 100 : amount,
+        housse_id: metadata?.housseId || null,
+        housse_nom: sanitize(metadata?.housseNom, 50) || null,
+        housse_prix: metadata?.houssePrix || null,
+        livraison: metadata?.livraison || false
       }
     };
 

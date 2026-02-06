@@ -473,6 +473,79 @@ function buildPaymentConfirmationEmail(data) {
 }
 
 /**
+ * Construit l'email de notification artisan pour une nouvelle commande
+ */
+function buildNewOrderNotificationEmail(data) {
+  const { order, client, payment } = data;
+  const isStock = order.source === 'stock';
+  const sourceLabel = isStock ? 'En stock' : 'Sur mesure';
+  const paymentLabel = payment.isFullPayment ? 'Paiement intégral' : 'Acompte (30%)';
+
+  const formatEuros = (amount) => {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
+  };
+
+  return {
+    to: [{ email: 'contact@mistralpans.fr', name: 'Mistral Pans' }],
+    subject: `🎵 Nouvelle commande ${order.reference} - ${sourceLabel}`,
+    htmlContent: `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head><meta charset="UTF-8"></head>
+      <body style="font-family: Inter, system-ui, sans-serif; color: #2C2825; max-width: 600px; margin: 0 auto; padding: 20px;">
+
+        <div style="background: #0D7377; color: white; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">Nouvelle commande !</h1>
+          <p style="margin: 8px 0 0; opacity: 0.9;">${sanitize(order.reference)} - ${sourceLabel}</p>
+        </div>
+
+        <div style="background: #f8f8f8; padding: 24px; border: 1px solid #e5e5e5;">
+
+          <h2 style="color: #0D7377; margin-top: 0;">Client</h2>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 6px 0; font-weight: 600;">Nom</td><td>${sanitize(client.prenom)} ${sanitize(client.nom)}</td></tr>
+            <tr><td style="padding: 6px 0; font-weight: 600;">Email</td><td><a href="mailto:${sanitize(client.email)}">${sanitize(client.email)}</a></td></tr>
+            ${client.telephone ? `<tr><td style="padding: 6px 0; font-weight: 600;">Téléphone</td><td>${sanitize(client.telephone)}</td></tr>` : ''}
+          </table>
+
+          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;">
+
+          <h2 style="color: #0D7377;">Instrument</h2>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 6px 0; font-weight: 600;">Produit</td><td>${sanitize(order.productName)}</td></tr>
+            ${order.gamme ? `<tr><td style="padding: 6px 0; font-weight: 600;">Gamme</td><td>${sanitize(order.gamme)}</td></tr>` : ''}
+            ${order.taille ? `<tr><td style="padding: 6px 0; font-weight: 600;">Taille</td><td>${sanitize(order.taille)}</td></tr>` : ''}
+            <tr><td style="padding: 6px 0; font-weight: 600;">Source</td><td><strong style="color: ${isStock ? '#4A7C59' : '#0D7377'};">${sourceLabel}</strong></td></tr>
+            ${order.instrumentId ? `<tr><td style="padding: 6px 0; font-weight: 600;">ID instrument</td><td style="font-family: monospace; font-size: 12px;">${sanitize(order.instrumentId)}</td></tr>` : ''}
+          </table>
+
+          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 20px 0;">
+
+          <h2 style="color: #0D7377;">Paiement</h2>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 6px 0; font-weight: 600;">Type</td><td>${paymentLabel}</td></tr>
+            <tr><td style="padding: 6px 0; font-weight: 600;">Montant payé</td><td style="font-size: 18px; font-weight: 700; color: #4A7C59;">${formatEuros(payment.amount)}</td></tr>
+            ${!payment.isFullPayment ? `<tr><td style="padding: 6px 0; font-weight: 600;">Total commande</td><td>${formatEuros(payment.totalAmount)}</td></tr>
+            <tr><td style="padding: 6px 0; font-weight: 600;">Reste à payer</td><td style="color: #F59E0B; font-weight: 600;">${formatEuros(payment.totalAmount - payment.amount)}</td></tr>` : ''}
+          </table>
+
+        </div>
+
+        <div style="background: #1A1815; color: white; padding: 20px; border-radius: 0 0 12px 12px; text-align: center;">
+          <p style="margin: 0;">
+            <a href="https://mistralpans.fr/admin.html#commandes" style="color: #0D7377; text-decoration: none; font-weight: 600;">
+              Voir dans le panneau admin →
+            </a>
+          </p>
+        </div>
+
+      </body>
+      </html>
+    `
+  };
+}
+
+/**
  * Retourne l'origine CORS autorisée
  */
 function getAllowedOrigin(event) {
@@ -616,6 +689,17 @@ exports.handler = async (event, context) => {
           };
         }
         emailData = buildPaymentConfirmationEmail(data);
+        break;
+
+      case 'new_order_notification':
+        if (!data.order?.reference || !data.payment) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Données notification commande manquantes' })
+          };
+        }
+        emailData = buildNewOrderNotificationEmail(data);
         break;
 
       case 'contact':

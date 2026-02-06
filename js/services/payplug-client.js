@@ -51,7 +51,9 @@
           instrumentId: order.instrumentId,
           orderId: order.orderId,
           gamme: order.gamme,
-          taille: order.taille
+          taille: order.taille,
+          source: order.source,
+          ...(options.metadata || {})
         }
       });
     },
@@ -94,14 +96,16 @@
         customer,
         paymentType: 'full',
         orderReference: order.reference,
-        description: `Paiement commande ${order.reference}`,
+        description: `Paiement commande ${order.reference || 'handpan'}`,
         integrated: options.integrated || false,
         metadata: {
           customerId: order.customerId,
           instrumentId: order.instrumentId,
           orderId: order.orderId,
           gamme: order.gamme,
-          taille: order.taille
+          taille: order.taille,
+          source: order.source,
+          ...(options.metadata || {})
         }
       });
     },
@@ -124,7 +128,7 @@
         customer,
         paymentType: 'installments',
         orderReference: order.reference,
-        description: `Paiement ${installments}x commande ${order.reference}`,
+        description: `Paiement ${installments}x commande ${order.reference || 'handpan'}`,
         installments,
         integrated: false, // Oney ne supporte pas l'intégré
         metadata: {
@@ -133,7 +137,9 @@
           orderId: order.orderId,
           gamme: order.gamme,
           taille: order.taille,
-          installments
+          source: order.source,
+          installments,
+          ...(order.metadata || {})
         }
       });
     },
