@@ -1,11 +1,18 @@
 /* ==========================================================================
    MISTRAL PANS - Page Commander
    Gestion des formulaires de commande et intégration Payplug
-   Supporte le mode intégré (carte embarquée) avec fallback hosted (redirection)
+   Supporte : acompte 30%, Oney 3x/4x, mode intégré + fallback hosted
    ========================================================================== */
 
 (function(window) {
   'use strict';
+
+  // Taux d'acompte
+  const DEPOSIT_RATE = 0.30;
+
+  // Plage Oney (en euros)
+  const ONEY_MIN = 100;
+  const ONEY_MAX = 3000;
 
   // État de la page
   let orderData = {
@@ -20,6 +27,51 @@
   let integratedFormReady = false;
   let pendingPaymentId = null;
 
+  // État Oney
+  let selectedInstallments = 3;
+
+  // ============================================================================
+  // CALCULS
+  // ============================================================================
+
+  /**
+   * Calcule le montant de l'acompte (30% du prix, arrondi à l'euro)
+   */
+  function getDepositAmount() {
+    return Math.round(orderData.price * DEPOSIT_RATE);
+  }
+
+  /**
+   * Calcule le montant de l'acompte en centimes
+   */
+  function getDepositAmountCents() {
+    return getDepositAmount() * 100;
+  }
+
+  /**
+   * Vérifie si le prix est éligible Oney
+   */
+  function isOneyEligible() {
+    return orderData.price >= ONEY_MIN && orderData.price <= ONEY_MAX;
+  }
+
+  /**
+   * Calcule les échéances Oney
+   * @param {number} total - Montant total en euros
+   * @param {number} n - Nombre d'échéances (3 ou 4)
+   * @returns {number[]} Montants de chaque échéance
+   */
+  function computeInstallments(total, n) {
+    const base = Math.floor(total / n);
+    const remainder = total - base * n;
+    // La première échéance absorbe le reste
+    const installments = [base + remainder];
+    for (let i = 1; i < n; i++) {
+      installments.push(base);
+    }
+    return installments;
+  }
+
   // ============================================================================
   // INITIALISATION
   // ============================================================================
@@ -30,6 +82,9 @@
 
     // Initialiser les formulaires
     initForms();
+
+    // Initialiser le sélecteur Oney
+    initOneySelector();
 
     // Initialiser le formulaire de carte intégré si le SDK est disponible
     initIntegratedPaymentForm();
@@ -54,14 +109,21 @@
   }
 
   /**
-   * Met à jour l'affichage de la commande
+   * Met à jour l'affichage de la commande (deposit + oney)
    */
   function updateOrderDisplay() {
+    const deposit = getDepositAmount();
+    const remaining = orderData.price - deposit;
+
     // Champs cachés
     const formProduct = document.getElementById('form-product');
     const formProductRdv = document.getElementById('form-product-rdv');
+    const formProductOney = document.getElementById('form-product-oney');
+    const formDepositAmount = document.getElementById('form-deposit-amount');
     if (formProduct) formProduct.value = orderData.productName;
     if (formProductRdv) formProductRdv.value = orderData.productName;
+    if (formProductOney) formProductOney.value = orderData.productName;
+    if (formDepositAmount) formDepositAmount.value = deposit;
 
     // Affichage produit
     const productName = document.getElementById('product-name');
@@ -71,13 +133,85 @@
     if (productNotes && orderData.notes) productNotes.textContent = orderData.notes;
     if (productPrice) productPrice.textContent = formatPrice(orderData.price);
 
-    // Résumé commande
+    // Option card deposit amount
+    const optionDeposit = document.getElementById('option-deposit-amount');
+    if (optionDeposit) optionDeposit.textContent = `30 % (${formatPrice(deposit)})`;
+
+    // Résumé commande deposit
     const summaryProduct = document.getElementById('summary-product');
     const summaryTotal = document.getElementById('summary-total');
+    const summaryDeposit = document.getElementById('summary-deposit');
     const summaryRemaining = document.getElementById('summary-remaining');
     if (summaryProduct) summaryProduct.textContent = orderData.productName;
     if (summaryTotal) summaryTotal.textContent = formatPrice(orderData.price);
-    if (summaryRemaining) summaryRemaining.textContent = formatPrice(orderData.price - 300);
+    if (summaryDeposit) summaryDeposit.textContent = formatPrice(deposit);
+    if (summaryRemaining) summaryRemaining.textContent = formatPrice(remaining);
+
+    // Bouton submit deposit
+    const depositBtnAmount = document.getElementById('deposit-btn-amount');
+    if (depositBtnAmount) depositBtnAmount.textContent = formatPrice(deposit);
+
+    // Oney
+    updateOneyDisplay();
+  }
+
+  /**
+   * Met à jour l'affichage Oney
+   */
+  function updateOneyDisplay() {
+    const eligible = isOneyEligible();
+
+    const eligibleEl = document.getElementById('oney-eligible');
+    const ineligibleEl = document.getElementById('oney-ineligible');
+    if (eligibleEl) eligibleEl.style.display = eligible ? '' : 'none';
+    if (ineligibleEl) ineligibleEl.style.display = eligible ? 'none' : '';
+
+    if (!eligible) return;
+
+    const total = orderData.price;
+
+    // Produit
+    const oneyProduct = document.getElementById('oney-product');
+    const oneyTotal = document.getElementById('oney-total');
+    if (oneyProduct) oneyProduct.textContent = orderData.productName;
+    if (oneyTotal) oneyTotal.textContent = formatPrice(total);
+
+    // Détails 3x
+    const inst3 = computeInstallments(total, 3);
+    const detail3 = document.getElementById('oney-3x-detail');
+    if (detail3) detail3.textContent = `3 × ${formatPrice(inst3[1])}`;
+
+    // Détails 4x
+    const inst4 = computeInstallments(total, 4);
+    const detail4 = document.getElementById('oney-4x-detail');
+    if (detail4) detail4.textContent = `4 × ${formatPrice(inst4[1])}`;
+
+    // Mettre à jour la grille d'échéances
+    updateOneySchedule(selectedInstallments);
+  }
+
+  /**
+   * Met à jour le détail des échéances Oney
+   */
+  function updateOneySchedule(n) {
+    const installments = computeInstallments(orderData.price, n);
+
+    for (let i = 0; i < 4; i++) {
+      const row = document.getElementById(`oney-schedule-${i + 1}`);
+      const amount = document.getElementById(`oney-amount-${i + 1}`);
+      if (row) row.style.display = (i < n) ? '' : 'none';
+      if (amount && i < n) amount.textContent = formatPrice(installments[i]);
+    }
+
+    // Bouton
+    const btnInstallments = document.getElementById('oney-btn-installments');
+    const btnTotal = document.getElementById('oney-btn-total');
+    if (btnInstallments) btnInstallments.textContent = n;
+    if (btnTotal) btnTotal.textContent = formatPrice(orderData.price);
+
+    // Champ caché
+    const formInstallments = document.getElementById('form-installments');
+    if (formInstallments) formInstallments.value = n;
   }
 
   /**
@@ -90,6 +224,36 @@
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount);
+  }
+
+  // ============================================================================
+  // ONEY SELECTOR
+  // ============================================================================
+
+  /**
+   * Initialise le sélecteur 3x/4x Oney
+   */
+  function initOneySelector() {
+    const selector = document.getElementById('oney-selector');
+    if (!selector) return;
+
+    selector.addEventListener('click', function(e) {
+      const option = e.target.closest('.oney-selector__option');
+      if (!option) return;
+
+      const radio = option.querySelector('input[type="radio"]');
+      if (!radio) return;
+
+      // Mettre à jour la sélection visuelle
+      selector.querySelectorAll('.oney-selector__option').forEach(el => {
+        el.classList.remove('selected');
+      });
+      option.classList.add('selected');
+      radio.checked = true;
+
+      selectedInstallments = parseInt(radio.value);
+      updateOneySchedule(selectedInstallments);
+    });
   }
 
   // ============================================================================
@@ -149,7 +313,6 @@
 
     } catch (error) {
       console.warn('[Commander] Erreur init Integrated Payment:', error.message);
-      // Le formulaire de carte restera caché, on utilisera le mode hosted
     }
   }
 
@@ -167,6 +330,12 @@
       orderForm.addEventListener('submit', handleOrderSubmit);
     }
 
+    // Formulaire Oney
+    const oneyForm = document.querySelector('form[data-form="oney"]');
+    if (oneyForm) {
+      oneyForm.addEventListener('submit', handleOneySubmit);
+    }
+
     // Formulaire rendez-vous
     const appointmentForm = document.querySelector('form[data-form="appointment"]');
     if (appointmentForm) {
@@ -174,15 +343,19 @@
     }
   }
 
+  // ============================================================================
+  // ACOMPTE (30%)
+  // ============================================================================
+
   /**
-   * Gère la soumission du formulaire de commande
+   * Gère la soumission du formulaire de commande (acompte 30%)
    */
   async function handleOrderSubmit(e) {
     e.preventDefault();
 
     const form = e.target;
     const submitBtn = document.getElementById('deposit-submit-btn') || form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
+    const originalText = submitBtn.innerHTML;
 
     // Récupérer les données du formulaire
     const formData = new FormData(form);
@@ -229,7 +402,7 @@
 
     try {
       if (typeof MistralPayplug === 'undefined') {
-        await sendOrderByEmail(customer, formData);
+        await sendOrderByEmail(customer, formData, 'acompte');
         return;
       }
 
@@ -242,12 +415,12 @@
 
     } catch (error) {
       console.error('Erreur commande:', error);
-      showMessage(`Erreur: ${error.message}. Nous allons vous envoyer un email de confirmation.`, 'warning');
-      await sendOrderByEmail(customer, new FormData(form));
+      showMessage('Erreur: ' + error.message + '. Nous allons vous envoyer un email de confirmation.', 'warning');
+      await sendOrderByEmail(customer, new FormData(form), 'acompte');
 
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      submitBtn.innerHTML = originalText;
     }
   }
 
@@ -255,6 +428,8 @@
    * Gère le paiement en mode intégré (carte sur la page)
    */
   async function handleIntegratedPayment(customer, submitBtn, originalText) {
+    const depositCents = getDepositAmountCents();
+
     // Étape 1 : Créer le paiement côté serveur (si pas déjà créé)
     if (!pendingPaymentId) {
       submitBtn.textContent = 'Création du paiement...';
@@ -263,7 +438,7 @@
         gamme: orderData.gamme || orderData.productName,
         taille: orderData.taille,
         prixTotal: orderData.price
-      }, { integrated: true });
+      }, { integrated: true, amount: depositCents });
 
       if (!result.success || !result.paymentId) {
         throw new Error(result.error || 'Impossible de créer le paiement');
@@ -276,6 +451,8 @@
         reference: result.reference,
         customer,
         product: orderData,
+        paymentType: 'acompte',
+        depositAmount: getDepositAmount(),
         createdAt: new Date().toISOString()
       }));
     }
@@ -292,7 +469,6 @@
       const payResult = await MistralPayplug.payIntegrated(pendingPaymentId);
 
       if (payResult.success) {
-        // Paiement réussi
         const pendingOrder = JSON.parse(localStorage.getItem('mistral_pending_order') || 'null');
         const reference = pendingOrder?.reference || '';
 
@@ -301,10 +477,9 @@
         pendingPaymentId = null;
       }
     } catch (payError) {
-      // Le paiement a échoué mais l'ID reste valide pour réessayer
       showMessage(payError.message || 'Erreur de paiement. Veuillez réessayer.', 'error');
       submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      submitBtn.innerHTML = originalText;
     } finally {
       if (loading) loading.classList.remove('active');
     }
@@ -314,17 +489,21 @@
    * Gère le paiement en mode hébergé (redirection vers PayPlug)
    */
   async function handleHostedPayment(customer) {
+    const depositCents = getDepositAmountCents();
+
     const result = await MistralPayplug.createDeposit(customer, {
       gamme: orderData.gamme || orderData.productName,
       taille: orderData.taille,
       prixTotal: orderData.price
-    });
+    }, { amount: depositCents });
 
     if (result.success && result.paymentUrl) {
       localStorage.setItem('mistral_pending_order', JSON.stringify({
         reference: result.reference,
         customer,
         product: orderData,
+        paymentType: 'acompte',
+        depositAmount: getDepositAmount(),
         createdAt: new Date().toISOString()
       }));
 
@@ -337,20 +516,151 @@
     }
   }
 
+  // ============================================================================
+  // ONEY 3x/4x
+  // ============================================================================
+
+  /**
+   * Gère la soumission du formulaire Oney
+   */
+  async function handleOneySubmit(e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const submitBtn = document.getElementById('oney-submit-btn') || form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
+    const formData = new FormData(form);
+
+    // Vérification honeypot
+    const honeypotField = form.querySelector('[name="website"]');
+    if (honeypotField && honeypotField.value) {
+      console.warn('Honeypot déclenché');
+      return;
+    }
+
+    const customer = {
+      firstName: formData.get('firstname')?.trim(),
+      lastName: formData.get('lastname')?.trim(),
+      email: formData.get('email')?.trim(),
+      phone: formData.get('phone')?.trim(),
+      address: {
+        line1: formData.get('address')?.trim(),
+        postalCode: formData.get('postcode')?.trim(),
+        city: formData.get('city')?.trim(),
+        country: 'FR'
+      }
+    };
+
+    // Validation
+    if (!customer.firstName || !customer.lastName || !customer.email || !customer.phone) {
+      showMessage('Veuillez remplir tous les champs obligatoires', 'error');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customer.email)) {
+      showMessage('Veuillez entrer une adresse email valide', 'error');
+      return;
+    }
+
+    if (!customer.address.line1 || !customer.address.postalCode || !customer.address.city) {
+      showMessage('Adresse complète requise pour le paiement Oney', 'error');
+      return;
+    }
+
+    if (!customer.phone) {
+      showMessage('Numéro de téléphone mobile requis pour Oney', 'error');
+      return;
+    }
+
+    const cgvCheckbox = form.querySelector('input[type="checkbox"][required]');
+    if (cgvCheckbox && !cgvCheckbox.checked) {
+      showMessage('Veuillez accepter les conditions générales de vente', 'error');
+      return;
+    }
+
+    if (!isOneyEligible()) {
+      showMessage('Le paiement Oney est disponible pour les montants entre 100 € et 3 000 €', 'error');
+      return;
+    }
+
+    // Désactiver le bouton
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Préparation du paiement...';
+
+    try {
+      if (typeof MistralPayplug === 'undefined') {
+        await sendOrderByEmail(customer, formData, 'oney');
+        return;
+      }
+
+      const totalCents = orderData.price * 100;
+
+      const result = await MistralPayplug.createInstallmentPayment(
+        customer,
+        {
+          reference: null,
+          gamme: orderData.gamme || orderData.productName,
+          taille: orderData.taille,
+          prixTotal: orderData.price
+        },
+        totalCents,
+        selectedInstallments
+      );
+
+      if (result.success && result.paymentUrl) {
+        localStorage.setItem('mistral_pending_order', JSON.stringify({
+          reference: result.reference,
+          customer,
+          product: orderData,
+          paymentType: `oney_${selectedInstallments}x`,
+          createdAt: new Date().toISOString()
+        }));
+
+        showMessage('Redirection vers Oney...', 'info');
+        setTimeout(() => {
+          MistralPayplug.redirectToPayment(result.paymentUrl);
+        }, 1000);
+      } else {
+        throw new Error(result.error || 'Impossible de créer le paiement Oney');
+      }
+
+    } catch (error) {
+      console.error('Erreur Oney:', error);
+      showMessage('Erreur: ' + error.message, 'error');
+
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
+  }
+
+  // ============================================================================
+  // FALLBACK EMAIL
+  // ============================================================================
+
   /**
    * Envoie la commande par email (fallback)
    */
-  async function sendOrderByEmail(customer, formData) {
-    const message = `
-Commande avec acompte - ${orderData.productName}
+  async function sendOrderByEmail(customer, formData, paymentType) {
+    const deposit = getDepositAmount();
+    const isOney = paymentType === 'oney';
+    const typeLabel = isOney ? `Commande Oney ${selectedInstallments}x` : 'Commande avec acompte';
 
-Prix total: ${formatPrice(orderData.price)}
-Acompte: 300 €
-Reste à payer: ${formatPrice(orderData.price - 300)}
-
-Adresse: ${formData.get('address')}
-Message: ${formData.get('message') || 'Aucun'}
-    `.trim();
+    const message = [
+      `${typeLabel} - ${orderData.productName}`,
+      '',
+      `Prix total: ${formatPrice(orderData.price)}`,
+      isOney
+        ? `Paiement en ${selectedInstallments}x`
+        : `Acompte (30%): ${formatPrice(deposit)}\nReste à payer: ${formatPrice(orderData.price - deposit)}`,
+      '',
+      `Adresse: ${formData.get('address') || 'Non renseignée'}`,
+      formData.get('postcode') ? `Code postal: ${formData.get('postcode')}` : '',
+      formData.get('city') ? `Ville: ${formData.get('city')}` : '',
+      `Message: ${formData.get('message') || 'Aucun'}`
+    ].filter(Boolean).join('\n').trim();
 
     try {
       if (typeof MistralEmail !== 'undefined') {
@@ -360,7 +670,7 @@ Message: ${formData.get('message') || 'Aucun'}
           email: customer.email,
           phone: customer.phone,
           message: message,
-          type: 'Commande avec acompte'
+          type: typeLabel
         });
 
         if (result.success) {
@@ -369,15 +679,14 @@ Message: ${formData.get('message') || 'Aucun'}
           throw new Error(result.error);
         }
       } else {
-        // Mailto fallback
-        const subject = encodeURIComponent(`[Mistral Pans] Commande - ${customer.firstName} ${customer.lastName}`);
+        const subject = encodeURIComponent('[Mistral Pans] ' + typeLabel + ' - ' + customer.firstName + ' ' + customer.lastName);
         const body = encodeURIComponent(
-          `Nom: ${customer.firstName} ${customer.lastName}\n` +
-          `Email: ${customer.email}\n` +
-          `Téléphone: ${customer.phone}\n\n` +
+          'Nom: ' + customer.firstName + ' ' + customer.lastName + '\n' +
+          'Email: ' + customer.email + '\n' +
+          'Téléphone: ' + customer.phone + '\n\n' +
           message
         );
-        window.location.href = `mailto:contact@mistralpans.fr?subject=${subject}&body=${body}`;
+        window.location.href = 'mailto:contact@mistralpans.fr?subject=' + subject + '&body=' + body;
         showMessage('Votre client email va s\'ouvrir.', 'info');
       }
     } catch (error) {
@@ -385,6 +694,10 @@ Message: ${formData.get('message') || 'Aucun'}
       showMessage('Une erreur est survenue. Contactez-nous directement: contact@mistralpans.fr', 'error');
     }
   }
+
+  // ============================================================================
+  // RENDEZ-VOUS
+  // ============================================================================
 
   /**
    * Gère la soumission du formulaire de rendez-vous
@@ -398,19 +711,18 @@ Message: ${formData.get('message') || 'Aucun'}
 
     const formData = new FormData(form);
 
-    // Désactiver le bouton
     submitBtn.disabled = true;
     submitBtn.textContent = 'Envoi en cours...';
 
     try {
-      const message = `
-Demande de rendez-vous
-
-Préférence de contact: ${formData.get('contact_preference')}
-Instrument d'intérêt: ${orderData.productName}
-
-${formData.get('message')}
-      `.trim();
+      const message = [
+        'Demande de rendez-vous',
+        '',
+        'Préférence de contact: ' + formData.get('contact_preference'),
+        'Instrument d\'intérêt: ' + orderData.productName,
+        '',
+        formData.get('message')
+      ].join('\n').trim();
 
       if (typeof MistralEmail !== 'undefined') {
         const result = await MistralEmail.sendContact({
@@ -429,15 +741,14 @@ ${formData.get('message')}
           throw new Error(result.error);
         }
       } else {
-        // Mailto fallback
-        const subject = encodeURIComponent(`[Mistral Pans] Demande RDV - ${formData.get('firstname')} ${formData.get('lastname')}`);
+        const subject = encodeURIComponent('[Mistral Pans] Demande RDV - ' + formData.get('firstname') + ' ' + formData.get('lastname'));
         const body = encodeURIComponent(
-          `Nom: ${formData.get('firstname')} ${formData.get('lastname')}\n` +
-          `Email: ${formData.get('email')}\n` +
-          `Téléphone: ${formData.get('phone')}\n\n` +
+          'Nom: ' + formData.get('firstname') + ' ' + formData.get('lastname') + '\n' +
+          'Email: ' + formData.get('email') + '\n' +
+          'Téléphone: ' + formData.get('phone') + '\n\n' +
           message
         );
-        window.location.href = `mailto:contact@mistralpans.fr?subject=${subject}&body=${body}`;
+        window.location.href = 'mailto:contact@mistralpans.fr?subject=' + subject + '&body=' + body;
         showMessage('Votre client email va s\'ouvrir.', 'info');
       }
 
@@ -455,7 +766,7 @@ ${formData.get('message')}
   // ============================================================================
 
   /**
-   * Vérifie le retour de Payplug (mode hosted)
+   * Vérifie le retour de Payplug (mode hosted / Oney)
    */
   function checkPaymentReturn() {
     if (typeof MistralPayplug === 'undefined') return;
@@ -495,29 +806,48 @@ ${formData.get('message')}
     const container = document.querySelector('.order-page .container') || document.querySelector('main');
     if (!container) return;
 
-    container.innerHTML = `
-      <div class="payment-result payment-result--success">
-        <div class="payment-result__icon">✓</div>
-        <h2>Paiement confirmé !</h2>
-        <p>Merci pour votre commande. Votre acompte a bien été enregistré.</p>
+    // Échapper les données pour éviter XSS
+    const safeRef = escapeHtml(reference || 'N/A');
+    const safeProduct = escapeHtml(pendingOrder?.product?.productName || 'Handpan sur mesure');
+    const paymentType = pendingOrder?.paymentType || 'acompte';
+    const isOney = paymentType.startsWith('oney');
 
-        <div class="payment-result__details">
-          <p><strong>Référence :</strong> ${reference || 'N/A'}</p>
-          ${pendingOrder ? `
-            <p><strong>Instrument :</strong> ${pendingOrder.product?.productName || 'Handpan sur mesure'}</p>
-            <p><strong>Acompte versé :</strong> 300 €</p>
-          ` : ''}
-        </div>
+    let amountDetail = '';
+    if (isOney) {
+      amountDetail = '<p><strong>Mode :</strong> Paiement en ' + escapeHtml(paymentType.replace('oney_', '')) + '</p>';
+    } else if (pendingOrder?.depositAmount) {
+      amountDetail = '<p><strong>Acompte versé :</strong> ' + escapeHtml(formatPrice(pendingOrder.depositAmount)) + '</p>';
+    }
 
-        <p>Un email de confirmation vous a été envoyé. Nous vous contacterons prochainement pour la suite.</p>
-
-        <div class="payment-result__actions">
-          <a href="index.html" class="btn btn--primary">Retour à l'accueil</a>
-        </div>
-      </div>
-    `;
+    container.innerHTML =
+      '<div class="payment-result payment-result--success">' +
+        '<div class="payment-result__icon">✓</div>' +
+        '<h2>Paiement confirmé !</h2>' +
+        '<p>Merci pour votre commande.' + (isOney ? '' : ' Votre acompte a bien été enregistré.') + '</p>' +
+        '<div class="payment-result__details">' +
+          '<p><strong>Référence :</strong> ' + safeRef + '</p>' +
+          '<p><strong>Instrument :</strong> ' + safeProduct + '</p>' +
+          amountDetail +
+        '</div>' +
+        '<p>Un email de confirmation vous a été envoyé. Nous vous contacterons prochainement pour la suite.</p>' +
+        '<div class="payment-result__actions">' +
+          '<a href="index.html" class="btn btn--primary">Retour à l\'accueil</a>' +
+        '</div>' +
+      '</div>';
 
     addPaymentResultStyles();
+  }
+
+  /**
+   * Échappe les caractères HTML
+   */
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   /**
@@ -562,43 +892,33 @@ ${formData.get('message')}
   /**
    * Affiche un message à l'utilisateur
    */
-  function showMessage(text, type = 'info') {
+  function showMessage(text, type) {
+    type = type || 'info';
     // Supprimer les messages existants
     const existing = document.querySelector('.order-message');
     if (existing) existing.remove();
 
-    const colors = {
+    var colors = {
       success: '#4A7C59',
       error: '#EF4444',
       warning: '#F59E0B',
       info: '#0D7377'
     };
 
-    const message = document.createElement('div');
+    var message = document.createElement('div');
     message.className = 'order-message';
-    message.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 16px 24px;
-      background: ${colors[type] || colors.info};
-      color: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-      z-index: 10000;
-      max-width: 90%;
-      text-align: center;
-      animation: slideDown 0.3s ease;
-    `;
+    message.style.cssText =
+      'position:fixed;top:20px;left:50%;transform:translateX(-50%);' +
+      'padding:16px 24px;background:' + (colors[type] || colors.info) + ';' +
+      'color:white;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.2);' +
+      'z-index:10000;max-width:90%;text-align:center;animation:slideDown 0.3s ease;';
     message.textContent = text;
 
     document.body.appendChild(message);
 
-    // Auto-remove après 5 secondes
-    setTimeout(() => {
+    setTimeout(function() {
       message.style.animation = 'slideUp 0.3s ease';
-      setTimeout(() => message.remove(), 300);
+      setTimeout(function() { message.remove(); }, 300);
     }, 5000);
   }
 
@@ -608,53 +928,17 @@ ${formData.get('message')}
   function addPaymentResultStyles() {
     if (document.getElementById('payment-result-styles')) return;
 
-    const style = document.createElement('style');
+    var style = document.createElement('style');
     style.id = 'payment-result-styles';
-    style.textContent = `
-      .payment-result {
-        text-align: center;
-        padding: 60px 20px;
-        max-width: 500px;
-        margin: 0 auto;
-      }
-      .payment-result--success .payment-result__icon {
-        width: 80px;
-        height: 80px;
-        background: #4A7C59;
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 40px;
-        margin: 0 auto 24px;
-      }
-      .payment-result h2 {
-        color: #4A7C59;
-        margin-bottom: 16px;
-      }
-      .payment-result__details {
-        background: #f5f5f5;
-        padding: 20px;
-        border-radius: 8px;
-        margin: 24px 0;
-        text-align: left;
-      }
-      .payment-result__details p {
-        margin: 8px 0;
-      }
-      .payment-result__actions {
-        margin-top: 32px;
-      }
-      @keyframes slideDown {
-        from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
-        to { transform: translateX(-50%) translateY(0); opacity: 1; }
-      }
-      @keyframes slideUp {
-        from { transform: translateX(-50%) translateY(0); opacity: 1; }
-        to { transform: translateX(-50%) translateY(-100%); opacity: 0; }
-      }
-    `;
+    style.textContent =
+      '.payment-result{text-align:center;padding:60px 20px;max-width:500px;margin:0 auto}' +
+      '.payment-result--success .payment-result__icon{width:80px;height:80px;background:#4A7C59;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 24px}' +
+      '.payment-result h2{color:#4A7C59;margin-bottom:16px}' +
+      '.payment-result__details{background:#f5f5f5;padding:20px;border-radius:8px;margin:24px 0;text-align:left}' +
+      '.payment-result__details p{margin:8px 0}' +
+      '.payment-result__actions{margin-top:32px}' +
+      '@keyframes slideDown{from{transform:translateX(-50%) translateY(-100%);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}' +
+      '@keyframes slideUp{from{transform:translateX(-50%) translateY(0);opacity:1}to{transform:translateX(-50%) translateY(-100%);opacity:0}}';
     document.head.appendChild(style);
   }
 
@@ -664,29 +948,28 @@ ${formData.get('message')}
 
   window.selectOption = function(option) {
     // Mettre à jour les options visuellement
-    document.querySelectorAll('.order-option').forEach(el => {
+    document.querySelectorAll('.order-option').forEach(function(el) {
       el.classList.remove('selected');
       el.setAttribute('aria-selected', 'false');
     });
 
-    const selectedOption = document.querySelector(`[data-option="${option}"]`);
+    var selectedOption = document.querySelector('[data-option="' + option + '"]');
     if (selectedOption) {
       selectedOption.classList.add('selected');
       selectedOption.setAttribute('aria-selected', 'true');
     }
 
     // Afficher le bon formulaire
-    document.querySelectorAll('.order-form').forEach(el => {
+    document.querySelectorAll('.order-form').forEach(function(el) {
       el.classList.remove('active');
     });
 
-    const targetForm = document.getElementById(`form-${option}`);
+    var targetForm = document.getElementById('form-' + option);
     if (targetForm) {
       targetForm.classList.add('active');
-      // Focus sur le premier champ
-      const firstInput = targetForm.querySelector('input:not([type="hidden"])');
+      var firstInput = targetForm.querySelector('input:not([type="hidden"])');
       if (firstInput) {
-        setTimeout(() => firstInput.focus(), 100);
+        setTimeout(function() { firstInput.focus(); }, 100);
       }
     }
   };

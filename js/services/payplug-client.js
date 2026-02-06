@@ -9,8 +9,8 @@
 
   const PAYPLUG_API_URL = '/.netlify/functions/payplug-create-payment';
 
-  // Montants par défaut (en centimes)
-  const DEFAULT_DEPOSIT = 30000; // 300€ acompte
+  // Taux d'acompte par défaut (30%)
+  const DEFAULT_DEPOSIT_RATE = 0.30;
 
   /**
    * Module MistralPayplug
@@ -22,16 +22,25 @@
     _integratedPayment: null,
 
     /**
-     * Créer un paiement d'acompte (300€)
+     * Créer un paiement d'acompte (30% du prix total par défaut)
      * @param {Object} customer - Informations client
      * @param {Object} order - Informations commande
      * @param {Object} [options] - Options supplémentaires
      * @param {boolean} [options.integrated] - Utiliser le mode intégré
+     * @param {number} [options.amount] - Montant en centimes (si absent, calcule 30% de prixTotal)
      * @returns {Promise<Object>} - Résultat du paiement
      */
     async createDeposit(customer, order, options = {}) {
+      // Montant explicite ou 30% du prix total
+      const amount = options.amount
+        || (order.prixTotal ? Math.round(order.prixTotal * DEFAULT_DEPOSIT_RATE) * 100 : null);
+
+      if (!amount) {
+        throw new Error('Montant de l\'acompte requis (options.amount ou order.prixTotal)');
+      }
+
       return this._createPayment({
-        amount: DEFAULT_DEPOSIT,
+        amount,
         customer,
         paymentType: 'acompte',
         orderReference: order.reference,

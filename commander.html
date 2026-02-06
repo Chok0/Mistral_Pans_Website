@@ -83,6 +83,11 @@
       margin-bottom: var(--space-3xl);
     }
     
+    @media (min-width: 769px) {
+      .order-options--three {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
     @media (max-width: 768px) {
       .order-options {
         grid-template-columns: 1fr;
@@ -215,6 +220,79 @@
     
     .paypal-note strong {
       color: #0070BA;
+    }
+
+    /* ---- Oney installment selector ---- */
+    .oney-selector {
+      display: flex;
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+    }
+    .oney-selector__option {
+      flex: 1;
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-lg);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-base);
+      background: var(--color-white);
+    }
+    .oney-selector__option:hover {
+      border-color: var(--color-accent);
+    }
+    .oney-selector__option.selected {
+      border-color: var(--color-accent);
+      background: rgba(13, 115, 119, 0.04);
+    }
+    .oney-selector__option input[type="radio"] {
+      display: none;
+    }
+    .oney-selector__title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-accent);
+      margin-bottom: var(--space-xs);
+    }
+    .oney-selector__detail {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+    }
+    .oney-breakdown {
+      background: var(--color-bg-warm);
+      border-radius: var(--radius-md);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-xl);
+    }
+    .oney-breakdown__row {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-xs) 0;
+      font-size: 0.9375rem;
+    }
+    .oney-breakdown__row.highlight {
+      font-weight: 600;
+      color: var(--color-accent);
+      font-size: 1rem;
+      border-top: 1px solid var(--color-border);
+      margin-top: var(--space-sm);
+      padding-top: var(--space-sm);
+    }
+    .oney-notice {
+      background: #FFF8E7;
+      border: 1px solid #F0D78C;
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      font-size: 0.8125rem;
+      color: var(--color-text-light);
+      margin-bottom: var(--space-xl);
+    }
+    .oney-unavailable {
+      background: var(--color-bg-warm);
+      border-radius: var(--radius-md);
+      padding: var(--space-xl);
+      text-align: center;
+      color: var(--color-text-muted);
     }
 
     /* ---- Integrated Payment card form ---- */
@@ -358,33 +436,45 @@
         </div>
       </div>
       
-      <!-- Two Options -->
       <h2 style="margin-bottom: var(--space-lg);">Choisissez votre option</h2>
-      
-      <div class="order-options">
-        
-        <!-- Option 1: Acompte -->
-        <div class="order-option" data-option="deposit" onclick="selectOption('deposit')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('deposit')" tabindex="0" role="button" aria-label="Réserver avec acompte de 300€">
+
+      <div class="order-options order-options--three">
+
+        <!-- Option 1: Acompte 30% -->
+        <div class="order-option" data-option="deposit" onclick="selectOption('deposit')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('deposit')" tabindex="0" role="button" aria-label="Réserver avec acompte de 30%">
           <span class="order-option__badge">Populaire</span>
           <div class="order-option__icon">💳</div>
           <h3 class="order-option__title">Réserver avec acompte</h3>
           <p class="order-option__description">
-            Je réserve l'instrument tel quel. Fabrication lancée dàs réception.
+            Versez 30 % aujourd'hui, le solde à la livraison.
           </p>
           <ul class="order-option__details">
-            <li>Acompte de 300€ aujourd'hui</li>
+            <li>Acompte de <strong id="option-deposit-amount">30 %</strong></li>
             <li>Solde à la livraison</li>
-            <li>Paiement en 3x disponible</li>
             <li>Délai : 8-12 semaines</li>
           </ul>
         </div>
-        
-        <!-- Option 2: RDV -->
+
+        <!-- Option 2: Oney 3x/4x -->
+        <div class="order-option" data-option="oney" onclick="selectOption('oney')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('oney')" tabindex="0" role="button" aria-label="Payer en 3 ou 4 fois avec Oney">
+          <div class="order-option__icon">🔄</div>
+          <h3 class="order-option__title">Payer en 3x ou 4x</h3>
+          <p class="order-option__description">
+            Réglez le montant total en 3 ou 4 fois sans frais via Oney.
+          </p>
+          <ul class="order-option__details">
+            <li>3x ou 4x sans frais</li>
+            <li>Montant total réparti</li>
+            <li>De 100 € à 3 000 €</li>
+          </ul>
+        </div>
+
+        <!-- Option 3: RDV -->
         <div class="order-option" data-option="appointment" onclick="selectOption('appointment')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('appointment')" tabindex="0" role="button" aria-label="Personnaliser mon projet avec un rendez-vous">
           <div class="order-option__icon">📅</div>
           <h3 class="order-option__title">Personnaliser mon projet</h3>
           <p class="order-option__description">
-            Je souhaite discuter des options, de la finition, ou poser des questions.
+            Discutons de votre projet avant de commander.
           </p>
           <ul class="order-option__details">
             <li>Échange téléphone ou visio</li>
@@ -393,13 +483,13 @@
             <li>Sans engagement</li>
           </ul>
         </div>
-        
+
       </div>
       
       <!-- Form: Deposit -->
       <div id="form-deposit" class="order-form">
-        <h3 class="order-form__title">Réservation avec acompte</h3>
-        
+        <h3 class="order-form__title">Réservation avec acompte (30 %)</h3>
+
         <div class="order-summary">
           <div class="order-summary__row">
             <span>Instrument</span>
@@ -410,18 +500,13 @@
             <span id="summary-total">1 400 €</span>
           </div>
           <div class="order-summary__row">
-            <span>Acompte aujourd'hui</span>
-            <span>300 €</span>
+            <span>Acompte aujourd'hui (30 %)</span>
+            <span id="summary-deposit">420 €</span>
           </div>
           <div class="order-summary__row total">
             <span>Reste à payer</span>
-            <span id="summary-remaining">1 100 €</span>
+            <span id="summary-remaining">980 €</span>
           </div>
-        </div>
-        
-        <div class="payment-note">
-          <strong>💳 Paiement sécurisé</strong> par carte bancaire.
-          Paiement en 3x ou 4x disponible.
         </div>
         
         <form data-form="order" data-honeypot>
@@ -433,7 +518,7 @@
 
           <input type="hidden" name="type" value="Commande avec acompte">
           <input type="hidden" name="product" id="form-product" value="D Kurd 9 notes">
-          <input type="hidden" name="amount" value="300">
+          <input type="hidden" name="amount" id="form-deposit-amount" value="420">
 
           <div class="form-row">
             <div class="form-group">
@@ -513,7 +598,7 @@
           </div>
 
           <button type="submit" class="btn btn--primary btn--lg btn--full" id="deposit-submit-btn">
-            Payer l'acompte (300 €)
+            Payer l'acompte (<span id="deposit-btn-amount">420 €</span>)
           </button>
 
           <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
@@ -522,6 +607,134 @@
         </form>
       </div>
       
+      <!-- Form: Oney 3x/4x -->
+      <div id="form-oney" class="order-form">
+        <h3 class="order-form__title">Paiement en plusieurs fois</h3>
+
+        <!-- Vérifie éligibilité (100-3000€) -->
+        <div id="oney-eligible">
+
+          <!-- Sélecteur 3x / 4x -->
+          <div class="oney-selector" id="oney-selector">
+            <label class="oney-selector__option selected" data-installments="3">
+              <input type="radio" name="installments" value="3" checked>
+              <div class="oney-selector__title">3x</div>
+              <div class="oney-selector__detail" id="oney-3x-detail">3 × 467 €</div>
+            </label>
+            <label class="oney-selector__option" data-installments="4">
+              <input type="radio" name="installments" value="4">
+              <div class="oney-selector__title">4x</div>
+              <div class="oney-selector__detail" id="oney-4x-detail">4 × 350 €</div>
+            </label>
+          </div>
+
+          <!-- Détail des échéances -->
+          <div class="oney-breakdown" id="oney-breakdown">
+            <div class="oney-breakdown__row">
+              <span>Instrument</span>
+              <span id="oney-product">D Kurd 9 notes</span>
+            </div>
+            <div class="oney-breakdown__row highlight">
+              <span>Total</span>
+              <span id="oney-total">1 400 €</span>
+            </div>
+            <div class="oney-breakdown__row" id="oney-schedule-1">
+              <span>1ère échéance (aujourd'hui)</span>
+              <span id="oney-amount-1">467 €</span>
+            </div>
+            <div class="oney-breakdown__row" id="oney-schedule-2">
+              <span>2ème échéance</span>
+              <span id="oney-amount-2">467 €</span>
+            </div>
+            <div class="oney-breakdown__row" id="oney-schedule-3">
+              <span>3ème échéance</span>
+              <span id="oney-amount-3">466 €</span>
+            </div>
+            <div class="oney-breakdown__row" id="oney-schedule-4" style="display: none;">
+              <span>4ème échéance</span>
+              <span id="oney-amount-4">—</span>
+            </div>
+          </div>
+
+          <div class="oney-notice">
+            Paiement opéré par Oney. Vous serez redirigé vers une page sécurisée pour finaliser votre paiement. Une adresse complète et un numéro de téléphone mobile sont requis.
+          </div>
+
+          <form data-form="oney" data-honeypot>
+            <!-- Honeypot anti-spam -->
+            <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+              <label for="hp-oney-website">Site web</label>
+              <input type="text" name="website" id="hp-oney-website" autocomplete="off" tabindex="-1">
+            </div>
+
+            <input type="hidden" name="type" value="Commande Oney">
+            <input type="hidden" name="product" id="form-product-oney" value="D Kurd 9 notes">
+            <input type="hidden" name="installments" id="form-installments" value="3">
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="oney-firstname">Prénom *</label>
+                <input type="text" id="oney-firstname" name="firstname" class="form-input" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="oney-lastname">Nom *</label>
+                <input type="text" id="oney-lastname" name="lastname" class="form-input" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="oney-email">Email *</label>
+              <input type="email" id="oney-email" name="email" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="oney-phone">Téléphone mobile * <span style="font-weight:400;color:var(--color-text-muted)">(requis pour Oney)</span></label>
+              <input type="tel" id="oney-phone" name="phone" class="form-input" placeholder="06 12 34 56 78" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="oney-address">Adresse *</label>
+              <input type="text" id="oney-address" name="address" class="form-input" placeholder="Numéro et rue" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="oney-postcode">Code postal *</label>
+                <input type="text" id="oney-postcode" name="postcode" class="form-input" placeholder="75000" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="oney-city">Ville *</label>
+                <input type="text" id="oney-city" name="city" class="form-input" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-checkbox">
+                <input type="checkbox" required>
+                <span>J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</span>
+              </label>
+            </div>
+
+            <button type="submit" class="btn btn--primary btn--lg btn--full" id="oney-submit-btn">
+              Payer en <span id="oney-btn-installments">3</span>x (<span id="oney-btn-total">1 400 €</span>)
+            </button>
+
+            <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
+              Vous serez redirigé vers Oney pour le paiement sécurisé.
+            </p>
+          </form>
+        </div>
+
+        <!-- Message si montant hors plage Oney -->
+        <div id="oney-ineligible" class="oney-unavailable" style="display: none;">
+          <p><strong>Paiement en plusieurs fois non disponible</strong></p>
+          <p>Le paiement Oney est disponible pour les montants entre 100 € et 3 000 €.</p>
+          <p style="margin-top: var(--space-md);">
+            <a href="#" onclick="selectOption('deposit'); return false;" class="btn btn--ghost">Réserver avec acompte (30 %)</a>
+          </p>
+        </div>
+      </div>
+
       <!-- Form: Appointment -->
       <div id="form-appointment" class="order-form">
         <h3 class="order-form__title">Prendre rendez-vous</h3>
