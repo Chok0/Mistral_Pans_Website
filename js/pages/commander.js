@@ -100,7 +100,13 @@
     const params = new URLSearchParams(window.location.search);
 
     orderData.productName = params.get('product') || orderData.productName;
-    orderData.price = parseInt(params.get('price')) || orderData.price;
+
+    // Valider le prix : entier positif entre 1 € et 20 000 €
+    const rawPrice = parseInt(params.get('price'));
+    if (rawPrice && rawPrice >= 1 && rawPrice <= 20000) {
+      orderData.price = rawPrice;
+    }
+
     orderData.notes = params.get('notes') || '';
     orderData.gamme = params.get('gamme') || '';
     orderData.taille = params.get('taille') || orderData.taille;

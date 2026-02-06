@@ -111,11 +111,20 @@ async function updateSupabasePayment(payment, metadata) {
       raw_response: payment
     };
 
-    const insertResponse = await fetch(`${SUPABASE_URL}/rest/v1/paiements`, {
-      method: 'POST',
-      headers: supabaseHeaders,
-      body: JSON.stringify(paymentRecord)
-    });
+    // Upsert sur payplug_id pour garantir l'idempotence (notifications dupliquées)
+    const upsertHeaders = {
+      ...supabaseHeaders,
+      'Prefer': 'return=minimal,resolution=merge-duplicates'
+    };
+
+    const insertResponse = await fetch(
+      `${SUPABASE_URL}/rest/v1/paiements?on_conflict=payplug_id`,
+      {
+        method: 'POST',
+        headers: upsertHeaders,
+        body: JSON.stringify(paymentRecord)
+      }
+    );
 
     if (!insertResponse.ok) {
       console.warn('Erreur enregistrement paiement Supabase:', await insertResponse.text());
@@ -222,7 +231,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Erreur serveur', details: error.message })
+      body: JSON.stringify({ error: 'Erreur serveur' })
     };
   }
 };

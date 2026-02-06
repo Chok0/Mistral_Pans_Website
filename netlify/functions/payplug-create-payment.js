@@ -21,13 +21,14 @@ function sanitize(str, maxLength = 100) {
 }
 
 /**
- * Génère une référence de commande unique
+ * Génère une référence de commande unique (crypto-secure)
  */
 function generateOrderReference() {
+  const crypto = require('crypto');
   const date = new Date();
   const year = date.getFullYear().toString().slice(-2);
   const month = String(date.getMonth() + 1).padStart(2, '0');
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const random = crypto.randomBytes(4).toString('hex').toUpperCase();
   return `MP${year}${month}-${random}`;
 }
 
@@ -44,13 +45,31 @@ function cleanObject(obj) {
   return cleaned;
 }
 
+/**
+ * Retourne l'origine CORS autorisée
+ */
+function getAllowedOrigin(event) {
+  const ALLOWED_ORIGINS = [
+    'https://mistralpans.fr',
+    'https://www.mistralpans.fr'
+  ];
+  // Autoriser localhost en développement (Netlify CONTEXT !== 'production')
+  if (process.env.CONTEXT !== 'production') {
+    ALLOWED_ORIGINS.push('http://localhost:8000', 'http://127.0.0.1:8000');
+  }
+  const origin = event.headers?.origin || event.headers?.Origin || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
 exports.handler = async (event, context) => {
+  const allowedOrigin = getAllowedOrigin(event);
+
   // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 204,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST, OPTIONS'
       },
@@ -69,7 +88,7 @@ exports.handler = async (event, context) => {
 
   const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*'
+    'Access-Control-Allow-Origin': allowedOrigin
   };
 
   // Récupérer les clés API
@@ -301,8 +320,7 @@ exports.handler = async (event, context) => {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Erreur serveur',
-        details: error.message
+        error: 'Erreur serveur, veuillez réessayer'
       })
     };
   }
