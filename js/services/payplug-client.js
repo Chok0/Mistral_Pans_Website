@@ -1,6 +1,7 @@
 /* ==========================================================================
    MISTRAL PANS - Module Payplug Client
    Interface côté client pour les paiements Payplug
+   Supporte le mode hébergé (redirection) et le mode intégré (Integrated Payment)
    ========================================================================== */
 
 (function(window) {
@@ -8,27 +9,43 @@
 
   const PAYPLUG_API_URL = '/.netlify/functions/payplug-create-payment';
 
-  // Montants par défaut (en centimes)
-  const DEFAULT_DEPOSIT = 30000; // 300€ acompte
+  // Taux d'acompte par défaut (30%)
+  const DEFAULT_DEPOSIT_RATE = 0.30;
 
   /**
    * Module MistralPayplug
-   * Gère les paiements côté client
+   * Gère les paiements côté client (hosted + integrated)
    */
   const MistralPayplug = {
+
+    // Instance IntegratedPayment en cours
+    _integratedPayment: null,
+
     /**
-     * Créer un paiement d'acompte (300€)
+     * Créer un paiement d'acompte (30% du prix total par défaut)
      * @param {Object} customer - Informations client
      * @param {Object} order - Informations commande
-     * @returns {Promise<Object>} - URL de paiement
+     * @param {Object} [options] - Options supplémentaires
+     * @param {boolean} [options.integrated] - Utiliser le mode intégré
+     * @param {number} [options.amount] - Montant en centimes (si absent, calcule 30% de prixTotal)
+     * @returns {Promise<Object>} - Résultat du paiement
      */
-    async createDeposit(customer, order) {
+    async createDeposit(customer, order, options = {}) {
+      // Montant explicite ou 30% du prix total
+      const amount = options.amount
+        || (order.prixTotal ? Math.round(order.prixTotal * DEFAULT_DEPOSIT_RATE) * 100 : null);
+
+      if (!amount) {
+        throw new Error('Montant de l\'acompte requis (options.amount ou order.prixTotal)');
+      }
+
       return this._createPayment({
-        amount: DEFAULT_DEPOSIT,
+        amount,
         customer,
         paymentType: 'acompte',
         orderReference: order.reference,
         description: `Acompte commande ${order.reference || 'handpan sur mesure'}`,
+        integrated: options.integrated || false,
         metadata: {
           customerId: order.customerId,
           instrumentId: order.instrumentId,
@@ -44,15 +61,17 @@
      * @param {Object} customer - Informations client
      * @param {Object} order - Informations commande
      * @param {number} amount - Montant en centimes
-     * @returns {Promise<Object>} - URL de paiement
+     * @param {Object} [options] - Options supplémentaires
+     * @returns {Promise<Object>}
      */
-    async createBalance(customer, order, amount) {
+    async createBalance(customer, order, amount, options = {}) {
       return this._createPayment({
         amount,
         customer,
         paymentType: 'solde',
         orderReference: order.reference,
         description: `Solde commande ${order.reference}`,
+        integrated: options.integrated || false,
         metadata: {
           customerId: order.customerId,
           instrumentId: order.instrumentId,
@@ -62,19 +81,21 @@
     },
 
     /**
-     * Créer un paiement complet (acompte + solde)
+     * Créer un paiement complet
      * @param {Object} customer - Informations client
      * @param {Object} order - Informations commande
      * @param {number} amount - Montant total en centimes
-     * @returns {Promise<Object>} - URL de paiement
+     * @param {Object} [options] - Options supplémentaires
+     * @returns {Promise<Object>}
      */
-    async createFullPayment(customer, order, amount) {
+    async createFullPayment(customer, order, amount, options = {}) {
       return this._createPayment({
         amount,
         customer,
         paymentType: 'full',
         orderReference: order.reference,
         description: `Paiement commande ${order.reference}`,
+        integrated: options.integrated || false,
         metadata: {
           customerId: order.customerId,
           instrumentId: order.instrumentId,
@@ -86,12 +107,12 @@
     },
 
     /**
-     * Créer un paiement en 3x ou 4x (Oney)
+     * Créer un paiement en 3x ou 4x (Oney - hosted uniquement)
      * @param {Object} customer - Informations client
      * @param {Object} order - Informations commande
      * @param {number} amount - Montant total en centimes
      * @param {number} installments - Nombre d'échéances (3 ou 4)
-     * @returns {Promise<Object>} - URL de paiement
+     * @returns {Promise<Object>}
      */
     async createInstallmentPayment(customer, order, amount, installments = 3) {
       if (![3, 4].includes(installments)) {
@@ -105,6 +126,7 @@
         orderReference: order.reference,
         description: `Paiement ${installments}x commande ${order.reference}`,
         installments,
+        integrated: false, // Oney ne supporte pas l'intégré
         metadata: {
           customerId: order.customerId,
           instrumentId: order.instrumentId,
@@ -128,7 +150,8 @@
         orderReference,
         description,
         metadata,
-        installments
+        installments,
+        integrated
       } = options;
 
       // Validation client
@@ -139,9 +162,12 @@
         throw new Error('Nom et prénom requis');
       }
 
-      // Validation montant
-      if (!amount || amount < 100) {
-        throw new Error('Montant invalide (minimum 1€)');
+      // Validation montant (API PayPlug: min 99 cents, max 2 000 000 cents)
+      if (!amount || amount < 99) {
+        throw new Error('Montant invalide (minimum 0,99 €)');
+      }
+      if (amount > 2000000) {
+        throw new Error('Montant invalide (maximum 20 000 €)');
       }
 
       // Construire les URLs de retour
@@ -162,7 +188,14 @@
               firstName: customer.firstName.trim(),
               lastName: customer.lastName.trim(),
               phone: customer.phone || null,
-              address: customer.address || null
+              address: customer.address
+                ? {
+                    line1: customer.address.line1 || customer.address || null,
+                    postalCode: customer.address.postalCode || null,
+                    city: customer.address.city || null,
+                    country: customer.address.country || 'FR'
+                  }
+                : null
             },
             paymentType,
             orderReference,
@@ -170,7 +203,8 @@
             metadata,
             returnUrl,
             cancelUrl,
-            installments
+            installments,
+            integrated: integrated || false
           })
         });
 
@@ -186,7 +220,8 @@
           paymentUrl: result.paymentUrl,
           reference: result.reference,
           amount: result.amount,
-          amountFormatted: result.amountFormatted
+          amountFormatted: result.amountFormatted,
+          integrated: integrated || false
         };
 
       } catch (error) {
@@ -197,6 +232,166 @@
         };
       }
     },
+
+    // ========================================================================
+    // INTEGRATED PAYMENT - Formulaire de carte embarqué
+    // ========================================================================
+
+    /**
+     * Vérifie si le SDK Integrated Payment est chargé
+     * @returns {boolean}
+     */
+    isIntegratedAvailable() {
+      return typeof Payplug !== 'undefined' && typeof Payplug.IntegratedPayment !== 'undefined';
+    },
+
+    /**
+     * Initialise le formulaire Integrated Payment
+     * @param {Object} containers - Les éléments HTML conteneurs
+     * @param {HTMLElement} containers.cardHolder - Conteneur nom du titulaire
+     * @param {HTMLElement} containers.cardNumber - Conteneur numéro de carte
+     * @param {HTMLElement} containers.expiration - Conteneur date d'expiration
+     * @param {HTMLElement} containers.cvv - Conteneur CVV
+     * @param {Object} [options] - Options
+     * @param {boolean} [options.testMode] - Mode test (défaut: false)
+     * @returns {Object} Instance IntegratedPayment
+     */
+    initIntegratedForm(containers, options = {}) {
+      if (!this.isIntegratedAvailable()) {
+        throw new Error('SDK PayPlug Integrated Payment non chargé');
+      }
+
+      const testMode = options.testMode || false;
+      const intPayment = new Payplug.IntegratedPayment(testMode);
+
+      // Style personnalisé Mistral Pans
+      const inputStyle = {
+        default: {
+          color: '#2C2825',
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontSize: '16px',
+          '::placeholder': {
+            color: '#9CA3AF'
+          },
+          ':focus': {
+            color: '#2C2825'
+          }
+        },
+        invalid: {
+          color: '#EF4444'
+        }
+      };
+
+      // Créer les champs
+      if (containers.cardHolder) {
+        intPayment.cardHolder(containers.cardHolder, {
+          ...inputStyle,
+          placeholder: 'Nom du titulaire de la carte'
+        });
+      }
+      if (containers.cardNumber) {
+        intPayment.cardNumber(containers.cardNumber, {
+          ...inputStyle,
+          placeholder: 'Numéro de carte'
+        });
+      }
+      if (containers.expiration) {
+        intPayment.expiration(containers.expiration, {
+          ...inputStyle,
+          placeholder: 'MM / AAAA'
+        });
+      }
+      if (containers.cvv) {
+        intPayment.cvv(containers.cvv, {
+          ...inputStyle,
+          placeholder: 'CVV'
+        });
+      }
+
+      // 3DS en lightbox (le client reste sur la page)
+      intPayment.setDisplayMode3ds(Payplug.DisplayMode3ds.LIGHTBOX);
+
+      this._integratedPayment = intPayment;
+      return intPayment;
+    },
+
+    /**
+     * Déclenche un paiement intégré
+     * @param {string} paymentId - ID du paiement créé via l'API
+     * @returns {Promise<Object>} - Résultat du paiement
+     */
+    payIntegrated(paymentId) {
+      return new Promise((resolve, reject) => {
+        if (!this._integratedPayment) {
+          reject(new Error('Formulaire intégré non initialisé'));
+          return;
+        }
+
+        const intPayment = this._integratedPayment;
+
+        // Écouter la validation du formulaire
+        intPayment.onValidateForm(({ isFormValid }) => {
+          if (!isFormValid) {
+            reject(new Error('Veuillez vérifier les informations de votre carte'));
+            return;
+          }
+
+          // Le formulaire est valide, lancer le paiement
+          try {
+            const triggered = intPayment.pay(
+              paymentId,
+              Payplug.Scheme.AUTO,
+              { save_card: false }
+            );
+
+            if (!triggered) {
+              reject(new Error('Impossible de lancer le paiement. Vérifiez les informations saisies.'));
+            }
+          } catch (error) {
+            reject(error);
+          }
+        });
+
+        // Écouter le résultat du paiement
+        intPayment.onCompleted((event) => {
+          if (event.error) {
+            const errorMessages = {
+              'FORBIDDEN': 'Fonctionnalité non disponible',
+              'NOT_FOUND': 'Paiement introuvable',
+              'SERVER_ERROR': 'Erreur serveur PayPlug, veuillez réessayer',
+              'INVALID_FORM': 'Informations de carte invalides',
+              'ELEMENT_NOT_FOUND': 'Formulaire de paiement incomplet'
+            };
+
+            reject(new Error(
+              errorMessages[event.error.name] || event.error.message || 'Erreur de paiement'
+            ));
+            return;
+          }
+
+          resolve({
+            success: true,
+            paymentId: event.token
+          });
+        });
+
+        // Déclencher la validation (qui lance le paiement si valide)
+        intPayment.validateForm();
+      });
+    },
+
+    /**
+     * Récupère les schémas de carte supportés
+     * @returns {Array|null}
+     */
+    getSupportedSchemes() {
+      if (!this._integratedPayment) return null;
+      return this._integratedPayment.getSupportedSchemes();
+    },
+
+    // ========================================================================
+    // MODE HÉBERGÉ (redirection)
+    // ========================================================================
 
     /**
      * Rediriger vers la page de paiement Payplug
@@ -219,6 +414,10 @@
       }
       return null;
     },
+
+    // ========================================================================
+    // UTILITAIRES
+    // ========================================================================
 
     /**
      * Vérifier le statut du paiement depuis l'URL

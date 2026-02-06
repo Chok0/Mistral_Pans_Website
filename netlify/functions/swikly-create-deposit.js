@@ -21,23 +21,41 @@ function sanitize(str, maxLength = 100) {
 }
 
 /**
- * Génère une référence de location unique
+ * Génère une référence de location unique (crypto-secure)
  */
 function generateRentalReference() {
+  const crypto = require('crypto');
   const date = new Date();
   const year = date.getFullYear().toString().slice(-2);
   const month = String(date.getMonth() + 1).padStart(2, '0');
-  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const random = crypto.randomBytes(3).toString('hex').toUpperCase();
   return `LOC${year}${month}-${random}`;
 }
 
+/**
+ * Retourne l'origine CORS autorisée
+ */
+function getAllowedOrigin(event) {
+  const ALLOWED_ORIGINS = [
+    'https://mistralpans.fr',
+    'https://www.mistralpans.fr'
+  ];
+  if (process.env.CONTEXT !== 'production') {
+    ALLOWED_ORIGINS.push('http://localhost:8000', 'http://127.0.0.1:8000');
+  }
+  const origin = event.headers?.origin || event.headers?.Origin || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
 exports.handler = async (event, context) => {
+  const allowedOrigin = getAllowedOrigin(event);
+
   // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 204,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST, OPTIONS'
       },
@@ -56,7 +74,7 @@ exports.handler = async (event, context) => {
 
   const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*'
+    'Access-Control-Allow-Origin': allowedOrigin
   };
 
   // Récupérer les clés API Swikly
@@ -136,7 +154,9 @@ exports.handler = async (event, context) => {
         rental_reference: reference,
         instrument_name: instrumentName,
         rental_duration_months: rentalDuration || 3,
-        ...metadata
+        client_id: metadata?.clientId || null,
+        instrument_id: metadata?.instrumentId || null,
+        location_id: metadata?.locationId || null
       }
     };
 
@@ -195,8 +215,7 @@ exports.handler = async (event, context) => {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Erreur serveur',
-        details: error.message
+        error: 'Erreur serveur, veuillez réessayer'
       })
     };
   }
