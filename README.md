@@ -635,4 +635,281 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 
 ---
 
+## Audit de securite
+
+> Audit complet de l'integration paiement (PayPlug, Swikly) et de la securite generale du projet.
+> Derniere revue : 6 fevrier 2026.
+
+### Tableau de synthese
+
+| # | Severite | Zone | Probleme | Statut |
+|---|----------|------|----------|--------|
+| 1 | **CRITIQUE** | Netlify Functions | CORS `Access-Control-Allow-Origin: *` sur endpoints paiement et email | A corriger |
+| 2 | **CRITIQUE** | Swikly webhook | Verification de signature non implementee (TODO dans le code) | A corriger |
+| 3 | **HAUTE** | commander.js | XSS via `innerHTML` dans `showPaymentSuccess()` avec donnees URL/localStorage | A corriger |
+| 4 | **HAUTE** | Netlify Functions | Pas de rate limiting sur creation de paiement | A corriger |
+| 5 | **HAUTE** | PayPlug webhook | Pas de protection contre les doublons (idempotence) | A corriger |
+| 6 | **HAUTE** | Swikly webhook | Donnees non verifiees utilisees pour mettre a jour Supabase | A corriger |
+| 7 | **MOYENNE** | Admin auth | Pas de rate limiting sur les tentatives de connexion | A corriger |
+| 8 | **MOYENNE** | Admin auth | Token de session genere avec `Math.random()` (non cryptographique) | A corriger |
+| 9 | **MOYENNE** | PHP endpoints | Hash admin par defaut en dur dans le code source (`-6de5765f`) | A corriger |
+| 10 | **MOYENNE** | Netlify Functions | Messages d'erreur internes exposes au client (`error.message`) | A corriger |
+| 11 | **MOYENNE** | Swikly create | Spread `...metadata` non filtre dans le payload | A corriger |
+| 12 | **FAIBLE** | commander.html | Pas de Content-Security-Policy (CSP) header | Recommande |
+| 13 | **FAIBLE** | Integrated Payment | Securite partagee avec PayPlug (integrite de la page requise) | Risque accepte |
+| 14 | **INFO** | Admin auth | Credentials stockes en localStorage (pas de session serveur) | Architecture |
+| 15 | **INFO** | Admin auth | Fallback `simpleHash()` faible (DJB hash) si SubtleCrypto absent | Architecture |
+
+---
+
+### #1 CRITIQUE — CORS ouvert sur Netlify Functions
+
+**Fichiers :** `payplug-create-payment.js`, `send-email.js`, `swikly-create-deposit.js`
+
+**Probleme :** Les endpoints utilisent `Access-Control-Allow-Origin: *`, ce qui permet a n'importe quel site web d'appeler ces fonctions. Un attaquant pourrait :
+- Creer des paiements PayPlug depuis un site tiers
+- Envoyer des emails via Brevo en usurpant le formulaire de contact
+- Declencher des cautions Swikly avec des donnees forgees
+
+**Comparaison :** Les fichiers PHP (`upload.php`, `delete.php`) utilisent correctement une whitelist de domaines.
+
+**Correction recommandee :**
+```javascript
+// Remplacer Access-Control-Allow-Origin: * par :
+const allowedOrigins = [
+  'https://mistralpans.fr',
+  'https://www.mistralpans.fr'
+];
+const origin = event.headers.origin || event.headers.Origin;
+const corsOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+
+const headers = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': corsOrigin,
+  'Access-Control-Allow-Headers': 'Content-Type'
+};
+```
+
+---
+
+### #2 CRITIQUE — Swikly webhook sans verification de signature
+
+**Fichier :** `swikly-webhook.js:63-65`
+
+**Probleme :** Le code lit le header `x-swikly-signature` mais ne le verifie jamais (`TODO` dans le code). N'importe qui peut envoyer un POST a l'endpoint et declencher :
+- Des mises a jour en base de donnees (cautions, locations)
+- Des envois d'emails de confirmation
+- Des changements de statut de location vers "active"
+
+**Impact :** Un attaquant connaissant l'URL du webhook pourrait activer des locations sans caution reelle.
+
+**Correction :** Implementer la verification HMAC selon la documentation Swikly, ou a minima, faire un GET de verification aupres de l'API Swikly (meme approche que PayPlug).
+
+---
+
+### #3 HAUTE — XSS dans showPaymentSuccess()
+
+**Fichier :** `commander.js:498`
+
+**Probleme :** La fonction utilise `container.innerHTML` avec des variables interpolees :
+```javascript
+container.innerHTML = `
+  <p><strong>Référence :</strong> ${reference || 'N/A'}</p>
+  <p><strong>Instrument :</strong> ${pendingOrder.product?.productName || '...'}</p>
+`;
+```
+
+Les variables `reference` (depuis `urlParams.get('ref')`) et `productName` (depuis `localStorage`) ne sont pas echappees. Un attaquant peut :
+- Crafter une URL avec `?status=success&ref=<script>alert(1)</script>`
+- Manipuler `localStorage` pour injecter du HTML malveillant
+
+**Correction :** Utiliser `textContent` ou une fonction d'echappement HTML.
+
+---
+
+### #4 HAUTE — Pas de rate limiting sur creation de paiement
+
+**Fichier :** `payplug-create-payment.js`
+
+**Probleme :** Aucune protection contre l'abus. Un attaquant peut :
+- Creer des centaines de paiements PayPlug (consommation API, risque de blocage du compte)
+- Surcharger la Netlify Function (limites du plan)
+- Generer du spam si combine avec l'endpoint email
+
+**Correction recommandee :**
+- Activer le rate limiting Netlify (si disponible sur le plan)
+- Implementer un token CSRF ou un token jetable cote client
+- Ajouter un delai minimum entre deux creations (ex: via Supabase)
+
+---
+
+### #5 HAUTE — Pas d'idempotence sur le webhook PayPlug
+
+**Fichier :** `payplug-webhook.js`
+
+**Probleme :** Si PayPlug envoie la meme notification deux fois (retry reseau), le paiement est enregistre deux fois dans Supabase et deux emails de confirmation sont envoyes.
+
+**Correction :** Verifier si `payplug_id` existe deja dans la table `paiements` avant d'inserer. Utiliser un `upsert` avec `payplug_id` comme cle unique.
+
+---
+
+### #6 HAUTE — Swikly webhook : donnees non verifiees en base
+
+**Fichier :** `swikly-webhook.js:242-256`
+
+**Probleme :** Sans verification de signature (#2), les donnees du webhook sont directement utilisees pour mettre a jour Supabase :
+```javascript
+// metadata.rental_id vient du payload non verifie
+await fetch(`${SUPABASE_URL}/rest/v1/locations?id=eq.${metadata.rental_id}`, {
+  method: 'PATCH', ...
+});
+```
+
+Un attaquant pourrait envoyer un payload forge avec un `rental_id` arbitraire pour changer le statut de n'importe quelle location en "active".
+
+**Correction :** Implementer la verification de signature (#2) ET valider les donnees via un GET a l'API Swikly.
+
+---
+
+### #7 MOYENNE — Pas de rate limiting sur connexion admin
+
+**Fichier :** `admin-core.js` (fonction `Auth.login()`)
+
+**Probleme :** Aucune limite sur les tentatives de connexion. Un attaquant peut bruteforcer le mot de passe admin.
+
+**Correction :**
+- Compteur d'echecs avec verrouillage temporaire (ex: 5 tentatives → blocage 5 min)
+- Stocker le compteur dans `localStorage` ou `sessionStorage`
+
+---
+
+### #8 MOYENNE — Token de session non cryptographique
+
+**Fichier :** `admin-core.js`
+
+**Probleme :** Le token de session est genere avec `Math.random().toString(36)` qui n'est pas cryptographiquement sur.
+
+**Correction :** Utiliser `crypto.getRandomValues()` :
+```javascript
+const array = new Uint8Array(32);
+crypto.getRandomValues(array);
+const token = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+```
+
+---
+
+### #9 MOYENNE — Hash admin par defaut dans le code source
+
+**Fichiers :** `php/upload.php:278`, `php/delete.php:102`
+
+**Probleme :** Le hash par defaut `-6de5765f` est en dur dans le code source public. Si le fichier `.admin_hash` n'est pas cree en production, n'importe qui peut utiliser ce hash comme token.
+
+**Correction :** Supprimer le fallback par defaut. Si `.admin_hash` et la variable d'environnement sont absents, renvoyer `null` (acces refuse).
+
+---
+
+### #10 MOYENNE — Messages d'erreur internes exposes
+
+**Fichiers :** `payplug-create-payment.js:305`, `payplug-webhook.js:225`, `swikly-webhook.js:187`
+
+**Probleme :** `error.message` est retourne au client dans les reponses d'erreur. Cela peut reveler des details d'implementation (noms de tables, URLs internes, stack traces).
+
+**Correction :** Retourner un message generique au client et logger les details cote serveur uniquement.
+
+---
+
+### #11 MOYENNE — Spread de metadata non filtre
+
+**Fichier :** `swikly-create-deposit.js:139`
+
+**Probleme :**
+```javascript
+metadata: {
+  rental_reference: reference,
+  instrument_name: instrumentName,
+  ...metadata  // <-- untrusted user input
+}
+```
+
+L'operateur spread peut ecraser les champs `rental_reference` et `instrument_name` si l'utilisateur envoie des metadata avec les memes cles.
+
+**Correction :** Placer le spread AVANT les champs explicites, ou filtrer les cles autorisees.
+
+---
+
+### #12 FAIBLE — Pas de Content-Security-Policy
+
+**Fichier :** `commander.html`
+
+**Probleme :** Aucun header CSP n'est defini. Le SDK PayPlug charge des iframes depuis `cdn.payplug.com`. Sans CSP, des scripts tiers injectes (via XSS ou extension malveillante) pourraient intercepter les interactions de paiement.
+
+**Recommandation :** Ajouter un meta tag ou header CSP :
+```html
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' https://cdn.payplug.com 'unsafe-inline';
+  frame-src https://*.payplug.com;
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' https://*.payplug.com data:;
+  connect-src 'self' https://*.supabase.co https://api.brevo.com;
+">
+```
+
+---
+
+### #13 FAIBLE — Securite partagee (Integrated Payment)
+
+**Probleme :** En mode Integrated Payment, PayPlug documente que la securite est "partagee" :
+- Les champs de carte sont des iframes PayPlug (card data isolee)
+- Mais l'integrite de la page hote est de la responsabilite du marchand
+- Si la page est compromise (XSS), un attaquant pourrait superposer de faux champs
+
+**Mitigation en place :** Fallback automatique vers le mode hosted si le SDK ne charge pas.
+
+**Recommandation :** Resoudre #3 (XSS) et #12 (CSP) pour reduire ce risque.
+
+---
+
+### Ce qui est bien fait (points positifs)
+
+| Element | Detail |
+|---------|--------|
+| Webhook PayPlug : GET de verification | Le webhook ne fait pas confiance au payload, il GET les details aupres de l'API PayPlug |
+| Sanitization des inputs PayPlug | `sanitize()`, `cleanObject()`, validation email, limites de longueur |
+| Email : echappement HTML | `escapeHtml()` et `sanitizeEmailHeader()` dans `send-email.js` |
+| PHP : CORS whitelist | Les endpoints PHP ont une whitelist de domaines autorisees |
+| PHP : MIME type reel | `finfo_file()` pour verifier le type MIME (pas l'extension) |
+| PHP : traversee de repertoire | `basename()` sur le nom de fichier dans `delete.php` |
+| PHP : timing-safe comparison | `hash_equals()` pour la verification de token |
+| Anti-spam : honeypot | Pas de reCAPTCHA (RGPD-friendly), champ invisible |
+| PayPlug : cle secrete cote serveur | La cle `PAYPLUG_SECRET_KEY` n'est jamais exposee au client |
+| Admin : SHA-256 avec sel | Hash de mot de passe via `SubtleCrypto` avec sel |
+| Admin : expiration de session | Session de 24h avec verification a chaque acces |
+| Integrated Payment : mode test configurable | `testMode: false` avec commentaire pour basculer |
+| Integrated Payment : fallback hosted | Si le SDK ne charge pas, retour transparent au mode heberge |
+
+---
+
+### Checklist de correction (par priorite)
+
+**Avant mise en production :**
+
+- [ ] #1 Restreindre CORS sur toutes les Netlify Functions (whitelist de domaines)
+- [ ] #2 Implementer la verification de signature Swikly (ou GET de verification)
+- [ ] #3 Corriger le XSS dans `showPaymentSuccess()` (echapper les variables)
+- [ ] #4 Ajouter un rate limiting ou token CSRF sur la creation de paiement
+- [ ] #5 Ajouter l'idempotence sur le webhook PayPlug (upsert sur `payplug_id`)
+- [ ] #6 Valider les donnees Swikly webhook avant mise a jour en base
+- [ ] #9 Supprimer le hash admin par defaut dans le code PHP
+
+**Ameliorations recommandees :**
+
+- [ ] #7 Rate limiting sur la connexion admin
+- [ ] #8 Token de session cryptographique
+- [ ] #10 Masquer les messages d'erreur internes
+- [ ] #11 Filtrer le spread de metadata Swikly
+- [ ] #12 Ajouter un header Content-Security-Policy
+
+---
+
 *Documentation mise a jour le 6 fevrier 2026 (v3.3)*
