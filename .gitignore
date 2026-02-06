@@ -5,6 +5,9 @@
 # Fichiers SQL (schéma et politiques RLS)
 sql/
 
+# Configuration (contient les cles Supabase)
+js/core/config.js
+
 # Environnement
 .env
 .env.local

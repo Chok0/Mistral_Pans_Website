@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mistral Pans Website
 
-> **Last Updated:** February 2026
+> **Last Updated:** February 2026 (v3.3)
 > **Project:** Mistral Pans - Premium Handpan Artisan Website
 > **Stack:** Vanilla JS + HTML/CSS + Supabase + Netlify Functions
 
@@ -19,7 +19,7 @@ python -m http.server 8000
 
 ## Project Overview
 
-This is a **static-first, progressively-enhanced** website for Mistral Pans, an artisanal handpan manufacturer in Île-de-France, France.
+This is a **static-first, progressively-enhanced** website for Mistral Pans, an artisanal handpan manufacturer in Ile-de-France, France.
 
 **Key characteristics:**
 - No build system - direct file serving with dynamic component loading
@@ -41,36 +41,72 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 │   ├── footer-minimal.html  # Compact footer (checkout page)
 │   └── contact-modal.html   # Reusable contact modal
 ├── css/
-│   ├── style.css            # Global design system (1,761 lines)
+│   ├── style.css            # Global design system
 │   ├── boutique.css         # Configurator + stock styles
 │   ├── admin.css            # Admin dashboard styles
-│   ├── gestion.css          # Legacy management (deprecated)
+│   ├── gestion.css          # Management styles (admin dashboard)
 │   └── teacher-form.css     # Teacher signup form
 ├── js/
-│   ├── main.js              # Core: partial loading, navigation
-│   ├── admin-core.js        # Admin: auth, FAB, CRUD utilities
-│   ├── admin-ui.js          # Admin UI components (4,711 lines)
-│   ├── handpan-player.js    # SVG interactive handpan + audio
-│   ├── feasibility-module.js # Configuration validation
-│   ├── supabase-client.js   # Supabase initialization
-│   ├── supabase-auth.js     # Authentication module
-│   ├── supabase-sync.js     # Real-time data sync
-│   ├── *-admin.js           # Page-specific admin modules
-│   └── *.js                 # Other page-specific modules
+│   ├── core/                # Bootstrap, navigation, configuration
+│   │   ├── main.js          # Partial loading, navigation, Supabase init
+│   │   ├── config.js        # Supabase keys (gitignored)
+│   │   ├── config.example.js # Config template
+│   │   └── cookie-consent.js # RGPD cookie consent banner
+│   │
+│   ├── admin/               # Administration system
+│   │   ├── admin-core.js    # Auth, FAB, CRUD, sanitization
+│   │   ├── admin-ui-core.js # Navigation, dashboard, todos
+│   │   ├── admin-ui-gestion.js  # Clients, instruments, locations
+│   │   ├── admin-ui-boutique.js # Shop stock, accessories
+│   │   ├── admin-ui-content.js  # Teachers, gallery, blog
+│   │   ├── admin-ui-config.js   # Config, export/import
+│   │   ├── admin-ui-modals.js   # All CRUD modals
+│   │   ├── admin-ui-compta.js   # Accounting, URSSAF
+│   │   ├── gestion.js       # Business logic (clients, instruments, etc.)
+│   │   ├── gestion-pdf.js   # Invoice PDF generation
+│   │   ├── gestion-boutique.js  # Stock management
+│   │   ├── apprendre-admin.js   # Teacher admin (page-specific)
+│   │   ├── boutique-admin.js    # Shop admin (page-specific)
+│   │   ├── galerie-admin.js     # Gallery admin (page-specific)
+│   │   └── blog-admin.js        # Blog admin (page-specific)
+│   │
+│   ├── services/            # External integrations
+│   │   ├── supabase-client.js   # Supabase client init
+│   │   ├── supabase-auth.js     # Supabase authentication
+│   │   ├── supabase-sync.js     # Real-time data sync
+│   │   ├── email-client.js      # Brevo email client
+│   │   ├── payplug-client.js    # Payplug payments
+│   │   └── swikly-client.js     # Swikly deposits
+│   │
+│   ├── data/                # Static data files
+│   │   ├── scales-data.js   # 65+ musical scales + music theory
+│   │   └── materiaux-data.js # Materials and properties
+│   │
+│   ├── features/            # Business modules
+│   │   ├── handpan-player.js    # SVG interactive player + Web Audio
+│   │   ├── feasibility-module.js # Configuration validation
+│   │   ├── upload.js            # File upload processing
+│   │   ├── teacher-form.js      # Teacher signup form
+│   │   ├── honeypot.js          # Anti-spam honeypot
+│   │   └── mistral-stats.js     # Anonymous analytics
+│   │
+│   └── pages/               # Page-specific logic
+│       └── commander.js     # Order form + payment
+│
 ├── php/
 │   ├── upload.php           # File upload processing
 │   └── delete.php           # File deletion
-├── sql/
-│   ├── 01_schema.sql        # Supabase database schema
-│   ├── 02_rls_policies.sql  # Row-level security policies
-│   └── 03_colonnes_sync.sql # Column synchronization
 ├── ressources/
 │   ├── images/              # Product photos, logos, brand assets
-│   └── audio/               # FLAC audio samples (50+ notes)
+│   └── audio/               # FLAC audio samples (56 notes)
 ├── netlify/functions/
-│   └── send-email.js        # Brevo SMTP email function
-├── READMEv3.md              # Main documentation (French)
-└── ADMIN_SPEC.md            # Admin system specifications
+│   ├── send-email.js        # Brevo SMTP email function
+│   ├── payplug-create-payment.js  # Payment creation
+│   ├── payplug-webhook.js   # Payment webhooks
+│   ├── swikly-create-deposit.js   # Deposit creation
+│   └── swikly-webhook.js    # Deposit webhooks
+├── CLAUDE.md                # This file (AI assistant guide)
+└── README.md                # Full project documentation (French)
 ```
 
 ---
@@ -83,7 +119,7 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 |------|---------|--------------|
 | `index.html` | Homepage | Hero, features, partners |
 | `boutique.html` | Shop/Configurator | SVG handpan player, pricing calculator, stock grid |
-| `commander.html` | Order page | Order form, payment options |
+| `commander.html` | Order page | Order form, payment options (Payplug) |
 | `location.html` | Rental service | Rental terms, deposit info (Swikly) |
 | `apprendre.html` | Teacher directory | Leaflet map with RGPD consent, teacher cards |
 | `galerie.html` | Gallery | Responsive mosaic, lightbox |
@@ -93,13 +129,13 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 
 ### Core JavaScript Files
 
-| File | Purpose | Key Exports/Functions |
-|------|---------|----------------------|
-| `main.js` | App bootstrap | `loadPartials()`, `setActivePage()`, `initSupabaseSync()` |
-| `admin-core.js` | Admin system | `isAdminLoggedIn()`, `injectAdminFAB()`, CRUD helpers |
-| `handpan-player.js` | Instrument UI | `HandpanPlayer` class, Web Audio API |
-| `feasibility-module.js` | Config validation | `checkFeasibility()`, surface calculations |
-| `supabase-sync.js` | Data sync | `syncFromSupabase()`, real-time updates |
+| File | Location | Key Exports/Functions |
+|------|----------|----------------------|
+| `main.js` | `js/core/` | `loadPartials()`, `setActivePage()`, dynamic Supabase init |
+| `admin-core.js` | `js/admin/` | `isAdminLoggedIn()`, `injectAdminFAB()`, CRUD helpers |
+| `handpan-player.js` | `js/features/` | `HandpanPlayer` class, Web Audio API |
+| `feasibility-module.js` | `js/features/` | `checkFeasibility()`, surface calculations |
+| `supabase-sync.js` | `js/services/` | `syncFromSupabase()`, real-time updates |
 
 ---
 
@@ -121,7 +157,7 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 ### Backend Services
 - **Database:** Supabase PostgreSQL with RLS
 - **Email:** Brevo SMTP via Netlify Functions
-- **Hosting:** OVH Mutualisé (supports PHP)
+- **Hosting:** OVH Mutualise (supports PHP)
 - **Serverless:** Netlify Functions
 
 ---
@@ -168,37 +204,33 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Page Title | Mistral Pans</title>
   <link rel="stylesheet" href="css/style.css">
-  <!-- page-specific CSS if needed -->
 </head>
 <body data-page="page-name">
-  <!-- Dynamic header -->
   <div id="site-header"></div>
 
   <main>
     <!-- Page content -->
   </main>
 
-  <!-- Dynamic footer -->
   <div id="site-footer"></div>
-
-  <!-- Contact modal container -->
   <div id="contact-modal-container"></div>
 
   <!-- Scripts -->
-  <script src="js/main.js"></script>
-  <script src="js/page-specific.js"></script>
+  <script src="js/core/cookie-consent.js"></script>
+  <script src="js/core/main.js"></script>
+  <script src="js/features/mistral-stats.js"></script>
 </body>
 </html>
 ```
 
 ### Partial Loading System
 
-Partials are loaded dynamically via `main.js`:
+Partials are loaded dynamically via `js/core/main.js`:
 ```javascript
 // main.js handles:
 // 1. Loading partials from partials/ directory
 // 2. Setting active navigation via data-page attribute
-// 3. Initializing Supabase sync
+// 3. Dynamically loading config.js, supabase-client.js, supabase-sync.js
 ```
 
 For minimal footer (e.g., checkout page):
@@ -251,9 +283,9 @@ MistralAdmin.injectFAB({
 ## Pricing System
 
 ### Base Pricing
-- **Standard note:** 115€
-- **Octave 2 note:** +50€ per note
-- **Bottoms (bass notes):** +25€ flat
+- **Standard note:** 115 EUR
+- **Octave 2 note:** +50 EUR per note
+- **Bottoms (bass notes):** +25 EUR flat
 
 ### Size Malus
 | Size | Malus |
@@ -265,12 +297,12 @@ MistralAdmin.injectFAB({
 ### Difficulty Malus (Feasibility)
 | Status | Surface % | Malus |
 |--------|-----------|-------|
-| OK | ≤ 45% | 0% |
+| OK | <= 45% | 0% |
 | Warning | 45-50% | +5% |
 | Difficult | 50-59% | +10% |
 | Impossible | > 59% | N/A (blocked) |
 
-**Rounding:** All prices rounded down to nearest 5€.
+**Rounding:** All prices rounded down to nearest 5 EUR.
 
 ---
 
@@ -281,7 +313,7 @@ MistralAdmin.injectFAB({
 - **Naming:** `[Note][s][Octave].flac` (s for sharp)
   - Example: `Cs4.flac` for C#4, `As3.flac` for A#3/Bb3
 
-**Available range:** E2 to F5 (50+ samples)
+**Available range:** E2 to F5 (56 samples)
 
 ---
 
@@ -306,8 +338,7 @@ MistralAdmin.injectFAB({
 
 ### File Naming
 - Lowercase with hyphens: `page-name.html`, `module-name.js`
-- Admin modules: `*-admin.js`
-- Supabase modules: `supabase-*.js`
+- JS organized by concern: `js/core/`, `js/admin/`, `js/services/`, `js/data/`, `js/features/`, `js/pages/`
 
 ---
 
@@ -317,18 +348,18 @@ MistralAdmin.injectFAB({
 1. Create `pagename.html` at root with standard template
 2. Add `data-page="pagename"` to body
 3. Add navigation link to `partials/header.html`
-4. Create `js/pagename.js` if needed
+4. Create `js/pages/pagename.js` if needed (or `js/features/` for reusable modules)
 5. Create `css/pagename.css` if needed
 
 ### Modifying Admin Functionality
-1. Core logic goes in `js/admin-core.js`
-2. UI components in `js/admin-ui.js`
-3. Page-specific admin in `js/pagename-admin.js`
+1. Core logic goes in `js/admin/admin-core.js`
+2. UI components in `js/admin/admin-ui-*.js` (split by domain)
+3. Page-specific admin in `js/admin/pagename-admin.js`
 4. Admin styles in `css/admin.css`
 
 ### Working with Supabase
 ```javascript
-// Client is initialized in supabase-client.js
+// Client is initialized in js/services/supabase-client.js
 const { data, error } = await supabase
   .from('table_name')
   .select('*')
@@ -339,7 +370,7 @@ const { data, error } = await supabase
 1. Convert to FLAC format
 2. Name as `[Note][s][Octave].flac`
 3. Place in `ressources/audio/`
-4. Update `handpan-player.js` if adding new note range
+4. Update `js/features/handpan-player.js` if adding new note range
 
 ---
 
@@ -347,6 +378,9 @@ const { data, error } = await supabase
 
 ### Server Required
 The site uses `fetch()` for partials. **Will not work with `file://` protocol.**
+
+### Dynamic Script Loading
+`js/core/main.js` dynamically loads `js/core/config.js`, `js/services/supabase-client.js`, and `js/services/supabase-sync.js` at runtime. Keep these paths in sync if reorganizing.
 
 ### Cloudflare Consideration
 If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security settings.
@@ -365,7 +399,7 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 ### Default Admin Credentials
 - Username: `admin`
 - Password: `mistral2024`
-- Change in `admin-core.js`: `CONFIG.ADMIN_PASS_HASH = simpleHash('new-password')`
+- Change in `js/admin/admin-core.js`: `CONFIG.ADMIN_PASS_HASH = simpleHash('new-password')`
 
 ---
 
@@ -378,42 +412,9 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 | Nominatim | Geocoding | No tracking |
 | CartoDB Positron | Map tiles | Consent required |
 | Honeypot | Bot protection | No external data transfer |
-| Google Fonts | Typography | Consider self-hosting |
+| Google Fonts | Typography | Conditional loading (consent) |
 | Swikly | Rental deposits | GDPR compliant (permalien) |
 | Payplug | Payments | French provider, GDPR compliant |
-
----
-
-## Deployment
-
-### Hosting: OVH Mutualisé
-- PHP support for upload/delete scripts
-- Static file serving
-- SSL/TLS included
-
-### Pre-deployment Checklist
-- [ ] Change default admin password
-- [ ] Configure Payplug API keys (PAYPLUG_SECRET_KEY)
-- [ ] Verify UTF-8 encoding
-- [ ] Optimize images (WebP)
-- [ ] Test on real mobile devices
-- [x] Configure Swikly (using permalien: https://v2.swik.link/DxkC1UD)
-- [ ] Set up email forwarding (contact@mistralpans.fr)
-- [x] Anti-spam: Honeypot configured (no reCAPTCHA)
-
----
-
-## Git Workflow
-
-The project uses feature branches prefixed with `claude/` for AI-assisted development.
-
-```bash
-# Current branch pattern
-claude/claude-md-{session-id}
-
-# Commit messages should be in French or English, descriptive
-git commit -m "Add feasibility module for configuration validation"
-```
 
 ---
 
@@ -426,11 +427,11 @@ git commit -m "Add feasibility module for configuration validation"
 
 ### Admin FAB not showing
 - Check `isAdminLoggedIn()` returns true
-- Verify `admin-core.js` is loaded
+- Verify `js/admin/admin-core.js` is loaded
 - Check localStorage for valid session
 
 ### Supabase sync issues
-- Verify Supabase URL and anon key in `supabase-client.js`
+- Verify Supabase URL and anon key in `js/core/config.js`
 - Check browser network tab for failed requests
 - Verify RLS policies allow the operation
 
@@ -441,19 +442,8 @@ git commit -m "Add feasibility module for configuration validation"
 
 ---
 
-## Version History
-
-- **v2.5** (Jan 2025): Feasibility module, new pricing, mobile swipe navigation
-- **v2.4**: Removed Node build, dynamic partials
-- **v2.3**: Admin FAB, Nominatim geocoding, photo uploads
-- **v2.2**: Centralized admin, Quill.js blog editor
-- **v2.1**: Teacher admin system
-- **v2.0**: Complete redesign, SVG handpan player
-
----
-
 ## Contact
 
 - **Website:** mistralpans.fr
 - **Email:** contact@mistralpans.fr
-- **Location:** Île-de-France, France
+- **Location:** Ile-de-France, France

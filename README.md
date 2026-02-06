@@ -17,10 +17,11 @@ Site web premium pour Mistral Pans, fabricant artisanal de handpans en Ile-de-Fr
 9. [Systeme audio](#systeme-audio)
 10. [Systeme d'administration](#systeme-dadministration)
 11. [Base de donnees Supabase](#base-de-donnees-supabase)
-12. [Diagnostic du projet](#diagnostic-du-projet)
-13. [Plan d'action](#plan-daction)
-14. [Deploiement](#deploiement)
-15. [Historique des versions](#historique-des-versions)
+12. [Configuration Supabase](#configuration-supabase)
+13. [Roadmap](#roadmap)
+14. [Scale Batch System (spec)](#scale-batch-system)
+15. [Deploiement](#deploiement)
+16. [Historique des versions](#historique-des-versions)
 
 ---
 
@@ -68,46 +69,73 @@ npx serve .
 |   +-- contact-modal.html   # Modal de contact
 |
 |-- css/
-|   |-- style.css            # Styles globaux (1,761 lignes)
+|   |-- style.css            # Styles globaux
 |   |-- boutique.css         # Configurateur + stock
 |   |-- admin.css            # Styles admin (FAB, modals)
-|   |-- gestion.css          # Legacy (deprecie)
+|   |-- gestion.css          # Styles gestion (dashboard admin)
 |   +-- teacher-form.css     # Formulaire professeur
 |
 |-- js/
-|   |-- main.js              # Core: partials, navigation
-|   |-- admin-core.js        # Admin: auth, FAB, CRUD, sanitization
-|   |-- admin-ui-core.js     # Admin UI: navigation, dashboard, todos
-|   |-- admin-ui-gestion.js  # Admin UI: clients, instruments, locations
-|   |-- admin-ui-boutique.js # Admin UI: boutique, accessoires
-|   |-- admin-ui-content.js  # Admin UI: professeurs, galerie, blog
-|   |-- admin-ui-config.js   # Admin UI: configuration, export/import
-|   |-- admin-ui-modals.js   # Admin UI: tous les modals CRUD
-|   |-- admin-ui-compta.js   # Admin UI: comptabilite, URSSAF
-|   |-- cookie-consent.js    # RGPD: banniere consentement cookies
-|   |-- handpan-player.js    # Player SVG interactif
-|   |-- feasibility-module.js # Validation configurations
-|   |-- supabase-client.js   # Client Supabase (config externalisee)
-|   |-- supabase-auth.js     # Authentification
-|   |-- supabase-sync.js     # Synchronisation temps reel
-|   |-- *-admin.js           # Modules admin par page
-|   +-- *.js                 # Autres modules
+|   |-- core/                # Bootstrap, navigation, configuration
+|   |   |-- main.js          # Chargement partials, navigation
+|   |   |-- config.js        # Cles Supabase (gitignore)
+|   |   |-- config.example.js # Template de configuration
+|   |   +-- cookie-consent.js # Banniere RGPD cookies
+|   |
+|   |-- admin/               # Systeme d'administration
+|   |   |-- admin-core.js    # Auth, FAB, CRUD, sanitization
+|   |   |-- admin-ui-core.js # Navigation, dashboard, todos
+|   |   |-- admin-ui-gestion.js  # Clients, instruments, locations
+|   |   |-- admin-ui-boutique.js # Stock boutique, accessoires
+|   |   |-- admin-ui-content.js  # Professeurs, galerie, blog
+|   |   |-- admin-ui-config.js   # Configuration, export/import
+|   |   |-- admin-ui-modals.js   # Modals CRUD
+|   |   |-- admin-ui-compta.js   # Comptabilite, URSSAF
+|   |   |-- gestion.js       # Logique metier (clients, instruments, etc.)
+|   |   |-- gestion-pdf.js   # Generation de factures PDF
+|   |   |-- gestion-boutique.js  # Gestion stock
+|   |   |-- apprendre-admin.js   # Admin professeurs (page)
+|   |   |-- boutique-admin.js    # Admin boutique (page)
+|   |   |-- galerie-admin.js     # Admin galerie (page)
+|   |   +-- blog-admin.js        # Admin blog (page)
+|   |
+|   |-- services/            # Integrations externes
+|   |   |-- supabase-client.js   # Client Supabase
+|   |   |-- supabase-auth.js     # Authentification Supabase
+|   |   |-- supabase-sync.js     # Synchronisation temps reel
+|   |   |-- email-client.js      # Client email (Brevo)
+|   |   |-- payplug-client.js    # Paiement Payplug
+|   |   +-- swikly-client.js     # Cautions Swikly
+|   |
+|   |-- data/                # Donnees statiques
+|   |   |-- scales-data.js   # 65+ gammes musicales
+|   |   +-- materiaux-data.js # Materiaux et proprietes
+|   |
+|   |-- features/            # Modules metier
+|   |   |-- handpan-player.js    # Player SVG + Web Audio
+|   |   |-- feasibility-module.js # Validation configurations
+|   |   |-- upload.js            # Upload fichiers
+|   |   |-- teacher-form.js      # Formulaire inscription prof
+|   |   |-- honeypot.js          # Anti-spam honeypot
+|   |   +-- mistral-stats.js     # Analytics anonymes
+|   |
+|   +-- pages/               # Logique specifique par page
+|       +-- commander.js     # Formulaire commande + paiement
 |
 |-- php/
 |   |-- upload.php           # Upload fichiers
 |   +-- delete.php           # Suppression fichiers
 |
-|-- sql/                      # (Supprime du repo - conserve localement)
-|   |-- 01_schema.sql        # Schema base de donnees
-|   |-- 02_rls_policies.sql  # Politiques RLS
-|   +-- 03_colonnes_sync.sql # Synchronisation colonnes
-|
 |-- ressources/
 |   |-- images/              # Photos, logos, assets
-|   +-- audio/               # Samples FLAC (50+ notes)
+|   +-- audio/               # Samples FLAC (56 notes)
 |
 |-- netlify/functions/
-|   +-- send-email.js        # Fonction email Brevo
+|   |-- send-email.js        # Email Brevo SMTP
+|   |-- payplug-create-payment.js  # Creation paiement
+|   |-- payplug-webhook.js   # Webhook paiement
+|   |-- swikly-create-deposit.js   # Creation caution
+|   +-- swikly-webhook.js    # Webhook caution
 |
 |-- CLAUDE.md                # Guide pour assistants IA
 +-- README.md                # Ce fichier
@@ -126,13 +154,15 @@ npx serve .
 - **Supabase JS SDK 2.x** - Base de donnees / Auth
 - **Leaflet 1.9.4** - Cartes interactives
 - **Quill.js** - Editeur WYSIWYG (blog)
-- **Google reCAPTCHA v3** - Protection formulaires
 
 ### Backend
 - **Database :** Supabase PostgreSQL avec RLS
 - **Email :** Brevo SMTP via Netlify Functions
 - **Hosting :** OVH Mutualise (support PHP)
 - **Serverless :** Netlify Functions
+
+### Anti-Spam
+- **Honeypot** - Champ invisible (pas de reCAPTCHA, RGPD-friendly)
 
 ---
 
@@ -172,7 +202,10 @@ npx serve .
 | Apprendre | `apprendre.html` | Carte Leaflet, professeurs IDF |
 | Galerie | `galerie.html` | Mosaique responsive, lightbox |
 | Blog | `blog.html` | Articles, newsletter |
+| Article | `article.html` | Template article dynamique |
 | Admin | `admin.html` | Dashboard centralise |
+| CGV | `cgv.html` | Conditions generales de vente |
+| Mentions legales | `mentions-legales.html` | Obligations legales |
 
 ---
 
@@ -208,7 +241,7 @@ npx serve .
 
 ## Systeme de faisabilite
 
-Le module `feasibility-module.js` verifie automatiquement si une configuration est realisable.
+Le module `js/features/feasibility-module.js` verifie automatiquement si une configuration est realisable.
 
 ### Seuils de faisabilite
 
@@ -236,7 +269,7 @@ Le module `feasibility-module.js` verifie automatiquement si une configuration e
 - **Nommage :** `[Note][s][Octave].flac` (s pour diese)
   - Exemple : C#4 > `Cs4.flac`, Bb3 > `As3.flac`
 
-**Plage disponible :** E2 a F5 (50+ samples)
+**Plage disponible :** E2 a F5 (56 samples)
 
 ---
 
@@ -244,19 +277,17 @@ Le module `feasibility-module.js` verifie automatiquement si une configuration e
 
 ### Architecture modulaire (v3.1)
 
-Le systeme admin a ete refactorise en modules independants pour une meilleure maintenabilite :
-
-| Module | Taille | Responsabilite |
-|--------|--------|----------------|
-| `admin-core.js` | 32 KB | Auth, FAB, Modal, Toast, Storage, sanitization |
-| `admin-ui-core.js` | 12 KB | Navigation, dashboard, todos |
-| `admin-ui-gestion.js` | 20 KB | Clients, instruments, locations, commandes, factures |
-| `admin-ui-boutique.js` | 18 KB | Stock boutique, accessoires |
-| `admin-ui-content.js` | 30 KB | Professeurs, galerie, blog, analytics |
-| `admin-ui-config.js` | 12 KB | Configuration, export/import, materiaux |
-| `admin-ui-modals.js` | 62 KB | Tous les modals CRUD |
-| `admin-ui-compta.js` | 14 KB | Comptabilite, URSSAF |
-| `[page]-admin.js` | Variable | Integrations specifiques par page |
+| Module | Dossier | Responsabilite |
+|--------|---------|----------------|
+| `admin-core.js` | `js/admin/` | Auth, FAB, Modal, Toast, Storage, sanitization |
+| `admin-ui-core.js` | `js/admin/` | Navigation, dashboard, todos |
+| `admin-ui-gestion.js` | `js/admin/` | Clients, instruments, locations, commandes, factures |
+| `admin-ui-boutique.js` | `js/admin/` | Stock boutique, accessoires |
+| `admin-ui-content.js` | `js/admin/` | Professeurs, galerie, blog, analytics |
+| `admin-ui-config.js` | `js/admin/` | Configuration, export/import, materiaux |
+| `admin-ui-modals.js` | `js/admin/` | Tous les modals CRUD |
+| `admin-ui-compta.js` | `js/admin/` | Comptabilite, URSSAF |
+| `[page]-admin.js` | `js/admin/` | Integrations specifiques par page |
 
 ### Acces
 - **URL :** `/admin.html`
@@ -272,6 +303,7 @@ Le systeme admin a ete refactorise en modules independants pour une meilleure ma
 | `mistral_pending_teachers` | Demandes en attente |
 | `mistral_gallery` | Medias galerie |
 | `mistral_blog_articles` | Articles blog |
+| `mistral_leaflet_consent` | Consentement carte RGPD |
 
 ---
 
@@ -289,6 +321,8 @@ Le systeme admin a ete refactorise en modules independants pour une meilleure ma
 | `professeurs` | Professeurs (nom, location, lat/lng, photo) |
 | `galerie` | Medias (type, src, thumbnail, ordre) |
 | `articles` | Blog (slug, title, content HTML, tags) |
+| `accessoires` | Accessoires (nom, prix, quantite_stock) |
+| `configuration` | Parametres (key/value pairs) |
 
 ### Securite RLS
 - **Lecture publique :** Professeurs actifs, articles publies, instruments en ligne
@@ -297,71 +331,57 @@ Le systeme admin a ete refactorise en modules independants pour une meilleure ma
 
 ---
 
-## Diagnostic du projet
+## Configuration Supabase
 
-**Revue initiale :** 3 fevrier 2026
-**Corrections appliquees :** 4 fevrier 2026
+### 1. Creer un projet Supabase
 
-### Resume des corrections
+1. Allez sur [supabase.com](https://supabase.com) et creez un compte
+2. Cliquez sur "New Project" (region EU recommandee pour RGPD)
+3. Notez le mot de passe de la base de donnees
 
-| Categorie | Initial | Corrige | Restant |
-|-----------|---------|---------|---------|
-| Critique | 8 | 7 | 1 |
-| Haute | 19 | 12 | 7 |
-| Moyenne | 32 | 15 | 17 |
-| Basse | 19 | 5 | 14 |
-| **Total** | **78** | **39** | **39** |
+### 2. Recuperer les identifiants API
 
----
+Dans **Settings > API**, copiez :
+- **Project URL** : `https://xxxxx.supabase.co`
+- **anon public key** : `eyJhbGciOiJIUzI1NiIs...`
 
-### Corrections CRITIQUES appliquees
+> La cle `anon` est concue pour etre exposee cote client. La securite vient des politiques RLS.
 
-| ID | Probleme | Statut |
-|----|----------|--------|
-| CRIT-001 | Credentials Supabase exposees | Externalise via `window.MISTRAL_CONFIG` |
-| CRIT-002 | Email header injection | Sanitisation ajoutee dans send-email.js |
-| CRIT-003 | XSS dans emails | Fonction `escapeHtml()` appliquee |
-| CRIT-004 | CORS wildcard PHP | Restreint aux domaines autorises |
-| CRIT-005 | Tokens admin hardcodes | Hash externe + verification timing-safe |
-| CRIT-008 | Pas de banniere cookies | `cookie-consent.js` implemente |
-| CRIT-006/007 | RLS et config DB | *A traiter cote Supabase* |
+### 3. Configurer le projet local
 
-### Corrections HAUTES appliquees
+```bash
+cp js/core/config.example.js js/core/config.js
+```
 
-| ID | Probleme | Statut |
-|----|----------|--------|
-| HIGH-001 | XSS innerHTML admin | `sanitizeHtml()` ajoutee dans admin-core.js |
-| HIGH-012 | Contraste couleurs insuffisant | `--color-text-muted` corrige |
-| HIGH-013 | Google Fonts sans consentement | Chargement conditionnel via cookies |
-| HIGH-017 | Formulaires sans consentement | Checkbox RGPD ajoutee |
-| - | Fichier admin-ui.js monolithique | Refactorise en 7 modules |
-| - | Fichiers orphelins | Supprimes (messages.js, etc.) |
-| - | Skip link accessibilite | Ajoute dans header.html |
+Editer `js/core/config.js` :
+```javascript
+window.MISTRAL_CONFIG = {
+  SUPABASE_URL: 'https://votre-projet.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIs...'
+};
+```
 
-### Corrections MOYENNES appliquees
+> **Important** : Ne commitez JAMAIS `js/core/config.js` (il est dans .gitignore)
 
-| Probleme | Statut |
-|----------|--------|
-| Meta Open Graph/Twitter | Ajoutees sur toutes les pages |
-| Navigation clavier | `tabindex`, `role`, `onkeydown` ajoutes |
-| Alt text manquants | Corriges sur index.html, galerie.html |
-| Labels formulaires | Ameliores |
-| Fichier CSS mal place (js/admin.css) | Supprime |
+### 4. Creer un utilisateur admin
 
-### Points positifs
+Dans Supabase > **Authentication > Users** > "Add User" :
+- Email : `admin@votre-domaine.fr`
+- Password : (mot de passe fort)
+- Cochez "Auto Confirm User"
 
-- Structure HTML semantique propre
-- Bonne base de CSS custom properties
-- Design responsive mobile-first
-- RLS activee sur Supabase
-- Approche RGPD-first avec banniere consentement
-- Player handpan interactif bien implemente
-- Systeme de partials fonctionnel
-- Architecture admin modulaire et maintenable
+### 5. Depannage
+
+| Erreur | Solution |
+|--------|----------|
+| "supabaseUrl is required" | `js/core/config.js` n'existe pas ou n'est pas charge |
+| "Invalid login credentials" | Verifier l'utilisateur dans Supabase > Authentication |
+| "Service d'authentification non disponible" | Verifier l'ordre des scripts dans admin.html |
+| Erreurs CORS | Ajouter votre domaine dans Supabase > Settings > API |
 
 ---
 
-## Plan d'action
+## Roadmap
 
 ### Phase 1 : Securite - COMPLETE
 
@@ -370,35 +390,94 @@ Le systeme admin a ete refactorise en modules independants pour une meilleure ma
 - [x] Corriger vulnerabilites XSS (sanitizeHtml, escapeHtml)
 - [x] Restreindre CORS sur endpoints PHP
 - [x] Securiser tokens upload/delete
-- [ ] Implementer hash bcrypt cote serveur (optionnel)
-
-### Phase 2 : RGPD/Accessibilite - COMPLETE
-
 - [x] Banniere consentement cookies
 - [x] Google Fonts conditionnel
-- [x] Checkbox consentement formulaires
-- [x] Skip link accessibilite
-- [x] Correction contraste couleurs
-- [x] Meta Open Graph/Twitter
-- [x] Navigation clavier amelioree
-
-### Phase 3 : Dette technique - COMPLETE
-
 - [x] Refactoriser admin-ui.js en 7 modules
-- [x] Supprimer fichiers orphelins (messages.js, import-excel-data.js)
-- [x] Supprimer gestion.html et gestion-ui.js deprecies
-- [x] Supprimer fichiers SQL du repo (securite)
-- [x] Corriger fichier CSS mal place (js/admin.css)
 
-### Phase 4 : Restant a faire
+### Phase 2 : Paiement et Email - EN COURS
 
+- [x] Configurer Brevo et templates email
+- [x] Creer module Payplug (client + webhook)
+- [x] Creer module Swikly (client + webhook)
+- [x] Integration formulaire paiement dans commander.html
+- [x] Paiement acompte (300 EUR), solde, 3x sans frais
+- [x] Protection anti-spam honeypot (tous formulaires)
+- [ ] Auto-generation de facture sur paiement confirme
+- [ ] Tests sandbox Payplug/Swikly
+- [ ] Passage en production
+
+### Phase 3 : A faire
+
+- [ ] Audit complet CRUD admin panel
 - [ ] Faire de Supabase la source de verite (pattern localStorage-first)
-- [ ] Implementer gestion erreurs avec notifications utilisateur
-- [ ] Restaurer contraintes base de donnees
-- [ ] Ajouter politiques RLS granulaires
-- [ ] Consolider utilitaires dupliques restants
-- [ ] Ajouter indicateurs `:focus-visible` complets
-- [ ] Creer echelle z-index unifiee
+- [ ] Audit securite RLS (politiques granulaires)
+- [ ] Ameliorer UX swipe boutique mobile
+- [ ] Scale Batch System (voir section dediee)
+- [ ] Migration auth admin vers Supabase Auth
+- [ ] Optimisations performance (lazy loading, code splitting)
+- [ ] Echelle z-index unifiee
+- [ ] Indicateurs `:focus-visible` complets
+
+### Variables d'environnement requises
+
+```env
+# Supabase (existant)
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_ANON_KEY=xxx
+
+# Brevo (email) - CONFIGURE
+BREVO_API_KEY=xxx
+
+# Payplug - A CONFIGURER
+PAYPLUG_SECRET_KEY=xxx
+
+# Swikly - Utilise permalien
+# Permalien: https://v2.swik.link/DxkC1UD
+```
+
+---
+
+## Scale Batch System
+
+> Specification technique pour le systeme de gestion des gammes par batch (developpement futur).
+
+### Objectifs
+
+1. Organiser 65+ gammes en batches pour le configurateur
+2. Simplifier l'UX avec des selections curatees
+3. Permettre le controle admin sur les gammes visibles
+4. Preserver la logique de theorie musicale (dieses/bemols)
+
+### Cinq categories de batch
+
+| Batch | Nom | Description |
+|-------|-----|-------------|
+| `debutant` | Debutant | Gammes accessibles (toujours visible) |
+| `mineur` | Mineur | Gammes mineures (Kurd, Celtic...) |
+| `majeur` | Majeur | Gammes majeures (Sabye, Oxalis...) |
+| `modal` | Modal | Gammes modales (Dorian, Phrygian...) |
+| `ethnic` | Ethnique | Gammes du monde (Hijaz, Akebono...) |
+
+### Tables Supabase prevues
+
+**`gammes`** : nom, slug, pattern, mode, batch, nb_notes, notes_octave2, has_bottoms, note_variants (JSONB), ordre, visible, featured
+
+**`gammes_batches`** : id, nom, description, ordre, couleur, icone, visible
+
+### Pattern notation
+
+```
+[Ding]/[Note1]-[Note2]-[Note3]-...-[NoteN]_
+```
+Exemple Kurd 9 : `D/-A-Bb-C-D-E-F-G-A_`
+
+### Phases d'implementation
+
+1. **Database** : Creer tables + RLS + seed data
+2. **Migration** : Parser les 65 gammes de `scales-data.js` vers Supabase
+3. **Admin** : Onglet "Gammes" dans admin (CRUD + batch manager)
+4. **Configurateur** : Chips de batch + filtrage dans boutique.html
+5. **Extended** : Note variants pour gammes >9 notes
 
 ---
 
@@ -412,16 +491,16 @@ Le systeme admin a ete refactorise en modules independants pour une meilleure ma
 ### Checklist pre-production
 
 - [ ] Changer mot de passe admin par defaut
-- [ ] Configurer cles reCAPTCHA
+- [ ] Configurer cles Payplug (PAYPLUG_SECRET_KEY)
 - [ ] Verifier encodage UTF-8
 - [ ] Optimiser images (WebP)
 - [ ] Tester sur vrais appareils mobiles
-- [ ] Configurer Swikly pour depots location
 - [ ] Configurer email (contact@mistralpans.fr)
-- [x] Creer pages legales (mentions, CGV) - *existantes*
+- [x] Creer pages legales (mentions, CGV)
 - [x] Configurer banniere consentement cookies
-- [x] Externaliser identifiants Supabase (`window.MISTRAL_CONFIG`)
+- [x] Externaliser identifiants Supabase
 - [x] Securiser endpoints PHP (CORS, tokens)
+- [x] Anti-spam honeypot (tous formulaires)
 
 ### Services externes
 
@@ -431,20 +510,25 @@ Le systeme admin a ete refactorise en modules independants pour une meilleure ma
 | Brevo | Email | Conforme RGPD |
 | Nominatim | Geocodage | Pas de tracking |
 | CartoDB | Tuiles carte | Consentement requis (banniere) |
-| reCAPTCHA | Protection spam | Service Google |
-| Google Fonts | Typographies | Chargement conditionnel (consentement) |
+| Google Fonts | Typographies | Chargement conditionnel |
+| Swikly | Cautions location | Conforme RGPD |
+| Payplug | Paiements | Fournisseur francais, conforme RGPD |
 
 ---
 
 ## Historique des versions
+
+### v3.3 (6 Fevrier 2026)
+- **Structure :** Reorganisation du dossier `js/` en sous-dossiers thematiques (core, admin, services, data, features, pages)
+- **Documentation :** Consolidation de 7 fichiers markdown en 2 (README.md + CLAUDE.md)
+- **Nettoyage :** Suppression image dupliquee
 
 ### v3.2 (4 Fevrier 2026)
 - **Ventes :** Workflow de vente integre (instrument -> facture -> statut vendu)
 - **Factures :** Ajout automatique d'instrument avec `addFactureLigneFromInstrument()`
 - **Statuts :** Systeme de validation des transitions de statut instruments
 - **Synchronisation :** Les instruments lies sont automatiquement marques "vendu" au paiement
-- **Bug fixes :** Correction declarations de variables dupliquees (admin-ui-boutique.js, admin-ui-content.js)
-- **Supabase :** Ajout sync des professeurs en attente (`mistral_pending_teachers`)
+- **Supabase :** Ajout sync des professeurs en attente
 
 ### v3.1 (4 Fevrier 2026)
 - **Securite :** Correction 7 vulnerabilites critiques (XSS, CORS, injection)
@@ -457,28 +541,23 @@ Le systeme admin a ete refactorise en modules independants pour une meilleure ma
 ### v3.0 (3 Fevrier 2026)
 - Revue globale du projet (78 issues identifies)
 - Documentation mise a jour avec diagnostic
-- Plan d'action pour corrections
 
 ### v2.5 (Janvier 2025)
 - Systeme de faisabilite des configurations
 - Nouvelle tarification : 115 EUR/note + malus
 - Navigation swipe mobile
-- Bandeau teal sticky desktop
 
 ### v2.4 (Janvier 2025)
 - Suppression build Node.js
 - Chargement dynamique des partials
-- Navigation active automatique
 
 ### v2.3 (Janvier 2025)
 - FAB admin sur toutes les pages
 - Geocodage automatique (Nominatim)
-- Upload photo de profil
 
 ### v2.2 (Janvier 2025)
 - Systeme admin centralise
-- Admin galerie et blog
-- Consentement RGPD Leaflet
+- Editeur WYSIWYG Quill.js
 
 ### v2.0
 - Refonte design complete
@@ -495,4 +574,4 @@ Le systeme admin a ete refactorise en modules independants pour une meilleure ma
 
 ---
 
-*Documentation mise a jour le 4 fevrier 2026 (v3.2)*
+*Documentation mise a jour le 6 fevrier 2026 (v3.3)*
