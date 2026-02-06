@@ -8,7 +8,7 @@
  * Installation:
  * 1. Ajouter dans le <head> de tes pages HTML:
  *    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
- *    <script src="js/supabase-client.js"></script>
+ *    <script src="js/services/supabase-client.js"></script>
  * 
  * 2. Remplacer les appels à MistralGestion par MistralDB
  * 
