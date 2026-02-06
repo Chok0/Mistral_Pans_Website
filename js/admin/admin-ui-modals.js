@@ -1224,22 +1224,28 @@
     $('#commande-acompte').value = commande.acompte_verse || 0;
     $('#commande-paiement-statut').value = commande.statut_paiement || 'en_attente';
     $('#commande-statut').value = commande.statut || 'en_attente';
+    if ($('#commande-tracking')) $('#commande-tracking').value = commande.tracking_number || '';
+    if ($('#commande-delivery')) $('#commande-delivery').value = commande.estimated_delivery || '';
     $('#commande-notes').value = commande.notes || '';
-    
+
     showModal('commande');
   }
   
   function saveCommande() {
     if (typeof MistralGestion === 'undefined') return;
-    
+
     const id = $('#commande-id')?.value;
     const clientId = $('#commande-client-id')?.value;
-    
+
     if (!clientId) {
       Toast.error('Client requis');
       return;
     }
-    
+
+    // Récupérer l'ancien statut pour détecter les transitions
+    const oldCommande = id ? MistralGestion.Commandes.get(id) : null;
+    const oldStatut = oldCommande?.statut || null;
+
     const data = {
       client_id: clientId,
       date_commande: $('#commande-date')?.value || new Date().toISOString().split('T')[0],
@@ -1248,9 +1254,11 @@
       acompte_verse: parseFloat($('#commande-acompte')?.value) || 0,
       statut_paiement: $('#commande-paiement-statut')?.value || 'en_attente',
       statut: $('#commande-statut')?.value || 'en_attente',
+      tracking_number: $('#commande-tracking')?.value.trim() || null,
+      estimated_delivery: $('#commande-delivery')?.value.trim() || null,
       notes: $('#commande-notes')?.value.trim()
     };
-    
+
     if (id) {
       MistralGestion.Commandes.update(id, data);
       Toast.success('Commande modifiée');
@@ -1258,16 +1266,104 @@
       MistralGestion.Commandes.create(data);
       Toast.success('Commande créée');
     }
-    
+
+    // Automatisations lifecycle : détecter les transitions de statut
+    if (id && oldStatut && oldStatut !== data.statut) {
+      handleCommandeStatusTransition(id, oldStatut, data.statut, data, clientId);
+    }
+
     closeModal('commande');
     renderCommandes();
     AdminUI.refreshDashboard();
-    
+
     // Reset
     $('#commande-id').value = '';
     $('#commande-client-id').value = '';
     $('#modal-commande-title').textContent = 'Nouvelle commande';
     $('#form-commande').reset();
+  }
+
+  /**
+   * Gère les actions automatiques lors d'un changement de statut de commande
+   */
+  async function handleCommandeStatusTransition(commandeId, oldStatut, newStatut, commandeData, clientId) {
+    const client = MistralGestion.Clients.get(clientId);
+    if (!client?.email) return;
+
+    const commande = MistralGestion.Commandes.get(commandeId);
+    const reference = commande?.reference || commande?.payplug_reference || commandeId;
+    const productName = commande?.product_name || commande?.description || 'Handpan';
+
+    // Transition vers "prêt" → demande de solde (si paiement partiel)
+    if (newStatut === 'pret' && commandeData.statut_paiement === 'partiel') {
+      const remainingAmount = (commandeData.montant_total || 0) - (commandeData.acompte_verse || 0);
+      if (remainingAmount > 0) {
+        try {
+          const response = await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              emailType: 'balance_request',
+              client: {
+                email: client.email,
+                prenom: client.prenom || client.nom?.split(' ')[0] || '',
+                nom: client.nom || ''
+              },
+              order: {
+                reference: reference,
+                productName: productName
+              },
+              payment: {
+                remainingAmount: remainingAmount,
+                paymentUrl: null
+              }
+            })
+          });
+          if (response.ok) {
+            Toast.success('Email de demande de solde envoyé à ' + client.email);
+          } else {
+            Toast.error('Erreur envoi email de solde');
+          }
+        } catch (err) {
+          console.error('Erreur envoi email solde:', err);
+          Toast.error('Erreur envoi email');
+        }
+      }
+    }
+
+    // Transition vers "expédié" → notification d'expédition
+    if (newStatut === 'expedie' || newStatut === 'livre') {
+      if (oldStatut !== 'expedie' && oldStatut !== 'livre') {
+        try {
+          const response = await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              emailType: 'shipping_notification',
+              client: {
+                email: client.email,
+                prenom: client.prenom || client.nom?.split(' ')[0] || '',
+                nom: client.nom || ''
+              },
+              order: {
+                reference: reference,
+                productName: productName,
+                trackingNumber: commande?.tracking_number || null,
+                estimatedDelivery: commande?.estimated_delivery || null
+              }
+            })
+          });
+          if (response.ok) {
+            Toast.success('Email d\'expédition envoyé à ' + client.email);
+          } else {
+            Toast.error('Erreur envoi email d\'expédition');
+          }
+        } catch (err) {
+          console.error('Erreur envoi email expédition:', err);
+          Toast.error('Erreur envoi email');
+        }
+      }
+    }
   }
 
   // CRUD Factures

@@ -473,6 +473,134 @@ function buildPaymentConfirmationEmail(data) {
 }
 
 /**
+ * Construit l'email de demande de solde (instrument prêt)
+ */
+function buildBalanceRequestEmail(data) {
+  const { client, order, payment } = data;
+  const formatEuros = (amount) =>
+    new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
+
+  const trackingUrl = `https://mistralpans.fr/suivi.html?ref=${encodeURIComponent(order.reference)}&email=${encodeURIComponent(client.email)}`;
+
+  return {
+    to: [{ email: client.email, name: `${sanitize(client.prenom)} ${sanitize(client.nom)}` }],
+    bcc: [{ email: 'contact@mistralpans.fr' }],
+    replyTo: { email: 'contact@mistralpans.fr', name: 'Mistral Pans' },
+    subject: `Votre handpan est prêt ! - Commande ${order.reference}`,
+    htmlContent: `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head><meta charset="UTF-8"></head>
+      <body style="font-family: Inter, system-ui, sans-serif; color: #2C2825; max-width: 600px; margin: 0 auto; padding: 20px;">
+
+        <div style="background: #4A7C59; color: white; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">Votre instrument est prêt !</h1>
+          <p style="margin: 8px 0 0; opacity: 0.9;">Commande ${sanitize(order.reference)}</p>
+        </div>
+
+        <div style="background: #f8f8f8; padding: 24px; border: 1px solid #e5e5e5;">
+          <p>Bonjour ${sanitize(client.prenom)},</p>
+
+          <p>Votre <strong>${sanitize(order.productName || 'handpan')}</strong> a terminé son accordage et est maintenant prêt à vous rejoindre !</p>
+
+          <div style="background: white; border: 2px solid #4A7C59; border-radius: 8px; padding: 20px; margin: 24px 0; text-align: center;">
+            <p style="margin: 0 0 8px; font-size: 0.875rem; color: #6B7280;">Solde restant</p>
+            <p style="margin: 0; font-size: 1.75rem; font-weight: 700; color: #4A7C59;">${formatEuros(payment.remainingAmount)}</p>
+          </div>
+
+          <p>Pour finaliser votre commande et déclencher l'expédition, il vous reste à régler le solde de <strong>${formatEuros(payment.remainingAmount)}</strong>.</p>
+
+          ${payment.paymentUrl ? `
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${sanitize(payment.paymentUrl)}" style="display: inline-block; background: #0D7377; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+              Payer le solde
+            </a>
+          </div>
+          ` : `
+          <p>Nous vous enverrons un lien de paiement sécurisé dans un prochain email, ou vous pouvez nous contacter directement.</p>
+          `}
+
+          <p style="font-size: 0.875rem; color: #6B7280;">
+            Vous pouvez suivre votre commande à tout moment :
+            <a href="${trackingUrl}" style="color: #0D7377;">Suivi de commande</a>
+          </p>
+        </div>
+
+        <div style="background: #1A1815; color: #9CA3AF; padding: 20px; border-radius: 0 0 12px 12px; text-align: center; font-size: 0.8125rem;">
+          <p style="margin: 0;">Mistral Pans — Handpans artisanaux, Île-de-France</p>
+          <p style="margin: 8px 0 0;"><a href="mailto:contact@mistralpans.fr" style="color: #0D7377;">contact@mistralpans.fr</a></p>
+        </div>
+
+      </body>
+      </html>
+    `
+  };
+}
+
+/**
+ * Construit l'email de notification d'expédition
+ */
+function buildShippingNotificationEmail(data) {
+  const { client, order } = data;
+  const trackingUrl = `https://mistralpans.fr/suivi.html?ref=${encodeURIComponent(order.reference)}&email=${encodeURIComponent(client.email)}`;
+
+  return {
+    to: [{ email: client.email, name: `${sanitize(client.prenom)} ${sanitize(client.nom)}` }],
+    bcc: [{ email: 'contact@mistralpans.fr' }],
+    replyTo: { email: 'contact@mistralpans.fr', name: 'Mistral Pans' },
+    subject: `Votre handpan est en route ! - Commande ${order.reference}`,
+    htmlContent: `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head><meta charset="UTF-8"></head>
+      <body style="font-family: Inter, system-ui, sans-serif; color: #2C2825; max-width: 600px; margin: 0 auto; padding: 20px;">
+
+        <div style="background: #0D7377; color: white; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">Votre instrument est en route !</h1>
+          <p style="margin: 8px 0 0; opacity: 0.9;">Commande ${sanitize(order.reference)}</p>
+        </div>
+
+        <div style="background: #f8f8f8; padding: 24px; border: 1px solid #e5e5e5;">
+          <p>Bonjour ${sanitize(client.prenom)},</p>
+
+          <p>Votre <strong>${sanitize(order.productName || 'handpan')}</strong> vient d'être expédié !</p>
+
+          ${order.trackingNumber ? `
+          <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 20px; margin: 24px 0; text-align: center;">
+            <p style="margin: 0 0 8px; font-size: 0.875rem; color: #1E40AF;">Numéro de suivi</p>
+            <p style="margin: 0; font-size: 1.25rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #1E40AF;">${sanitize(order.trackingNumber)}</p>
+          </div>
+          ` : ''}
+
+          ${order.estimatedDelivery ? `
+          <p>Livraison estimée : <strong>${sanitize(order.estimatedDelivery)}</strong></p>
+          ` : ''}
+
+          <p>Quelques conseils pour accueillir votre handpan :</p>
+          <ul style="color: #4B5563; line-height: 1.8;">
+            <li>Rangez-le dans sa housse après chaque session</li>
+            <li>Nettoyez-le avec un chiffon doux et de l'huile de protection</li>
+            <li>Évitez l'exposition prolongée au soleil ou à l'humidité</li>
+          </ul>
+
+          <p style="font-size: 0.875rem; color: #6B7280;">
+            Suivez votre commande :
+            <a href="${trackingUrl}" style="color: #0D7377;">Suivi de commande</a>
+          </p>
+        </div>
+
+        <div style="background: #1A1815; color: #9CA3AF; padding: 20px; border-radius: 0 0 12px 12px; text-align: center; font-size: 0.8125rem;">
+          <p style="margin: 0;">Mistral Pans — Handpans artisanaux, Île-de-France</p>
+          <p style="margin: 8px 0 0;"><a href="mailto:contact@mistralpans.fr" style="color: #0D7377;">contact@mistralpans.fr</a></p>
+        </div>
+
+      </body>
+      </html>
+    `
+  };
+}
+
+/**
  * Construit l'email de notification artisan pour une nouvelle commande
  */
 function buildNewOrderNotificationEmail(data) {
@@ -700,6 +828,42 @@ exports.handler = async (event, context) => {
           };
         }
         emailData = buildNewOrderNotificationEmail(data);
+        break;
+
+      case 'balance_request':
+        if (!data.client?.email || !data.order?.reference) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Données demande de solde manquantes' })
+          };
+        }
+        if (!isValidEmail(data.client.email)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Email client invalide' })
+          };
+        }
+        emailData = buildBalanceRequestEmail(data);
+        break;
+
+      case 'shipping_notification':
+        if (!data.client?.email || !data.order?.reference) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Données notification expédition manquantes' })
+          };
+        }
+        if (!isValidEmail(data.client.email)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Email client invalide' })
+          };
+        }
+        emailData = buildShippingNotificationEmail(data);
         break;
 
       case 'contact':

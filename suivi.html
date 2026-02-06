@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Suivez l'avancement de votre commande Mistral Pans. Entrez votre référence et votre email.">
+  <title>Suivi de commande - Mistral Pans</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    .suivi-page {
+      min-height: 100vh;
+      background: var(--color-bg);
+    }
+    .suivi-container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: var(--space-3xl) var(--space-lg);
+    }
+
+    /* Header */
+    .suivi-header {
+      text-align: center;
+      margin-bottom: var(--space-2xl);
+    }
+    .suivi-header .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-size: 0.8125rem;
+      color: var(--color-accent);
+      margin-bottom: var(--space-sm);
+    }
+    .suivi-header h1 {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      color: var(--color-text);
+      margin-bottom: var(--space-sm);
+    }
+    .suivi-header p {
+      color: var(--color-text-muted);
+    }
+
+    /* Lookup form */
+    .suivi-form {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      margin-bottom: var(--space-xl);
+    }
+    .suivi-form .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+    }
+    @media (max-width: 500px) {
+      .suivi-form .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+    .suivi-form .form-group {
+      margin-bottom: var(--space-md);
+    }
+    .suivi-form .form-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: var(--space-xs);
+      color: var(--color-text);
+    }
+    .suivi-form .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+    .suivi-form .form-input:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px rgba(13,115,119,0.1);
+    }
+    .suivi-form .btn-lookup {
+      width: 100%;
+      padding: 14px 24px;
+      background: var(--color-accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .suivi-form .btn-lookup:hover {
+      background: #0a5c5f;
+    }
+    .suivi-form .btn-lookup:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Error / no result */
+    .suivi-error {
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      color: #991B1B;
+      padding: var(--space-md) var(--space-lg);
+      border-radius: var(--radius-md);
+      text-align: center;
+      margin-bottom: var(--space-xl);
+      display: none;
+    }
+
+    /* Result card */
+    .suivi-result {
+      display: none;
+    }
+    .suivi-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .suivi-card__header {
+      background: var(--color-accent);
+      color: white;
+      padding: var(--space-lg) var(--space-xl);
+    }
+    .suivi-card__ref {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+      opacity: 0.8;
+    }
+    .suivi-card__product {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-top: var(--space-xs);
+    }
+    .suivi-card__source {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8125rem;
+      margin-top: var(--space-sm);
+    }
+    .suivi-card__body {
+      padding: var(--space-xl);
+    }
+
+    /* Timeline */
+    .suivi-timeline {
+      position: relative;
+      padding-left: 40px;
+      margin-bottom: var(--space-xl);
+    }
+    .suivi-timeline::before {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--color-border);
+    }
+    .suivi-timeline__step {
+      position: relative;
+      padding-bottom: var(--space-lg);
+    }
+    .suivi-timeline__step:last-child {
+      padding-bottom: 0;
+    }
+    .suivi-timeline__dot {
+      position: absolute;
+      left: -33px;
+      top: 2px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      z-index: 1;
+    }
+    .suivi-timeline__step--done .suivi-timeline__dot {
+      background: var(--color-success);
+      color: white;
+    }
+    .suivi-timeline__step--current .suivi-timeline__dot {
+      background: var(--color-accent);
+      color: white;
+      box-shadow: 0 0 0 4px rgba(13,115,119,0.2);
+      animation: pulse 2s infinite;
+    }
+    .suivi-timeline__step--pending .suivi-timeline__dot {
+      background: var(--color-bg-warm);
+      border: 2px solid var(--color-border);
+      color: var(--color-text-muted);
+    }
+    .suivi-timeline__label {
+      font-weight: 600;
+      font-size: 0.9375rem;
+    }
+    .suivi-timeline__step--pending .suivi-timeline__label {
+      color: var(--color-text-muted);
+    }
+    .suivi-timeline__step--current .suivi-timeline__label {
+      color: var(--color-accent);
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 4px rgba(13,115,119,0.2); }
+      50% { box-shadow: 0 0 0 8px rgba(13,115,119,0.1); }
+    }
+
+    /* Payment info */
+    .suivi-payment {
+      background: var(--color-bg-warm);
+      border-radius: var(--radius-md);
+      padding: var(--space-lg);
+    }
+    .suivi-payment h3 {
+      font-size: 0.9375rem;
+      margin-bottom: var(--space-md);
+      color: var(--color-text);
+    }
+    .suivi-payment__row {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-xs) 0;
+      font-size: 0.9375rem;
+    }
+    .suivi-payment__row--total {
+      border-top: 1px solid var(--color-border);
+      padding-top: var(--space-sm);
+      margin-top: var(--space-xs);
+      font-weight: 700;
+    }
+    .suivi-payment__badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+    }
+    .suivi-payment__badge--paye {
+      background: #DEF7EC;
+      color: #03543F;
+    }
+    .suivi-payment__badge--partiel {
+      background: #FEF3C7;
+      color: #92400E;
+    }
+    .suivi-payment__badge--attente {
+      background: #F3F4F6;
+      color: #6B7280;
+    }
+
+    /* Tracking */
+    .suivi-tracking {
+      background: #EFF6FF;
+      border: 1px solid #BFDBFE;
+      border-radius: var(--radius-md);
+      padding: var(--space-md) var(--space-lg);
+      margin-top: var(--space-lg);
+      text-align: center;
+    }
+    .suivi-tracking__number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: #1E40AF;
+    }
+
+    /* Footer link */
+    .suivi-footer {
+      text-align: center;
+      margin-top: var(--space-2xl);
+    }
+    .suivi-footer a {
+      color: var(--color-accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .suivi-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body data-page="suivi" class="suivi-page">
+  <div id="site-header"></div>
+
+  <main>
+    <div class="suivi-container">
+
+      <div class="suivi-header">
+        <p class="eyebrow">Suivi de commande</p>
+        <h1>Où en est votre instrument ?</h1>
+        <p>Entrez votre référence de commande et votre email pour suivre l'avancement.</p>
+      </div>
+
+      <!-- Lookup form -->
+      <div class="suivi-form" id="lookup-form">
+        <form id="suivi-lookup">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="suivi-ref">Référence *</label>
+              <input type="text" id="suivi-ref" class="form-input" placeholder="MP2602-ABCD1234" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="suivi-email">Email *</label>
+              <input type="email" id="suivi-email" class="form-input" placeholder="votre@email.com" required>
+            </div>
+          </div>
+          <button type="submit" class="btn-lookup" id="btn-lookup">
+            Rechercher ma commande
+          </button>
+        </form>
+      </div>
+
+      <!-- Error message -->
+      <div class="suivi-error" id="suivi-error"></div>
+
+      <!-- Result -->
+      <div class="suivi-result" id="suivi-result">
+        <div class="suivi-card">
+          <div class="suivi-card__header">
+            <div class="suivi-card__ref" id="result-ref">MP2602-ABCD1234</div>
+            <div class="suivi-card__product" id="result-product">D Kurd 9 notes</div>
+            <span class="suivi-card__source" id="result-source">Sur mesure</span>
+          </div>
+
+          <div class="suivi-card__body">
+            <!-- Timeline -->
+            <div class="suivi-timeline" id="result-timeline"></div>
+
+            <!-- Payment -->
+            <div class="suivi-payment">
+              <h3>Paiement</h3>
+              <div class="suivi-payment__row">
+                <span>Total</span>
+                <span id="result-total">1 400 €</span>
+              </div>
+              <div class="suivi-payment__row">
+                <span>Payé</span>
+                <span id="result-paid">420 €</span>
+              </div>
+              <div class="suivi-payment__row suivi-payment__row--total" id="result-remaining-row">
+                <span>Reste à payer</span>
+                <span id="result-remaining">980 €</span>
+              </div>
+              <div style="margin-top: var(--space-sm); text-align: right;">
+                <span class="suivi-payment__badge" id="result-payment-badge">Acompte versé</span>
+              </div>
+            </div>
+
+            <!-- Tracking number (hidden by default) -->
+            <div class="suivi-tracking" id="result-tracking" style="display:none;">
+              <p style="margin: 0 0 4px; font-size: 0.875rem; color: #1E40AF;">Numéro de suivi</p>
+              <div class="suivi-tracking__number" id="result-tracking-number"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- New search -->
+        <div style="text-align: center; margin-top: var(--space-lg);">
+          <button onclick="resetLookup()" style="background:none;border:none;color:var(--color-accent);cursor:pointer;font-weight:500;font-size:0.9375rem;">
+            ← Chercher une autre commande
+          </button>
+        </div>
+      </div>
+
+      <div class="suivi-footer">
+        <p>Une question ? <a href="#" data-modal="contact">Contactez-nous</a></p>
+        <p><a href="index.html">← Retour à l'accueil</a></p>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+  <div id="contact-modal-container"></div>
+
+  <script src="js/core/cookie-consent.js"></script>
+  <script src="js/core/main.js"></script>
+  <script src="js/features/mistral-stats.js"></script>
+
+  <script>
+  (function() {
+    'use strict';
+
+    var form = document.getElementById('suivi-lookup');
+    var errorEl = document.getElementById('suivi-error');
+    var resultEl = document.getElementById('suivi-result');
+    var lookupForm = document.getElementById('lookup-form');
+
+    // Auto-fill from URL params
+    var params = new URLSearchParams(window.location.search);
+    var refParam = params.get('ref');
+    var emailParam = params.get('email');
+    if (refParam) document.getElementById('suivi-ref').value = refParam;
+    if (emailParam) document.getElementById('suivi-email').value = emailParam;
+
+    // Auto-search if both params present
+    if (refParam && emailParam) {
+      lookupOrder(refParam, emailParam);
+    }
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var ref = document.getElementById('suivi-ref').value.trim();
+      var email = document.getElementById('suivi-email').value.trim();
+      if (ref && email) lookupOrder(ref, email);
+    });
+
+    async function lookupOrder(ref, email) {
+      var btn = document.getElementById('btn-lookup');
+      btn.disabled = true;
+      btn.textContent = 'Recherche en cours...';
+      errorEl.style.display = 'none';
+      resultEl.style.display = 'none';
+
+      try {
+        var response = await fetch('/.netlify/functions/order-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reference: ref, email: email })
+        });
+
+        var data = await response.json();
+
+        if (!response.ok || !data.success) {
+          showError(data.error || 'Commande non trouvée');
+          return;
+        }
+
+        displayOrder(data.order);
+
+      } catch (err) {
+        showError('Erreur de connexion. Veuillez réessayer.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Rechercher ma commande';
+      }
+    }
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.style.display = 'block';
+      resultEl.style.display = 'none';
+    }
+
+    function displayOrder(order) {
+      errorEl.style.display = 'none';
+      resultEl.style.display = 'block';
+      lookupForm.style.display = 'none';
+
+      // Header
+      document.getElementById('result-ref').textContent = order.reference;
+      document.getElementById('result-product').textContent = order.productName;
+      document.getElementById('result-source').textContent = order.sourceLabel;
+
+      // Timeline
+      var timelineEl = document.getElementById('result-timeline');
+      timelineEl.innerHTML = '';
+      order.timeline.forEach(function(step) {
+        var el = document.createElement('div');
+        el.className = 'suivi-timeline__step suivi-timeline__step--' + step.status;
+        el.innerHTML =
+          '<div class="suivi-timeline__dot">' + (step.status === 'done' ? '✓' : step.icon) + '</div>' +
+          '<div class="suivi-timeline__label">' + escapeHtml(step.label) + '</div>';
+        timelineEl.appendChild(el);
+      });
+
+      // Payment
+      document.getElementById('result-total').textContent = formatPrice(order.montantTotal);
+      document.getElementById('result-paid').textContent = formatPrice(order.montantPaye);
+
+      var remainingRow = document.getElementById('result-remaining-row');
+      if (order.resteAPayer > 0) {
+        remainingRow.style.display = '';
+        document.getElementById('result-remaining').textContent = formatPrice(order.resteAPayer);
+      } else {
+        remainingRow.style.display = 'none';
+      }
+
+      // Payment badge
+      var badge = document.getElementById('result-payment-badge');
+      badge.textContent = order.statutPaiementLabel;
+      badge.className = 'suivi-payment__badge';
+      if (order.statutPaiement === 'paye') badge.classList.add('suivi-payment__badge--paye');
+      else if (order.statutPaiement === 'partiel') badge.classList.add('suivi-payment__badge--partiel');
+      else badge.classList.add('suivi-payment__badge--attente');
+
+      // Tracking
+      var trackingEl = document.getElementById('result-tracking');
+      if (order.trackingNumber) {
+        trackingEl.style.display = '';
+        document.getElementById('result-tracking-number').textContent = order.trackingNumber;
+      } else {
+        trackingEl.style.display = 'none';
+      }
+    }
+
+    window.resetLookup = function() {
+      resultEl.style.display = 'none';
+      lookupForm.style.display = '';
+      errorEl.style.display = 'none';
+    };
+
+    function formatPrice(amount) {
+      return new Intl.NumberFormat('fr-FR', {
+        style: 'currency', currency: 'EUR',
+        minimumFractionDigits: 0, maximumFractionDigits: 0
+      }).format(amount || 0);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  })();
+  </script>
+</body>
+</html>
