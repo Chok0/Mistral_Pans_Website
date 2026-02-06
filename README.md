@@ -71,8 +71,7 @@ npx serve .
 |-- css/
 |   |-- style.css            # Styles globaux
 |   |-- boutique.css         # Configurateur + stock
-|   |-- admin.css            # Styles admin (FAB, modals)
-|   |-- gestion.css          # Styles gestion (dashboard admin)
+|   |-- admin.css            # Styles admin (FAB, modals, dashboard, gestion)
 |   +-- teacher-form.css     # Formulaire professeur
 |
 |-- js/
@@ -478,6 +477,68 @@ Exemple Kurd 9 : `D/-A-Bb-C-D-E-F-G-A_`
 3. **Admin** : Onglet "Gammes" dans admin (CRUD + batch manager)
 4. **Configurateur** : Chips de batch + filtrage dans boutique.html
 5. **Extended** : Note variants pour gammes >9 notes
+
+---
+
+## Optimisation des images
+
+> Les images du dossier `ressources/images/` totalisent ~26 MB. Une optimisation peut reduire ce poids a ~5 MB (80% de gain).
+
+### Etat actuel
+
+| Fichier | Taille | Dimensions | Priorite |
+|---------|--------|-----------|----------|
+| DAmara ember.png | 7.1 MB | 3024x3024 | CRITIQUE |
+| AMARA.png | 5.9 MB | 2344x2328 | CRITIQUE |
+| 20240225_112013.jpg | 4.9 MB | 4032x3024 | HAUTE |
+| 20230801_1622372.jpg | 4.6 MB | 4032x3024 | HAUTE |
+| 20240315_162320.jpg | 3.4 MB | 3984x1920 | HAUTE |
+| Mistral_logov3_ball_black.png | 135 KB | 3119x3119 | MOYENNE |
+| Autres (PNG/SVG) | < 80 KB | OK | BASSE |
+
+### Actions recommandees
+
+**Photos JPG (3 fichiers, 13 MB) :**
+- Redimensionner a 2048px max (largeur)
+- Re-encoder en JPEG qualite 75-80
+- Supprimer metadonnees EXIF (contiennent potentiellement des coordonnees GPS)
+- Resultat estime : ~1 MB par fichier
+
+**Images produit PNG (2 fichiers, 13 MB) :**
+- Convertir en WebP (lossy qualite 75-80)
+- Reduire dimensions : 3024px -> 1500px, 2344px -> 1200px
+- Resultat estime : ~800 KB par fichier
+
+**Logo PNG (135 KB) :**
+- Reduire a ~500px
+- Convertir en WebP
+- Resultat estime : ~30 KB
+
+### Commandes d'optimisation
+
+```bash
+# Prerequis : installer ImageMagick et cwebp
+# sudo apt install imagemagick webp
+
+# Convertir PNG en WebP
+cwebp -q 80 "AMARA.png" -o "AMARA.webp"
+cwebp -q 80 "DAmara ember.png" -o "DAmara_ember.webp"
+
+# Redimensionner et compresser JPG
+convert "20240225_112013.jpg" -resize 2048x -quality 75 -strip "20240225_112013_opt.jpg"
+convert "20230801_1622372.jpg" -resize 2048x -quality 75 -strip "20230801_1622372_opt.jpg"
+convert "20240315_162320.jpg" -resize 2048x -quality 75 -strip "20240315_162320_opt.jpg"
+```
+
+### Fallback navigateur
+
+Pour les formats WebP, utiliser l'element `<picture>` :
+```html
+<picture>
+  <source srcset="ressources/images/AMARA.webp" type="image/webp">
+  <img src="ressources/images/AMARA.png" alt="Handpan Amara">
+</picture>
+```
 
 ---
 
