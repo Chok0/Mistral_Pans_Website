@@ -216,6 +216,92 @@
     .paypal-note strong {
       color: #0070BA;
     }
+
+    /* ---- Integrated Payment card form ---- */
+    .card-form {
+      margin-top: var(--space-xl);
+      padding-top: var(--space-xl);
+      border-top: 1px solid var(--color-border);
+    }
+    .card-form__title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    .card-form__title svg {
+      width: 20px;
+      height: 20px;
+      color: var(--color-accent);
+    }
+    .card-form__schemes {
+      display: flex;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-lg);
+    }
+    .card-form__schemes img {
+      height: 24px;
+      opacity: 0.7;
+    }
+    .card-field {
+      margin-bottom: var(--space-md);
+    }
+    .card-field__label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-text);
+      margin-bottom: var(--space-xs);
+    }
+    .card-field__input {
+      height: 44px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 0 var(--space-md);
+      background: var(--color-white);
+      transition: border-color 0.2s;
+    }
+    .card-field__input:focus-within {
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px rgba(13, 115, 119, 0.1);
+    }
+    .card-field__input.integrated_payment_error {
+      border-color: var(--color-error);
+    }
+    .card-field__row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+    }
+    .card-form__error {
+      color: var(--color-error);
+      font-size: 0.8125rem;
+      margin-top: var(--space-xs);
+      min-height: 1.2em;
+    }
+    .card-form__loading {
+      display: none;
+      text-align: center;
+      padding: var(--space-xl);
+      color: var(--color-text-muted);
+    }
+    .card-form__loading.active {
+      display: block;
+    }
+    .card-form__spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto var(--space-md);
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
   
   <!-- Favicon -->
@@ -386,13 +472,52 @@
               <span>J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</span>
             </label>
           </div>
-          
-          <button type="submit" class="btn btn--primary btn--lg btn--full">
+
+          <!-- Integrated Payment : formulaire de carte embarqué -->
+          <div id="card-form" class="card-form" style="display: none;">
+            <div class="card-form__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              Informations de paiement
+            </div>
+            <div id="card-schemes" class="card-form__schemes"></div>
+
+            <div class="card-field">
+              <label class="card-field__label">Titulaire de la carte</label>
+              <div id="cardholder-container" class="card-field__input"></div>
+              <div class="card-form__error" id="cardholder-error"></div>
+            </div>
+
+            <div class="card-field">
+              <label class="card-field__label">Numéro de carte</label>
+              <div id="cardnumber-container" class="card-field__input"></div>
+              <div class="card-form__error" id="cardnumber-error"></div>
+            </div>
+
+            <div class="card-field__row">
+              <div class="card-field">
+                <label class="card-field__label">Date d'expiration</label>
+                <div id="expiration-container" class="card-field__input"></div>
+                <div class="card-form__error" id="expiration-error"></div>
+              </div>
+              <div class="card-field">
+                <label class="card-field__label">CVV</label>
+                <div id="cvv-container" class="card-field__input"></div>
+                <div class="card-form__error" id="cvv-error"></div>
+              </div>
+            </div>
+
+            <div id="card-form-loading" class="card-form__loading">
+              <div class="card-form__spinner"></div>
+              <p>Traitement du paiement en cours...</p>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn--primary btn--lg btn--full" id="deposit-submit-btn">
             Payer l'acompte (300 €)
           </button>
 
           <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
-            Paiement sécurisé. Vous serez redirigé vers notre plateforme de paiement.
+            Paiement sécurisé par carte bancaire.
           </p>
         </form>
       </div>
@@ -565,6 +690,9 @@ document.addEventListener('keydown', function(e) {
 <!-- Scripts -->
 <script src="js/core/cookie-consent.js"></script>
 <script src="js/core/main.js"></script>
+
+<!-- PayPlug Integrated Payment SDK -->
+<script src="https://cdn.payplug.com/js/integrated-payment/v1@1/index.js"></script>
 
 <!-- Payment & Email modules -->
 <script src="js/services/email-client.js"></script>

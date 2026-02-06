@@ -95,7 +95,8 @@ exports.handler = async (event, context) => {
       metadata,         // Données supplémentaires à stocker
       returnUrl,        // URL de retour après paiement
       cancelUrl,        // URL si annulation
-      installments      // Nombre d'échéances pour paiement en plusieurs fois (3 ou 4)
+      installments,     // Nombre d'échéances pour paiement en plusieurs fois (3 ou 4)
+      integrated        // true pour utiliser IntegratedPayment (formulaire embarqué)
     } = data;
 
     const isOney = installments && [3, 4].includes(installments);
@@ -193,6 +194,11 @@ exports.handler = async (event, context) => {
     // Description à la racine du payload (max 80 caractères, visible par le client)
     if (description) {
       paymentPayload.description = sanitize(description, 80);
+    }
+
+    // Mode Integrated Payment (formulaire de carte embarqué)
+    if (integrated && !isOney) {
+      paymentPayload.integration = 'INTEGRATED_PAYMENT';
     }
 
     // Montant : authorized_amount pour Oney, amount pour le reste

@@ -1,6 +1,7 @@
 /* ==========================================================================
    MISTRAL PANS - Page Commander
    Gestion des formulaires de commande et intégration Payplug
+   Supporte le mode intégré (carte embarquée) avec fallback hosted (redirection)
    ========================================================================== */
 
 (function(window) {
@@ -15,6 +16,10 @@
     taille: '53 cm'
   };
 
+  // État du paiement intégré
+  let integratedFormReady = false;
+  let pendingPaymentId = null;
+
   // ============================================================================
   // INITIALISATION
   // ============================================================================
@@ -25,6 +30,9 @@
 
     // Initialiser les formulaires
     initForms();
+
+    // Initialiser le formulaire de carte intégré si le SDK est disponible
+    initIntegratedPaymentForm();
 
     // Vérifier le statut de paiement (retour de Payplug)
     checkPaymentReturn();
@@ -85,6 +93,67 @@
   }
 
   // ============================================================================
+  // INTEGRATED PAYMENT FORM
+  // ============================================================================
+
+  /**
+   * Initialise le formulaire de carte intégré PayPlug
+   */
+  function initIntegratedPaymentForm() {
+    if (typeof MistralPayplug === 'undefined' || !MistralPayplug.isIntegratedAvailable()) {
+      console.log('[Commander] SDK Integrated Payment non disponible, mode hosted actif');
+      return;
+    }
+
+    const cardForm = document.getElementById('card-form');
+    const containers = {
+      cardHolder: document.getElementById('cardholder-container'),
+      cardNumber: document.getElementById('cardnumber-container'),
+      expiration: document.getElementById('expiration-container'),
+      cvv: document.getElementById('cvv-container')
+    };
+
+    // Vérifier que tous les conteneurs existent
+    if (!cardForm || !containers.cardHolder || !containers.cardNumber || !containers.expiration || !containers.cvv) {
+      console.warn('[Commander] Conteneurs de carte manquants');
+      return;
+    }
+
+    try {
+      const intPayment = MistralPayplug.initIntegratedForm(containers, {
+        testMode: false // Passer à true pour les tests
+      });
+
+      // Afficher les schémas de carte supportés
+      const schemesContainer = document.getElementById('card-schemes');
+      if (schemesContainer) {
+        const schemes = MistralPayplug.getSupportedSchemes();
+        if (schemes) {
+          schemes.forEach(scheme => {
+            if (scheme.name !== 'DEFAULT' && scheme.iconUrl) {
+              const img = document.createElement('img');
+              img.src = scheme.iconUrl;
+              img.alt = scheme.title;
+              img.title = scheme.title;
+              schemesContainer.appendChild(img);
+            }
+          });
+        }
+      }
+
+      // Afficher le formulaire de carte
+      cardForm.style.display = '';
+      integratedFormReady = true;
+
+      console.log('[Commander] Formulaire de carte intégré initialisé');
+
+    } catch (error) {
+      console.warn('[Commander] Erreur init Integrated Payment:', error.message);
+      // Le formulaire de carte restera caché, on utilisera le mode hosted
+    }
+  }
+
+  // ============================================================================
   // GESTION DES FORMULAIRES
   // ============================================================================
 
@@ -112,7 +181,7 @@
     e.preventDefault();
 
     const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
+    const submitBtn = document.getElementById('deposit-submit-btn') || form.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
 
     // Récupérer les données du formulaire
@@ -130,7 +199,6 @@
     // Vérification honeypot anti-spam
     const honeypotField = form.querySelector('[name="website"]');
     if (honeypotField && honeypotField.value) {
-      // Silencieusement ignorer les soumissions de bots
       console.warn('Honeypot déclenché');
       return;
     }
@@ -160,48 +228,112 @@
     submitBtn.textContent = 'Préparation du paiement...';
 
     try {
-      // Vérifier si Payplug est disponible
-      if (typeof MistralPayplug !== 'undefined') {
-        // Créer le paiement via Payplug
-        const result = await MistralPayplug.createDeposit(customer, {
-          gamme: orderData.gamme || orderData.productName,
-          taille: orderData.taille,
-          prixTotal: orderData.price
-        });
-
-        if (result.success && result.paymentUrl) {
-          // Sauvegarder les infos de commande en localStorage
-          localStorage.setItem('mistral_pending_order', JSON.stringify({
-            reference: result.reference,
-            customer,
-            product: orderData,
-            createdAt: new Date().toISOString()
-          }));
-
-          // Rediriger vers Payplug
-          showMessage('Redirection vers la page de paiement...', 'info');
-          setTimeout(() => {
-            MistralPayplug.redirectToPayment(result.paymentUrl);
-          }, 1000);
-        } else {
-          throw new Error(result.error || 'Impossible de créer le paiement');
-        }
-
-      } else {
-        // Fallback : envoyer par email
+      if (typeof MistralPayplug === 'undefined') {
         await sendOrderByEmail(customer, formData);
+        return;
+      }
+
+      // Utiliser le mode intégré si disponible
+      if (integratedFormReady) {
+        await handleIntegratedPayment(customer, submitBtn, originalText);
+      } else {
+        await handleHostedPayment(customer);
       }
 
     } catch (error) {
       console.error('Erreur commande:', error);
       showMessage(`Erreur: ${error.message}. Nous allons vous envoyer un email de confirmation.`, 'warning');
-
-      // Fallback email
-      await sendOrderByEmail(customer, formData);
+      await sendOrderByEmail(customer, new FormData(form));
 
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
+    }
+  }
+
+  /**
+   * Gère le paiement en mode intégré (carte sur la page)
+   */
+  async function handleIntegratedPayment(customer, submitBtn, originalText) {
+    // Étape 1 : Créer le paiement côté serveur (si pas déjà créé)
+    if (!pendingPaymentId) {
+      submitBtn.textContent = 'Création du paiement...';
+
+      const result = await MistralPayplug.createDeposit(customer, {
+        gamme: orderData.gamme || orderData.productName,
+        taille: orderData.taille,
+        prixTotal: orderData.price
+      }, { integrated: true });
+
+      if (!result.success || !result.paymentId) {
+        throw new Error(result.error || 'Impossible de créer le paiement');
+      }
+
+      pendingPaymentId = result.paymentId;
+
+      // Sauvegarder en localStorage
+      localStorage.setItem('mistral_pending_order', JSON.stringify({
+        reference: result.reference,
+        customer,
+        product: orderData,
+        createdAt: new Date().toISOString()
+      }));
+    }
+
+    // Étape 2 : Lancer le paiement via le formulaire intégré
+    submitBtn.textContent = 'Paiement en cours...';
+    submitBtn.disabled = true;
+
+    // Afficher le spinner
+    const loading = document.getElementById('card-form-loading');
+    if (loading) loading.classList.add('active');
+
+    try {
+      const payResult = await MistralPayplug.payIntegrated(pendingPaymentId);
+
+      if (payResult.success) {
+        // Paiement réussi
+        const pendingOrder = JSON.parse(localStorage.getItem('mistral_pending_order') || 'null');
+        const reference = pendingOrder?.reference || '';
+
+        showPaymentSuccess(reference, pendingOrder);
+        localStorage.removeItem('mistral_pending_order');
+        pendingPaymentId = null;
+      }
+    } catch (payError) {
+      // Le paiement a échoué mais l'ID reste valide pour réessayer
+      showMessage(payError.message || 'Erreur de paiement. Veuillez réessayer.', 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    } finally {
+      if (loading) loading.classList.remove('active');
+    }
+  }
+
+  /**
+   * Gère le paiement en mode hébergé (redirection vers PayPlug)
+   */
+  async function handleHostedPayment(customer) {
+    const result = await MistralPayplug.createDeposit(customer, {
+      gamme: orderData.gamme || orderData.productName,
+      taille: orderData.taille,
+      prixTotal: orderData.price
+    });
+
+    if (result.success && result.paymentUrl) {
+      localStorage.setItem('mistral_pending_order', JSON.stringify({
+        reference: result.reference,
+        customer,
+        product: orderData,
+        createdAt: new Date().toISOString()
+      }));
+
+      showMessage('Redirection vers la page de paiement...', 'info');
+      setTimeout(() => {
+        MistralPayplug.redirectToPayment(result.paymentUrl);
+      }, 1000);
+    } else {
+      throw new Error(result.error || 'Impossible de créer le paiement');
     }
   }
 
@@ -323,7 +455,7 @@ ${formData.get('message')}
   // ============================================================================
 
   /**
-   * Vérifie le retour de Payplug
+   * Vérifie le retour de Payplug (mode hosted)
    */
   function checkPaymentReturn() {
     if (typeof MistralPayplug === 'undefined') return;
@@ -360,7 +492,7 @@ ${formData.get('message')}
    * Affiche le message de succès de paiement
    */
   function showPaymentSuccess(reference, pendingOrder) {
-    const container = document.querySelector('.order-container') || document.querySelector('main');
+    const container = document.querySelector('.order-page .container') || document.querySelector('main');
     if (!container) return;
 
     container.innerHTML = `
@@ -385,7 +517,6 @@ ${formData.get('message')}
       </div>
     `;
 
-    // Ajouter les styles si nécessaire
     addPaymentResultStyles();
   }
 
