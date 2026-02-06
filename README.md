@@ -552,6 +552,7 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 ### Checklist pre-production
 
 - [ ] Changer mot de passe admin par defaut
+- [ ] Creer le fichier `php/.admin_hash` (voir ci-dessous)
 - [ ] Configurer cles Payplug (PAYPLUG_SECRET_KEY)
 - [ ] Verifier encodage UTF-8
 - [ ] Optimiser images (WebP)
@@ -562,6 +563,37 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 - [x] Externaliser identifiants Supabase
 - [x] Securiser endpoints PHP (CORS, tokens)
 - [x] Anti-spam honeypot (tous formulaires)
+- [x] Supprimer le hash admin par defaut dans le code PHP
+
+### Configuration du hash admin (`php/.admin_hash`)
+
+Les endpoints PHP (`upload.php`, `delete.php`) verifient un token admin pour autoriser les operations. Sans ce fichier, **toutes les requetes admin sont refusees**.
+
+**Etape 1 — Generer un hash securise :**
+
+```bash
+# Option A : hash SHA-256 du mot de passe admin (recommande)
+echo -n "votre-mot-de-passe" | sha256sum | cut -d' ' -f1 > php/.admin_hash
+
+# Option B : token aleatoire
+openssl rand -hex 32 > php/.admin_hash
+```
+
+**Etape 2 — Securiser les permissions :**
+
+```bash
+chmod 600 php/.admin_hash
+```
+
+**Alternative — Variable d'environnement :**
+
+Si le fichier n'est pas utilisable (hebergement restreint), definir la variable :
+
+```bash
+export MISTRAL_ADMIN_HASH="votre-hash-ici"
+```
+
+> **Note :** Le fichier `php/.admin_hash` est dans `.gitignore` et ne sera jamais commite.
 
 ### Services externes
 
@@ -798,13 +830,13 @@ const token = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
 
 ---
 
-### #9 MOYENNE — Hash admin par defaut dans le code source
+### #9 ~~MOYENNE~~ CORRIGE — Hash admin par defaut dans le code source
 
-**Fichiers :** `php/upload.php:278`, `php/delete.php:102`
+**Fichiers :** `php/upload.php`, `php/delete.php`
 
-**Probleme :** Le hash par defaut `-6de5765f` est en dur dans le code source public. Si le fichier `.admin_hash` n'est pas cree en production, n'importe qui peut utiliser ce hash comme token.
+**Probleme :** Le hash par defaut `-6de5765f` etait en dur dans le code source public.
 
-**Correction :** Supprimer le fallback par defaut. Si `.admin_hash` et la variable d'environnement sont absents, renvoyer `null` (acces refuse).
+**Correction appliquee :** Le fallback par defaut a ete supprime. Si `.admin_hash` et la variable d'environnement `MISTRAL_ADMIN_HASH` sont absents, `getAdminHash()` retourne `null` → acces refuse. Voir la section [Configuration du hash admin](#configuration-du-hash-admin-phpadmin_hash) pour la mise en place.
 
 ---
 
@@ -900,7 +932,7 @@ L'operateur spread peut ecraser les champs `rental_reference` et `instrument_nam
 - [ ] #4 Ajouter un rate limiting ou token CSRF sur la creation de paiement
 - [ ] #5 Ajouter l'idempotence sur le webhook PayPlug (upsert sur `payplug_id`)
 - [ ] #6 Valider les donnees Swikly webhook avant mise a jour en base
-- [ ] #9 Supprimer le hash admin par defaut dans le code PHP
+- [x] #9 Supprimer le hash admin par defaut dans le code PHP
 
 **Ameliorations recommandees :**
 
