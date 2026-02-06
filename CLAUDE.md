@@ -43,8 +43,7 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 ├── css/
 │   ├── style.css            # Global design system
 │   ├── boutique.css         # Configurator + stock styles
-│   ├── admin.css            # Admin dashboard styles
-│   ├── gestion.css          # Management styles (admin dashboard)
+│   ├── admin.css            # Admin styles (FAB, modals, dashboard, gestion)
 │   └── teacher-form.css     # Teacher signup form
 ├── js/
 │   ├── core/                # Bootstrap, navigation, configuration
