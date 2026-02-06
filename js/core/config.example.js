@@ -1,18 +1,20 @@
 /**
  * =============================================================================
- * MISTRAL PANS - Configuration Supabase
+ * MISTRAL PANS - Configuration Supabase (template)
  * =============================================================================
  *
  * INSTRUCTIONS:
- * 1. Copiez ce fichier vers js/config.js
+ * 1. Copiez ce fichier vers js/core/config.js
  * 2. Remplacez les valeurs par vos identifiants Supabase
- * 3. Ne commitez JAMAIS config.js dans git (il est dans .gitignore)
  *
  * Pour obtenir vos identifiants:
  * 1. Connectez-vous à https://supabase.com/dashboard
  * 2. Sélectionnez votre projet
  * 3. Allez dans Settings > API
  * 4. Copiez "Project URL" et "anon public" key
+ *
+ * Note: La clé anon est conçue pour être exposée côté client.
+ * La sécurité repose sur les politiques RLS, pas sur le secret de cette clé.
  *
  * =============================================================================
  */
