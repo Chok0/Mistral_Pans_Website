@@ -1,6 +1,8 @@
 <?php
 /**
- * MISTRAL PANS - Suppression d'images sécurisée
+ * MISTRAL PANS - Suppression d'images securisee
+ *
+ * Authentification via Supabase JWT (envoye dans X-Admin-Token)
  */
 
 // Configuration
@@ -8,19 +10,22 @@ define('UPLOAD_DIR', '../ressources/images/galerie/');
 define('THUMB_DIR', '../ressources/images/galerie/thumbs/');
 
 // Headers CORS
-// IMPORTANT: Restreindre à votre domaine en production
 $allowedOrigins = [
     'https://mistralpans.fr',
-    'https://www.mistralpans.fr',
-    'http://localhost:8000',  // Développement local
-    'http://127.0.0.1:8000'   // Développement local
+    'https://www.mistralpans.fr'
 ];
+// Autoriser localhost uniquement si le serveur est local
+$serverName = $_SERVER['SERVER_NAME'] ?? '';
+if ($serverName === 'localhost' || $serverName === '127.0.0.1') {
+    $allowedOrigins[] = 'http://localhost:8000';
+    $allowedOrigins[] = 'http://127.0.0.1:8000';
+}
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $allowedOrigins)) {
     header('Access-Control-Allow-Origin: ' . $origin);
 } else if (empty($origin)) {
-    // Requête same-origin (pas de header Origin)
+    // Requete same-origin (pas de header Origin)
     header('Access-Control-Allow-Origin: https://mistralpans.fr');
 }
 
@@ -35,17 +40,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $_SERVER['REQUEST_METHOD'] !== 'DELETE') {
-    sendError('Méthode non autorisée', 405);
+    sendError('Methode non autorisee', 405);
 }
 
-// Vérifier le token admin
+// Verifier le token admin (Supabase JWT)
 $token = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? '';
-$storedHash = getAdminHash();
-if (!$storedHash || !verifyToken($token, $storedHash)) {
-    sendError('Non autorisé', 401);
+if (!verifySupabaseJWT($token)) {
+    sendError('Non autorise', 401);
 }
 
-// Récupérer le nom du fichier
+// Recuperer le nom du fichier
 $input = json_decode(file_get_contents('php://input'), true);
 $filename = $input['filename'] ?? '';
 
@@ -53,10 +57,10 @@ if (empty($filename)) {
     sendError('Nom de fichier manquant', 400);
 }
 
-// Sécurité : empêcher la traversée de répertoire
+// Securite : empecher la traversee de repertoire
 $filename = basename($filename);
 
-// Vérifier que le fichier est bien dans le dossier galerie
+// Verifier que le fichier est bien dans le dossier galerie
 $filepath = UPLOAD_DIR . $filename;
 $thumbpath = THUMB_DIR . $filename;
 
@@ -75,38 +79,80 @@ if (file_exists($thumbpath)) {
 }
 
 if ($deleted) {
-    sendSuccess(['message' => 'Image supprimée']);
+    sendSuccess(['message' => 'Image supprimee']);
 } else {
-    sendError('Image non trouvée', 404);
+    sendError('Image non trouvee', 404);
 }
 
 // =============================================================================
 // FONCTIONS
 // =============================================================================
 
-function getAdminHash() {
-    // Lire le hash depuis un fichier local (plus sécurisé que dans le code)
-    $hashFile = __DIR__ . '/.admin_hash';
-    if (file_exists($hashFile)) {
-        return trim(file_get_contents($hashFile));
+/**
+ * Verifie un JWT Supabase en appelant l'API Supabase /auth/v1/user
+ */
+function verifySupabaseJWT($token) {
+    if (empty($token) || strlen($token) < 20) return false;
+
+    $config = getSupabaseConfig();
+    if (!$config) {
+        error_log('ERREUR: Configuration Supabase manquante pour la validation JWT.');
+        return false;
     }
 
-    // Aussi vérifier une variable d'environnement
-    $envHash = getenv('MISTRAL_ADMIN_HASH');
-    if ($envHash) {
-        return $envHash;
+    $ch = curl_init($config['url'] . '/auth/v1/user');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $token,
+            'apikey: ' . $config['anon_key']
+        ],
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_CONNECTTIMEOUT => 5
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode !== 200 || !$response) {
+        return false;
     }
 
-    // Aucun hash configuré : accès refusé
-    error_log('ERREUR: Aucun hash admin configuré. Créez php/.admin_hash ou définissez MISTRAL_ADMIN_HASH.');
-    return null;
+    $user = json_decode($response, true);
+    return !empty($user['id']);
 }
 
-function verifyToken($token, $storedHash) {
-    if (empty($token) || strlen($token) < 8) return false;
+/**
+ * Lit la configuration Supabase depuis un fichier local ou des variables d'env
+ */
+function getSupabaseConfig() {
+    // Option 1: Fichier de configuration local
+    $configFile = __DIR__ . '/.supabase_config';
+    if (file_exists($configFile)) {
+        $lines = file($configFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $config = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line) || $line[0] === '#') continue;
+            $parts = explode('=', $line, 2);
+            if (count($parts) === 2) {
+                $config[trim($parts[0])] = trim($parts[1]);
+            }
+        }
+        if (!empty($config['url']) && !empty($config['anon_key'])) {
+            return $config;
+        }
+    }
 
-    // Comparaison timing-safe pour éviter les attaques temporelles
-    return hash_equals($storedHash, $token);
+    // Option 2: Variables d'environnement
+    $url = getenv('SUPABASE_URL');
+    $anonKey = getenv('SUPABASE_ANON_KEY');
+    if ($url && $anonKey) {
+        return ['url' => $url, 'anon_key' => $anonKey];
+    }
+
+    return null;
 }
 
 function sendSuccess($data) {

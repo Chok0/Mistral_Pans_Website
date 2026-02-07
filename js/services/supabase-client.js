@@ -143,8 +143,8 @@
       
       console.log('✅ Déconnecté');
       
-      // Aussi supprimer l'ancienne session localStorage si elle existe
-      localStorage.removeItem('mistral_admin_session');
+      // Legacy cleanup (migration vers Supabase Auth)
+      try { localStorage.removeItem('mistral_admin_session'); } catch(e) {}
       
       return true;
     },

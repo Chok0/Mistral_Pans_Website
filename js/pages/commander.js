@@ -137,10 +137,22 @@
     const stock = isStock();
     const grid = document.getElementById('order-options-grid');
 
-    // Afficher/masquer l'option paiement intégral
+    // Afficher/masquer l'option paiement intégral (stock uniquement)
     const fullOption = document.querySelector('[data-option="full"]');
     if (fullOption) {
       fullOption.style.display = stock ? '' : 'none';
+    }
+
+    // Afficher/masquer l'option acompte (sur-mesure uniquement)
+    const depositOption = document.querySelector('[data-option="deposit"]');
+    if (depositOption) {
+      depositOption.style.display = stock ? 'none' : '';
+    }
+
+    // Afficher/masquer l'option Oney (stock uniquement)
+    const oneyOption = document.querySelector('[data-option="oney"]');
+    if (oneyOption) {
+      oneyOption.style.display = stock ? '' : 'none';
     }
 
     // Adapter les badges
@@ -153,14 +165,16 @@
       if (badgeDeposit) badgeDeposit.textContent = 'Populaire';
     }
 
-    // Adapter la grille (3 ou 4 colonnes)
+    // Adapter la grille selon le nombre d'options visibles
     if (grid) {
       if (stock) {
-        grid.classList.remove('order-options--three');
-        grid.classList.add('order-options--four');
-      } else {
+        // Stock: full + oney + rdv = 3 options
         grid.classList.remove('order-options--four');
         grid.classList.add('order-options--three');
+      } else {
+        // Sur-mesure: deposit + rdv = 2 options
+        grid.classList.remove('order-options--four', 'order-options--three');
+        grid.classList.add('order-options--two');
       }
     }
 

@@ -1,6 +1,14 @@
-/* Force body background to warm to avoid white gaps */
-body {
-  background-color: #F5F5F5 !important; /* Hardcoded warm color */
+/* Boutique page overrides (background + variables + layout) */
+body[data-page="boutique"] {
+  background-color: #F5F5F5;
+  --color-bg: #FAFAFA;
+  --color-bg-warm: #F5F5F5;
+  --color-accent: #0D7377;
+  --color-accent-hover: #095456;
+  --color-accent-light: #14919B;
+  --color-border: #E5E7EB;
+  --color-border-dark: #D1D5DB;
+  --nav-band-height: 56px;
 }
 
 /* ==========================================================================
@@ -12,25 +20,12 @@ body {
    Override des variables CSS pour la page Boutique
    Palette turquoise pour diffÃƒÂ©rencier du reste du site
    -------------------------------------------------------------------------- */
-:root {
-  --color-bg: #FAFAFA;
-  --color-bg-warm: #F5F5F5;
-  --color-accent: #0D7377;
-  --color-accent-hover: #095456;
-  --color-accent-light: #14919B;
-  --color-border: #E5E7EB;
-  --color-border-dark: #D1D5DB;
-}
+/* Variables consolidated into single body[data-page="boutique"] block above */
 
 /* --------------------------------------------------------------------------
    Configurator Layout
    -------------------------------------------------------------------------- */
    
-/* Hauteur du bandeau de navigation */
-:root {
-  --nav-band-height: 56px;
-}
-
 .configurator {
   display: grid;
   grid-template-columns: 1fr 400px;
@@ -747,6 +742,8 @@ body {
   border-radius: var(--radius-lg);
   overflow: hidden;
   transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
 }
 
 .flash-card:hover {
@@ -1203,16 +1200,16 @@ body {
 }
 
 .boutique-panel--stock {
-  background: #F5F5F5 !important; /* Hardcoded warm */
-  margin-top: 0 !important;
-  padding-top: 0 !important;
+  background: #F5F5F5;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 /* Remove ALL spacing from flash-section when inside panel-stock */
 .boutique-panel--stock .flash-section {
   padding-top: 2rem;
   margin-top: 0;
-  background: #F5F5F5 !important; /* Hardcoded */
+  background: #F5F5F5;
 }
 
 /* ===== DOTS INDICATOR (Mobile only) ===== */
@@ -1842,16 +1839,7 @@ body {
   color: var(--color-accent, #0d7377);
 }
 
-/* ===== Flash Card Clickable State ===== */
-.flash-card {
-  cursor: pointer;
-}
-
-.flash-card:hover {
-  box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
-  transform: translateY(-4px);
-}
-
+/* ===== Flash Card Clickable Overlay ===== */
 .flash-card::after {
   content: 'Voir le détail';
   position: absolute;

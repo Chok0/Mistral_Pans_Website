@@ -128,16 +128,6 @@
           form.reset();
         }, 3000);
       }
-    },
-
-    /**
-     * Vérifie côté serveur (pour Netlify Functions)
-     * Retourne true si c'est un bot
-     * @param {Object} body - Corps de la requête parsé
-     * @returns {boolean}
-     */
-    checkServerSide(body) {
-      return body && body.website && body.website.length > 0;
     }
   };
 

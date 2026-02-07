@@ -131,7 +131,7 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 | File | Location | Key Exports/Functions |
 |------|----------|----------------------|
 | `main.js` | `js/core/` | `loadPartials()`, `setActivePage()`, dynamic Supabase init |
-| `admin-core.js` | `js/admin/` | `isAdminLoggedIn()`, `injectAdminFAB()`, CRUD helpers |
+| `admin-core.js` | `js/admin/` | `Auth.isLoggedIn()`, `FAB.create()`, CRUD helpers |
 | `handpan-player.js` | `js/features/` | `HandpanPlayer` class, Web Audio API |
 | `feasibility-module.js` | `js/features/` | `checkFeasibility()`, surface calculations |
 | `supabase-sync.js` | `js/services/` | `syncFromSupabase()`, real-time updates |
@@ -240,8 +240,8 @@ For minimal footer (e.g., checkout page):
 ### Admin System Pattern
 
 ```javascript
-// Check admin status
-if (window.MistralAdmin && MistralAdmin.isLoggedIn()) {
+// Check admin status (synchrone, fiable apres init)
+if (window.MistralAdmin && MistralAdmin.Auth.isLoggedIn()) {
   // Show admin UI
 }
 
@@ -387,18 +387,20 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 ### localStorage Keys
 | Key | Purpose |
 |-----|---------|
-| `mistral_admin_session` | Admin session (24h expiry) |
-| `mistral_flash_annonces` | Stock announcements |
+| `mistral_flash_annonces` | Stock announcements (legacy, auto-cleaned) |
 | `mistral_teachers` | Validated teachers |
 | `mistral_pending_teachers` | Pending teacher requests |
 | `mistral_gallery` | Gallery media |
 | `mistral_blog_articles` | Blog articles |
 | `mistral_leaflet_consent` | Map RGPD consent |
 
-### Default Admin Credentials
-- Username: `admin`
-- Password: `mistral2024`
-- Change in `js/admin/admin-core.js`: `CONFIG.ADMIN_PASS_HASH = simpleHash('new-password')`
+### Admin Authentication
+- Authentication is handled via **Supabase Auth** (email + password)
+- Manage admin users in the Supabase dashboard (Authentication > Users)
+- `js/services/supabase-auth.js` provides `MistralAuth` API
+- `js/admin/admin-core.js` Auth object delegates to MistralAuth
+- PHP upload/delete endpoints validate Supabase JWT via `/auth/v1/user`
+- PHP config: create `php/.supabase_config` from `php/.supabase_config.example`
 
 ---
 
@@ -425,7 +427,7 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 - Verify `partials/` directory exists
 
 ### Admin FAB not showing
-- Check `isAdminLoggedIn()` returns true
+- Check `MistralAdmin.Auth.isLoggedIn()` returns true
 - Verify `js/admin/admin-core.js` is loaded
 - Check localStorage for valid session
 
