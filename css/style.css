@@ -1512,9 +1512,10 @@ h3 {
 .form-input:focus,
 .form-textarea:focus,
 .form-select:focus {
-  outline: none;
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.1);
+  box-shadow: 0 0 0 3px rgba(13, 115, 119, 0.15);
 }
 
 .form-textarea {
@@ -1914,6 +1915,20 @@ html {
   .cookie-btn {
     width: 100%;
     text-align: center;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Accessibility: Reduced Motion (WCAG 2.1 AA)
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

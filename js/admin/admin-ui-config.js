@@ -42,6 +42,15 @@
 
   function saveConfig() {
     if (typeof MistralGestion !== 'undefined') {
+      // Enterprise info
+      const entreprise = MistralGestion.CONFIG.ENTREPRISE;
+      if ($('#config-nom')) entreprise.marque = $('#config-nom').value.trim();
+      if ($('#config-siret')) entreprise.siret = $('#config-siret').value.trim();
+      if ($('#config-email')) entreprise.email = $('#config-email').value.trim();
+      if ($('#config-tel')) entreprise.telephone = $('#config-tel').value.trim();
+      MistralGestion.setConfigValue('ENTREPRISE', entreprise);
+
+      // Tarifs
       MistralGestion.setConfigValue('loyerMensuel', parseFloat($('#config-loyer')?.value) || 50);
       MistralGestion.setConfigValue('montantCaution', parseFloat($('#config-caution')?.value) || 1150);
       MistralGestion.setConfigValue('fraisDossierTransport', parseFloat($('#config-frais')?.value) || 100);
