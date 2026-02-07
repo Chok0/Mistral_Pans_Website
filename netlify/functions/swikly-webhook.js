@@ -1,38 +1,122 @@
 // Netlify Function : Webhook Swikly
 // Reçoit les notifications de caution (création, prélèvement, libération)
 
+const crypto = require('crypto');
+
 /**
- * Envoie un email de confirmation de caution
+ * Vérifie la signature HMAC du webhook Swikly
+ * @param {string} body - Corps brut de la requête
+ * @param {string} signature - Signature envoyée dans le header
+ * @param {string} secret - Clé secrète Swikly
+ * @returns {boolean}
  */
-async function sendDepositConfirmationEmail(deposit, metadata) {
+function verifySignature(body, signature, secret) {
+  if (!signature || !secret) return false;
+
+  const computed = crypto
+    .createHmac('sha256', secret)
+    .update(body, 'utf8')
+    .digest('hex');
+
+  // Comparaison en temps constant pour éviter les timing attacks
   try {
-    const response = await fetch(`${process.env.URL}/.netlify/functions/send-email`, {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'utf8'),
+      Buffer.from(computed, 'utf8')
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Envoie un email via la fonction send-email
+ */
+async function sendEmail(payload) {
+  try {
+    const baseUrl = process.env.URL || 'https://mistralpans.fr';
+    const response = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        emailType: 'rental_confirmation',
-        client: {
-          email: deposit.customer.email,
-          prenom: deposit.customer.first_name,
-          nom: deposit.customer.last_name
-        },
-        rental: {
-          loyer: 60, // Loyer mensuel fixe
-          caution: deposit.amount / 100,
-          date_debut: new Date().toISOString().split('T')[0]
-        },
-        instrument: {
-          gamme: metadata.instrument_name || 'Handpan'
-        }
-      })
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
-      console.warn('Erreur envoi email confirmation caution:', await response.text());
+      console.warn('Erreur envoi email:', await response.text());
     }
   } catch (error) {
     console.error('Erreur envoi email:', error);
   }
+}
+
+/**
+ * Envoie un email de confirmation de caution au client
+ */
+async function sendDepositConfirmationEmail(deposit, metadata) {
+  await sendEmail({
+    emailType: 'rental_confirmation',
+    client: {
+      email: deposit.customer.email,
+      prenom: deposit.customer.first_name,
+      nom: deposit.customer.last_name
+    },
+    rental: {
+      loyer: 60,
+      caution: deposit.amount / 100,
+      date_debut: new Date().toISOString().split('T')[0]
+    },
+    instrument: {
+      gamme: metadata.instrument_name || 'Handpan'
+    }
+  });
+}
+
+/**
+ * Notifie l'admin et le client d'un prelevement sur la caution
+ */
+async function sendDepositCapturedEmails(deposit, metadata) {
+  const customerName = `${deposit.customer?.first_name || ''} ${deposit.customer?.last_name || ''}`.trim();
+  const amount = (deposit.captured_amount || deposit.amount) / 100;
+  const reference = metadata.rental_reference || 'N/A';
+
+  // Notification admin
+  await sendEmail({
+    emailType: 'contact',
+    nom: 'Swikly (auto)',
+    email: 'noreply@mistralpans.fr',
+    sujet: `Caution prelevee - ${customerName} (${reference})`,
+    message: `Prelevement de ${amount} EUR sur la caution de ${customerName}.\nInstrument: ${metadata.instrument_name || 'Handpan'}\nReference: ${reference}`
+  });
+
+  // Notification client
+  if (deposit.customer?.email) {
+    await sendEmail({
+      emailType: 'contact',
+      destinataire: deposit.customer.email,
+      nom: 'Mistral Pans',
+      email: 'contact@mistralpans.fr',
+      sujet: `Information sur votre caution - Mistral Pans`,
+      message: `Bonjour ${deposit.customer.first_name || ''},\n\nUn prelevement de ${amount} EUR a ete effectue sur votre caution (ref: ${reference}).\n\nSi vous avez des questions, contactez-nous a contact@mistralpans.fr.\n\nMistral Pans`
+    });
+  }
+}
+
+/**
+ * Notifie le client de la liberation de sa caution
+ */
+async function sendDepositReleasedEmail(deposit, metadata) {
+  if (!deposit.customer?.email) return;
+
+  const reference = metadata.rental_reference || 'N/A';
+
+  await sendEmail({
+    emailType: 'contact',
+    destinataire: deposit.customer.email,
+    nom: 'Mistral Pans',
+    email: 'contact@mistralpans.fr',
+    sujet: `Caution liberee - Mistral Pans`,
+    message: `Bonjour ${deposit.customer.first_name || ''},\n\nVotre caution (ref: ${reference}) a ete liberee. Aucun montant ne sera preleve.\n\nMerci de votre confiance.\n\nMistral Pans`
+  });
 }
 
 exports.handler = async (event, context) => {
@@ -60,9 +144,17 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Vérifier la signature du webhook (si Swikly en fournit une)
+    // Vérifier la signature HMAC du webhook
     const signature = event.headers['x-swikly-signature'] || event.headers['X-Swikly-Signature'];
-    // TODO: Implémenter la vérification de signature selon la documentation Swikly
+
+    if (!verifySignature(event.body, signature, SWIKLY_SECRET)) {
+      console.warn('Signature webhook Swikly invalide');
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Signature invalide' })
+      };
+    }
 
     const payload = JSON.parse(event.body);
     const { event: eventType, data } = payload;
@@ -105,7 +197,7 @@ exports.handler = async (event, context) => {
 
         await updateDatabase('captured', data, metadata);
 
-        // TODO: Notifier l'admin et le client du prélèvement
+        await sendDepositCapturedEmails(data, metadata);
 
         return {
           statusCode: 200,
@@ -124,7 +216,7 @@ exports.handler = async (event, context) => {
 
         await updateDatabase('released', data, metadata);
 
-        // TODO: Envoyer email de confirmation de libération au client
+        await sendDepositReleasedEmail(data, metadata);
 
         return {
           statusCode: 200,

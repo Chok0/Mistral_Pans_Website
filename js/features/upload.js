@@ -772,7 +772,7 @@
         </div>
       </label>
       <div class="upload-input__preview" style="display:none;">
-        <img src="" alt="Preview" class="upload-input__preview-img">
+        <img alt="Preview" class="upload-input__preview-img" style="display:none;">
         <video class="upload-input__preview-video" style="display:none;" muted></video>
         <div class="upload-input__preview-play" style="display:none;">â–¶</div>
         <button type="button" class="upload-input__remove" title="Supprimer">Ã—</button>

@@ -46,6 +46,75 @@ function cleanObject(obj) {
 }
 
 /**
+ * Valide le prix d'un instrument en stock contre la base de données.
+ * Empêche la manipulation de prix via les paramètres URL.
+ */
+async function validateStockPrice(amountCents, instrumentId, paymentType) {
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    return { valid: true }; // Pas de DB = pas de validation
+  }
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/instruments?id=eq.${instrumentId}&select=prix_vente,statut`,
+      {
+        method: 'GET',
+        headers: {
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) return { valid: true };
+
+    const instruments = await response.json();
+    if (!instruments || instruments.length === 0) {
+      return { valid: false, reason: 'Instrument non trouvé' };
+    }
+
+    const instrument = instruments[0];
+
+    // Vérifier que l'instrument est toujours disponible
+    if (instrument.statut !== 'en_stock' && instrument.statut !== 'disponible') {
+      return { valid: false, reason: 'Cet instrument n\'est plus disponible' };
+    }
+
+    const dbPriceCents = instrument.prix_vente * 100;
+
+    // Pour un acompte (30%), le montant doit être >= 30% du prix DB
+    if (paymentType === 'acompte') {
+      const expectedDeposit = Math.round(dbPriceCents * 0.30);
+      // Tolérance de 1€ pour les arrondis
+      if (amountCents < expectedDeposit - 100) {
+        return {
+          valid: false,
+          reason: `Acompte insuffisant (${amountCents / 100}€ vs ${expectedDeposit / 100}€ attendu)`
+        };
+      }
+    } else if (paymentType === 'full' || paymentType === 'installments') {
+      // Le montant doit couvrir au minimum le prix instrument
+      // (peut être plus élevé si housse/livraison inclus)
+      if (amountCents < dbPriceCents - 100) {
+        return {
+          valid: false,
+          reason: `Montant insuffisant (${amountCents / 100}€ vs ${dbPriceCents / 100}€ minimum)`
+        };
+      }
+    }
+
+    return { valid: true };
+  } catch (error) {
+    console.error('Erreur validation prix stock:', error);
+    return { valid: true }; // Fail open
+  }
+}
+
+/**
  * Retourne l'origine CORS autorisée
  */
 function getAllowedOrigin(event) {
@@ -119,6 +188,19 @@ exports.handler = async (event, context) => {
     } = data;
 
     const isOney = installments && [3, 4].includes(installments);
+
+    // Validation prix côté serveur pour instruments en stock
+    if (metadata?.source === 'stock' && metadata?.instrumentId) {
+      const priceCheck = await validateStockPrice(amount, metadata.instrumentId, paymentType);
+      if (!priceCheck.valid) {
+        console.error('Prix invalide:', priceCheck.reason);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: priceCheck.reason })
+        };
+      }
+    }
 
     // Validation montant (API PayPlug: min 99 cents, max 2 000 000 cents)
     if (!amount || amount < 99) {
