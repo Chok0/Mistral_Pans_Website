@@ -1294,8 +1294,20 @@
     const reference = commande?.reference || commande?.payplug_reference || commandeId;
     const productName = commande?.product_name || commande?.description || 'Handpan';
 
+    // Helper: check if automation is enabled (via config)
+    const isEnabled = (type) => {
+      if (window.AdminUI?.isEmailAutomationEnabled) {
+        return window.AdminUI.isEmailAutomationEnabled(type);
+      }
+      return true; // default enabled if config module not loaded
+    };
+
     // Transition vers "prêt" → demande de solde (si paiement partiel)
     if (newStatut === 'pret' && commandeData.statut_paiement === 'partiel') {
+      if (!isEnabled('balance_request')) {
+        Toast.info('Email de demande de solde désactivé (config)');
+        return;
+      }
       const remainingAmount = (commandeData.montant_total || 0) - (commandeData.acompte_verse || 0);
       if (remainingAmount > 0) {
         try {
@@ -1334,6 +1346,10 @@
     // Transition vers "expédié" → notification d'expédition
     if (newStatut === 'expedie' || newStatut === 'livre') {
       if (oldStatut !== 'expedie' && oldStatut !== 'livre') {
+        if (!isEnabled('shipping_notification')) {
+          Toast.info('Email d\'expédition désactivé (config)');
+          return;
+        }
         try {
           const response = await fetch('/.netlify/functions/send-email', {
             method: 'POST',

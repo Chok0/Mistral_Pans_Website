@@ -312,6 +312,258 @@
   }
 
 
+  // ============================================================================
+  // EMAILS AUTOMATIQUES - Configuration
+  // ============================================================================
+
+  const EMAIL_AUTOMATIONS_DEFAULTS = {
+    balance_request: {
+      id: 'balance_request',
+      label: 'Demande de solde',
+      description: 'Envoyé quand le statut passe à "Prêt" et qu\'un solde reste à payer',
+      trigger: 'Statut → Prêt + Paiement partiel',
+      enabled: true,
+      subject: 'Votre handpan est prêt ! - Commande {reference}',
+      replyTo: 'contact@mistralpans.fr',
+      serverSide: false
+    },
+    shipping_notification: {
+      id: 'shipping_notification',
+      label: 'Notification d\'expédition',
+      description: 'Envoyé quand le statut passe à "Expédié"',
+      trigger: 'Statut → Expédié',
+      enabled: true,
+      subject: 'Votre handpan est en route ! - Commande {reference}',
+      replyTo: 'contact@mistralpans.fr',
+      serverSide: false
+    },
+    new_order_notification: {
+      id: 'new_order_notification',
+      label: 'Notification artisan (nouvelle commande)',
+      description: 'Envoyé à l\'artisan quand un paiement est validé via webhook PayPlug',
+      trigger: 'Webhook paiement validé',
+      enabled: true,
+      subject: 'Nouvelle commande {reference}',
+      replyTo: 'contact@mistralpans.fr',
+      serverSide: true
+    },
+    payment_confirmation: {
+      id: 'payment_confirmation',
+      label: 'Confirmation de paiement client',
+      description: 'Envoyé au client quand un paiement est validé via webhook PayPlug',
+      trigger: 'Webhook paiement validé',
+      enabled: true,
+      subject: 'Confirmation de paiement - Commande {reference}',
+      replyTo: 'contact@mistralpans.fr',
+      serverSide: true
+    }
+  };
+
+  const EMAIL_CONFIG_KEY = 'mistral_email_automations';
+
+  function getEmailConfig() {
+    try {
+      const stored = localStorage.getItem(EMAIL_CONFIG_KEY);
+      const parsed = stored ? JSON.parse(stored) : {};
+      // Merge defaults with stored values
+      const config = {};
+      for (const [key, defaults] of Object.entries(EMAIL_AUTOMATIONS_DEFAULTS)) {
+        config[key] = { ...defaults, ...(parsed[key] || {}) };
+      }
+      return config;
+    } catch (e) {
+      console.error('Erreur lecture config emails:', e);
+      return { ...EMAIL_AUTOMATIONS_DEFAULTS };
+    }
+  }
+
+  function saveEmailConfig() {
+    const config = getEmailConfig();
+
+    for (const key of Object.keys(EMAIL_AUTOMATIONS_DEFAULTS)) {
+      const enabledEl = $(`#email-auto-${key}-enabled`);
+      const subjectEl = $(`#email-auto-${key}-subject`);
+      const replyToEl = $(`#email-auto-${key}-replyto`);
+
+      if (enabledEl) config[key].enabled = enabledEl.checked;
+      if (subjectEl) config[key].subject = subjectEl.value.trim();
+      if (replyToEl) config[key].replyTo = replyToEl.value.trim();
+    }
+
+    localStorage.setItem(EMAIL_CONFIG_KEY, JSON.stringify(config));
+    Toast.success('Configuration emails enregistrée');
+  }
+
+  function renderEmailAutomations() {
+    const container = $('#email-automations-list');
+    if (!container) return;
+
+    const config = getEmailConfig();
+    let html = '';
+
+    for (const [key, emailConf] of Object.entries(config)) {
+      const isServer = emailConf.serverSide;
+      const badgeBg = isServer ? 'var(--admin-accent, #0D7377)' : (emailConf.enabled ? 'var(--color-success, #4A7C59)' : 'var(--admin-text-muted)');
+      const badgeText = isServer ? 'Serveur — toujours actif' : (emailConf.enabled ? 'Actif' : 'Inactif');
+
+      html += `
+        <div class="email-automation-card" style="background: var(--admin-surface); border: 1px solid var(--admin-border); border-radius: 8px; padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                ${escapeHtml(emailConf.label)}
+                <span style="font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px; background: ${badgeBg}; color: white;" id="email-auto-${key}-badge">
+                  ${badgeText}
+                </span>
+              </div>
+              <div style="font-size: 0.8rem; color: var(--admin-text-muted); margin-top: 0.25rem;">
+                ${escapeHtml(emailConf.description)}
+              </div>
+              <div style="font-size: 0.75rem; color: var(--admin-accent); margin-top: 0.25rem; font-family: 'JetBrains Mono', monospace;">
+                Déclencheur : ${escapeHtml(emailConf.trigger)}
+              </div>
+            </div>
+            ${isServer ? `
+              <span style="flex-shrink: 0; margin-left: 1rem; font-size: 0.75rem; color: var(--admin-text-muted);" title="Géré côté serveur (webhook)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="18" r="1" fill="currentColor"/></svg>
+              </span>
+            ` : `
+              <label class="admin-toggle" style="flex-shrink: 0; margin-left: 1rem;">
+                <input type="checkbox" id="email-auto-${key}-enabled" ${emailConf.enabled ? 'checked' : ''} onchange="AdminUI.onEmailToggle('${key}', this.checked)">
+                <span class="admin-toggle__slider"></span>
+              </label>
+            `}
+          </div>
+          <div class="email-auto-details" id="email-auto-${key}-details" style="${!isServer && !emailConf.enabled ? 'opacity: 0.5; pointer-events: none;' : ''}">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="admin-form__group" style="margin: 0;">
+                <label class="admin-form__label" style="font-size: 0.8rem;">Objet de l'email</label>
+                <input type="text" class="admin-form__input" id="email-auto-${key}-subject" value="${escapeHtml(emailConf.subject)}" style="font-size: 0.85rem;" placeholder="Objet..." ${isServer ? 'disabled title="Géré côté serveur"' : ''}>
+                <div style="font-size: 0.7rem; color: var(--admin-text-muted); margin-top: 0.25rem;">Variables : {reference}, {prenom}, {produit}</div>
+              </div>
+              <div class="admin-form__group" style="margin: 0;">
+                <label class="admin-form__label" style="font-size: 0.8rem;">Reply-to</label>
+                <input type="email" class="admin-form__input" id="email-auto-${key}-replyto" value="${escapeHtml(emailConf.replyTo)}" style="font-size: 0.85rem;" placeholder="email@exemple.fr" ${isServer ? 'disabled title="Géré côté serveur"' : ''}>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+  }
+
+  function onEmailToggle(key, enabled) {
+    const badge = $(`#email-auto-${key}-badge`);
+    const details = $(`#email-auto-${key}-details`);
+    if (badge) {
+      badge.textContent = enabled ? 'Actif' : 'Inactif';
+      badge.style.background = enabled ? 'var(--color-success, #4A7C59)' : 'var(--admin-text-muted)';
+    }
+    if (details) {
+      details.style.opacity = enabled ? '1' : '0.5';
+      details.style.pointerEvents = enabled ? '' : 'none';
+    }
+  }
+
+  async function testEmailAutomation() {
+    const emailTypes = Object.keys(EMAIL_AUTOMATIONS_DEFAULTS);
+    const config = getEmailConfig();
+
+    // Propose to choose which email to test
+    const options = emailTypes
+      .filter(key => config[key].enabled)
+      .map(key => `<option value="${key}">${escapeHtml(config[key].label)}</option>`)
+      .join('');
+
+    if (!options) {
+      Toast.error('Aucun email actif à tester');
+      return;
+    }
+
+    // Create a quick inline dialog
+    const html = `
+      <div style="margin-bottom: 1rem;">
+        <label class="admin-form__label">Email à tester</label>
+        <select class="admin-form__select" id="test-email-type">${options}</select>
+      </div>
+      <div>
+        <label class="admin-form__label">Adresse de destination</label>
+        <input type="email" class="admin-form__input" id="test-email-dest" value="${escapeHtml(config.balance_request.replyTo || 'contact@mistralpans.fr')}" placeholder="email@test.fr">
+      </div>
+    `;
+
+    const confirmed = await Confirm.show({
+      title: 'Envoyer un email de test',
+      message: html,
+      confirmText: 'Envoyer',
+      type: 'info',
+      isHtml: true
+    });
+
+    if (!confirmed) return;
+
+    const emailType = $('#test-email-type')?.value;
+    const destEmail = $('#test-email-dest')?.value?.trim();
+
+    if (!emailType || !destEmail) {
+      Toast.error('Veuillez remplir tous les champs');
+      return;
+    }
+
+    try {
+      Toast.info('Envoi du test en cours...');
+
+      const testData = {
+        emailType: emailType,
+        client: {
+          email: destEmail,
+          prenom: 'Test',
+          nom: 'Utilisateur'
+        },
+        order: {
+          reference: 'MP-TEST-000',
+          productName: 'Handpan Kurd D3 (test)',
+          source: 'custom',
+          trackingNumber: 'FR123456789',
+          estimatedDelivery: 'Dans 3-5 jours ouvrés'
+        },
+        payment: {
+          amount: 450,
+          totalAmount: 1500,
+          remainingAmount: 1050,
+          isFullPayment: false,
+          paymentUrl: null
+        }
+      };
+
+      const response = await fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testData)
+      });
+
+      if (response.ok) {
+        Toast.success(`Email de test "${config[emailType].label}" envoyé à ${destEmail}`);
+      } else {
+        const err = await response.json().catch(() => ({}));
+        Toast.error(`Erreur: ${err.error || 'Échec envoi'}`);
+      }
+    } catch (err) {
+      console.error('Erreur test email:', err);
+      Toast.error('Erreur réseau');
+    }
+  }
+
+  /**
+   * Vérifie si un type d'email automatique est activé
+   */
+  function isEmailAutomationEnabled(emailType) {
+    const config = getEmailConfig();
+    return config[emailType]?.enabled !== false;
+  }
+
   // Export functions to AdminUI
   Object.assign(window.AdminUI, {
     renderConfiguration,
@@ -324,7 +576,13 @@
     saveMateriau,
     deleteMateriau,
     resetMateriaux,
-    populateMateriauxSelect
+    populateMateriauxSelect,
+    renderEmailAutomations,
+    saveEmailConfig,
+    testEmailAutomation,
+    onEmailToggle,
+    isEmailAutomationEnabled,
+    getEmailConfig
   });
 
   console.log('[admin-ui-config] Module chargé');

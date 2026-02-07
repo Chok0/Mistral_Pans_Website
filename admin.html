@@ -403,6 +403,21 @@
             <div class="admin-form__group"><label class="admin-form__label">Crédit fidélité (%)</label><input type="number" class="admin-form__input" id="config-fidelite" value="50" min="0" max="100"></div>
             <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
           </div>
+          <!-- EMAILS AUTOMATIQUES -->
+          <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
+            <div class="dashboard__card-title">Emails automatiques</div>
+            <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 1rem;">
+              Configurez les emails envoyés automatiquement lors des changements de statut des commandes.
+            </p>
+            <div id="email-automations-list" style="display: flex; flex-direction: column; gap: 1rem;">
+              <!-- Populated by JS -->
+            </div>
+            <div style="margin-top: 1rem;">
+              <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveEmailConfig()">Enregistrer</button>
+              <button class="admin-btn admin-btn--secondary" style="margin-left: 0.5rem;" onclick="AdminUI.testEmailAutomation()">Envoyer un test</button>
+            </div>
+          </div>
+
           <div class="dashboard__card">
             <div class="dashboard__card-title">Données</div>
             <div style="display:flex;flex-direction:column;gap:0.75rem;">
