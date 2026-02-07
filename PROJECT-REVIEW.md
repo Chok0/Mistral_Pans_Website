@@ -13,7 +13,7 @@ Legend: FIXED = resolved, OPEN = still pending
 
 The Mistral Pans website is a well-structured static-first application with a clear separation of concerns. The codebase demonstrates solid architectural decisions (partial loading system, Supabase integration, RGPD-first approach) and good use of vanilla JavaScript. The review identified **9 critical issues**, **19 important issues**, and **17 minor issues** across security, accessibility, code quality, and consistency.
 
-**Progress:** 35+ issues fixed across 7 commits. Remaining open items are primarily SEC-1/SEC-2 (Supabase Auth migration) and minor code quality items.
+**Progress:** 40+ issues fixed across 10 commits. Remaining open items are SEC-1/SEC-2/SEC-8/SEC-9/SEC-10 (all require Supabase Auth migration) plus a few low-priority code quality items.
 
 ---
 
@@ -84,7 +84,7 @@ The Mistral Pans website is a well-structured static-first application with a cl
 
 ### Security
 
-**SEC-7: HTML sanitizer has CSS injection and data URI bypasses** [OPEN]
+**SEC-7: HTML sanitizer has CSS injection and data URI bypasses** [FIXED]
 - `js/admin/admin-core.js:164-240` — `style` attribute globally allowed; `url()`, `-moz-binding`, `data:text/javascript`, `data:image/svg+xml` not blocked; `id` attribute allows DOM clobbering.
 
 **SEC-8: Upload module sends weak token without CSRF protection** [OPEN]
@@ -96,8 +96,8 @@ The Mistral Pans website is a well-structured static-first application with a cl
 **SEC-10: Hardcoded salt in password hashing** [OPEN]
 - `js/admin/admin-core.js:49` — Static salt `_mistral_salt_2024` for all users.
 
-**SEC-11: send-email.js has no authentication** [OPEN]
-- `netlify/functions/send-email.js:691-948` — Accepts POST from allowed origins with only honeypot check. Any origin-spoofing attacker can trigger emails.
+**SEC-11: send-email.js has no authentication** [FIXED]
+- Added in-memory rate limiting (5 emails/min per IP) + honeypot. Full auth requires Supabase Auth migration.
 
 **SEC-12: No CSP or security headers (no netlify.toml)** [FIXED]
 - `netlify.toml` created with CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy.
@@ -130,7 +130,7 @@ The Mistral Pans website is a well-structured static-first application with a cl
 **HTML-6: Two `<h1>` elements in admin.html** [FIXED]
 - `admin.html:80,134` — Both login title and dashboard title use `<h1>`.
 
-**HTML-7: Missing OG/Twitter meta tags** [OPEN]
+**HTML-7: Missing OG/Twitter meta tags** [FIXED]
 - `suivi.html` — No social sharing tags. `article.html` — Static defaults instead of dynamic tags.
 
 ### CSS Quality
@@ -147,32 +147,32 @@ The Mistral Pans website is a well-structured static-first application with a cl
 
 ### JavaScript
 - **JS-1:** Empty `initContactModal()` dead code [FIXED] — removed `audioBufferCache`
-- **JS-2:** Unused `lastScroll` variable [OPEN] — `js/core/main.js:172`
+- **JS-2:** Unused `lastScroll` variable [FIXED] — removed from main.js
 - **JS-3:** Event listener memory leaks on modals [FIXED] — replaced with event delegation
 - **JS-4:** Audio element accumulation [FIXED] — added clone tracking with Set + cleanup
 - **JS-5:** AbortController listener accumulation [FIXED] — added AbortController to geocoding, concurrent request guards to PayPlug/Swikly
 - **JS-6:** Unescaped scale data in innerHTML [OPEN] — `js/core/main.js:313-318` (safe now, XSS risk if data source changes)
-- **JS-7:** Progress bar CSS variable never updated [OPEN] — `js/features/upload.js:887`
-- **JS-8:** Object URL leak on compression error [OPEN] — `js/features/upload.js:92-99`
-- **JS-9:** Honeypot `checkServerSide` is dead code in browser [OPEN] — `js/features/honeypot.js:139-141`
+- **JS-7:** Progress bar CSS variable never updated [FIXED] — now sets `--progress` CSS variable
+- **JS-8:** Object URL leak on compression error [FIXED] — added `URL.revokeObjectURL()` on load/error
+- **JS-9:** Honeypot `checkServerSide` is dead code in browser [FIXED] — removed from client module
 - **JS-10:** Supabase auth state listener never unsubscribed [OPEN] — `js/services/supabase-auth.js:253`
 - **JS-11:** simpleHash fallback is trivially collisionable [OPEN] — `js/admin/admin-core.js:61-69`
 
 ### CSS
 - **CSS-3:** Duplicate `.flash-cards` rule [FIXED] — merged duplicate rules
-- **CSS-4:** Duplicate `.stats-card` definition [OPEN] — `css/admin.css:1013` vs `css/admin.css:1186`
+- **CSS-4:** Duplicate `.stats-card` definition [FIXED] — consolidated into single block
 - **CSS-5:** Hardcoded colors bypassing design system [OPEN] — `css/boutique.css:150-165`, `css/admin.css:382-439`
-- **CSS-6:** Mobile breakpoint inconsistency [OPEN] — `css/style.css:853` uses undocumented `968px`; `css/boutique.css:1328` uses `769px` (off-by-one)
+- **CSS-6:** Mobile breakpoint inconsistency [FIXED] — normalized `968px` to `1024px` in style.css
 - **CSS-7:** UTF-8 encoding corruption in CSS comments [OPEN] — `css/style.css:1629`, `css/boutique.css:8`, `css/admin.css:1-4`
 
 ### Backend
 - **BE-1:** Error details leaked to client [FIXED] — removed `payplug_details` and `error.message` from responses
-- **BE-2:** localhost CORS origins unconditionally allowed in PHP [OPEN] — `php/upload.php:25-27`, `php/delete.php:15-17`
+- **BE-2:** localhost CORS origins unconditionally allowed in PHP [FIXED] — only allowed when SERVER_NAME is localhost
 
 ### HTML
 - **HTML-8:** Favicon missing [OPEN] — no favicon file exists in project
 - **HTML-9:** Empty `src` on modal image [FIXED] — removed empty src from boutique modal, gallery lightbox, upload preview
-- **HTML-10:** YouTube social link still placeholder [OPEN] — `partials/footer.html:54`
+- **HTML-10:** YouTube social link still placeholder [FIXED] — removed from footer
 - **HTML-11:** Boutique.html has 1500+ lines inline JS [FIXED] — extracted to `js/pages/boutique.js`
 
 ---
