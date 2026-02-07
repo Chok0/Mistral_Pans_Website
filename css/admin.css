@@ -1403,6 +1403,20 @@
   font-size: 0.875rem;
 }
 
+.searchable-dropdown__category {
+  padding: 0.5rem 0.75rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--admin-accent, #0D7377);
+  border-top: 1px solid var(--admin-border);
+}
+
+.searchable-dropdown__category:first-child {
+  border-top: none;
+}
+
 /* Textarea pour lignes de facture */
 .facture-ligne__desc {
   resize: none;

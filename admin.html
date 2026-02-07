@@ -387,6 +387,32 @@
             </div>
           </div>
 
+          <!-- GESTION DES GAMMES -->
+          <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
+            <div class="dashboard__card-title">Gammes disponibles</div>
+            <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 1rem;">Gérez les gammes disponibles. Les gammes marquées "Configurateur" apparaissent dans le configurateur boutique.</p>
+            <div id="gammes-list" class="materiaux-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+              <!-- Populated by JS -->
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+              <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('gamme')">+ Ajouter une gamme</button>
+              <button class="admin-btn admin-btn--secondary" onclick="AdminUI.resetGammes()">Réinitialiser par défaut</button>
+            </div>
+          </div>
+
+          <!-- GESTION DES TAILLES -->
+          <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
+            <div class="dashboard__card-title">Tailles disponibles</div>
+            <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 1rem;">Gérez les tailles de handpan disponibles avec leurs malus de prix et paramètres de faisabilité.</p>
+            <div id="tailles-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+              <!-- Populated by JS -->
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+              <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('taille')">+ Ajouter une taille</button>
+              <button class="admin-btn admin-btn--secondary" onclick="AdminUI.resetTailles()">Réinitialiser par défaut</button>
+            </div>
+          </div>
+
           <div class="dashboard__card">
             <div class="dashboard__card-title">Informations entreprise</div>
             <div class="admin-form__group"><label class="admin-form__label">Nom</label><input type="text" class="admin-form__input" id="config-nom" value="Mistral Pan"></div>
@@ -485,21 +511,13 @@
                 <option value="B">B (Si)</option>
               </select>
             </div>
-            <div class="admin-form__group">
+            <div class="admin-form__group" style="position: relative;">
               <label class="admin-form__label">Gamme *</label>
-              <select class="admin-form__select" id="instrument-gamme" required onchange="AdminUI.updateInstrumentReference()">
-                <option value="">--</option>
-                <option value="KURD">Kurd</option>
-                <option value="AMARA">Amara</option>
-                <option value="HIJAZ">Hijaz</option>
-                <option value="PYGMY">Pygmy</option>
-                <option value="EQUINOX">Equinox</option>
-                <option value="INTEGRAL">Integral</option>
-                <option value="OXALIS">Oxalis</option>
-                <option value="CELTIC">Celtic</option>
-                <option value="MYSTIC">Mystic</option>
-                <option value="AKEBONO">Akebono</option>
-              </select>
+              <input type="hidden" id="instrument-gamme" required>
+              <input type="text" class="admin-form__input" id="instrument-gamme-search" placeholder="Rechercher une gamme..." autocomplete="off" oninput="AdminUI.filterGammeDropdown(this.value)" onfocus="AdminUI.filterGammeDropdown(this.value)">
+              <div class="searchable-dropdown" id="instrument-gamme-dropdown" style="display:none;">
+                <!-- Populated dynamically by AdminUI.populateGammesSelect() -->
+              </div>
             </div>
             <div class="admin-form__group">
               <label class="admin-form__label">Notes *</label>
@@ -518,9 +536,7 @@
             <div class="admin-form__group">
               <label class="admin-form__label">Taille</label>
               <select class="admin-form__select" id="instrument-taille">
-                <option value="45">45 cm</option>
-                <option value="50">50 cm</option>
-                <option value="53" selected>53 cm</option>
+                <!-- Populated dynamically by AdminUI.populateTaillesSelect() -->
               </select>
             </div>
             <div class="admin-form__group">
@@ -808,6 +824,156 @@
     </div>
   </div>
 
+  <!-- Modal Gamme -->
+  <div class="admin-modal-overlay admin-modal--medium" id="modal-gamme">
+    <div class="admin-modal">
+      <div class="admin-modal__header">
+        <h3 class="admin-modal__title" id="modal-gamme-title">Nouvelle gamme</h3>
+        <button class="admin-modal__close" onclick="AdminUI.closeModal('gamme')">✕</button>
+      </div>
+      <div class="admin-modal__body">
+        <form id="form-gamme">
+          <input type="hidden" id="gamme-id">
+          <div class="form-row">
+            <div class="admin-form__group" style="max-width: 140px;">
+              <label class="admin-form__label">Code *</label>
+              <input type="text" class="admin-form__input" id="gamme-code" required placeholder="kurd" style="text-transform: lowercase;">
+              <div class="admin-form__hint">Identifiant unique</div>
+            </div>
+            <div class="admin-form__group" style="flex: 1;">
+              <label class="admin-form__label">Nom *</label>
+              <input type="text" class="admin-form__input" id="gamme-nom" required placeholder="Kurd">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="admin-form__group">
+              <label class="admin-form__label">Catégorie</label>
+              <select class="admin-form__select" id="gamme-categorie">
+                <option value="debutant">Débutant</option>
+                <option value="mineur">Mineur</option>
+                <option value="majeur">Majeur</option>
+                <option value="modal">Modal</option>
+                <option value="oriental">Oriental</option>
+                <option value="pentatonique">Pentatonique</option>
+                <option value="autre">Autre</option>
+              </select>
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Mode musical</label>
+              <select class="admin-form__select" id="gamme-mode">
+                <option value="aeolian">Éolien (mineur naturel)</option>
+                <option value="dorian">Dorien</option>
+                <option value="phrygian">Phrygien</option>
+                <option value="phrygian_dominant">Phrygien dominant</option>
+                <option value="ionian">Ionien (majeur)</option>
+                <option value="mixolydian">Mixolydien</option>
+                <option value="lydian">Lydien</option>
+                <option value="locrian">Locrien</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="admin-form__group">
+              <label class="admin-form__label">Tonalité de base</label>
+              <input type="text" class="admin-form__input" id="gamme-baseroot" placeholder="D" maxlength="2">
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Octave de base</label>
+              <input type="number" class="admin-form__input" id="gamme-baseoctave" min="2" max="5" value="3">
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Ordre</label>
+              <input type="number" class="admin-form__input" id="gamme-ordre" min="0" value="1">
+            </div>
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label">Description</label>
+            <textarea class="admin-form__textarea" id="gamme-description" rows="2" placeholder="Description de la gamme..."></textarea>
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label">Ambiance</label>
+            <input type="text" class="admin-form__input" id="gamme-mood" placeholder="Ex: Mélancolique, introspectif">
+          </div>
+          <div class="form-row" style="margin-top: 1rem;">
+            <div class="admin-form__group">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" id="gamme-disponible" checked style="width: 18px; height: 18px;">
+                <span>Disponible</span>
+              </label>
+            </div>
+            <div class="admin-form__group">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="checkbox" id="gamme-visible-config" style="width: 18px; height: 18px;">
+                <span>Visible dans le configurateur</span>
+              </label>
+              <div class="admin-form__hint">Nécessite des patterns de layout dans scales-data.js</div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="admin-modal__footer">
+        <button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('gamme')">Annuler</button>
+        <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveGamme()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Taille -->
+  <div class="admin-modal-overlay admin-modal--medium" id="modal-taille">
+    <div class="admin-modal">
+      <div class="admin-modal__header">
+        <h3 class="admin-modal__title" id="modal-taille-title">Nouvelle taille</h3>
+        <button class="admin-modal__close" onclick="AdminUI.closeModal('taille')">✕</button>
+      </div>
+      <div class="admin-modal__body">
+        <form id="form-taille">
+          <input type="hidden" id="taille-id">
+          <div class="form-row">
+            <div class="admin-form__group" style="max-width: 100px;">
+              <label class="admin-form__label">Code *</label>
+              <input type="text" class="admin-form__input" id="taille-code" required placeholder="53">
+              <div class="admin-form__hint">Ex: 45, 50, 53</div>
+            </div>
+            <div class="admin-form__group" style="flex: 1;">
+              <label class="admin-form__label">Label</label>
+              <input type="text" class="admin-form__input" id="taille-label" placeholder="53 cm">
+            </div>
+            <div class="admin-form__group">
+              <label class="admin-form__label">Malus prix (%)</label>
+              <input type="number" class="admin-form__input" id="taille-prix-malus" min="0" max="50" value="0" step="0.5">
+            </div>
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label">Description</label>
+            <input type="text" class="admin-form__input" id="taille-description" placeholder="Standard — meilleure résonance">
+          </div>
+          <div class="form-row">
+            <div class="admin-form__group">
+              <label class="admin-form__label">Ordre</label>
+              <input type="number" class="admin-form__input" id="taille-ordre" min="0" value="1">
+            </div>
+            <div class="admin-form__group">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 1.5rem;">
+                <input type="checkbox" id="taille-disponible" checked style="width: 18px; height: 18px;">
+                <span>Disponible</span>
+              </label>
+            </div>
+            <div class="admin-form__group">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 1.5rem;">
+                <input type="checkbox" id="taille-visible-config" checked style="width: 18px; height: 18px;">
+                <span>Visible configurateur</span>
+              </label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="admin-modal__footer">
+        <button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('taille')">Annuler</button>
+        <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveTaille()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Professeur -->
   <div class="admin-modal-overlay admin-modal--medium" id="modal-professeur">
     <div class="admin-modal">
@@ -1023,6 +1189,8 @@
   <script src="js/features/teacher-form.js"></script>
   <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
   <script src="js/data/materiaux-data.js"></script>
+  <script src="js/data/gammes-data.js"></script>
+  <script src="js/data/tailles-data.js"></script>
   <!-- Admin UI Modulaire -->
   <script src="js/admin/admin-ui-core.js"></script>
   <script src="js/admin/admin-ui-gestion.js"></script>

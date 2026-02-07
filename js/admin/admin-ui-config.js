@@ -564,6 +564,435 @@
     return config[emailType]?.enabled !== false;
   }
 
+  // ============================================================================
+  // GAMMES MANAGEMENT
+  // ============================================================================
+
+  function renderGammes() {
+    const container = $('#gammes-list');
+    if (!container) return;
+
+    if (typeof MistralGammes === 'undefined') {
+      container.innerHTML = '<p style="color: var(--admin-text-muted);">Module gammes non chargé</p>';
+      return;
+    }
+
+    const gammes = MistralGammes.getAll();
+    if (gammes.length === 0) {
+      container.innerHTML = '<p style="color: var(--admin-text-muted);">Aucune gamme configurée</p>';
+      return;
+    }
+
+    const CATEGORIES = MistralGammes.CATEGORIES;
+    let html = '';
+    gammes.forEach(g => {
+      const statusBadge = g.disponible
+        ? '<span style="color: var(--color-success, #4A7C59); font-size: 0.75rem;">✓ Disponible</span>'
+        : '<span style="color: var(--admin-text-muted); font-size: 0.75rem;">✗ Indisponible</span>';
+      const configBadge = g.visible_configurateur
+        ? '<span style="background: var(--admin-accent); color: white; font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px;">Configurateur</span>'
+        : '';
+      const catLabel = CATEGORIES[g.categorie] ? CATEGORIES[g.categorie].label : g.categorie;
+
+      html += `
+        <div class="materiau-card" style="background: var(--admin-surface); border: 1px solid var(--admin-border); border-radius: 8px; padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <div>
+              <div style="font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                ${escapeHtml(g.nom)}
+                <code style="background: var(--admin-surface-hover); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.75rem;">${g.code}</code>
+              </div>
+              <div style="font-size: 0.85rem; color: var(--admin-text-muted); margin-top: 0.25rem;">
+                ${escapeHtml(catLabel)} · ${g.baseRoot || '?'}${g.baseOctave || ''} · ${g.mode || '?'}
+              </div>
+            </div>
+          </div>
+          ${g.mood ? `<p style="font-size: 0.8rem; color: var(--admin-text-muted); margin: 0.25rem 0; font-style: italic;">${escapeHtml(g.mood)}</p>` : ''}
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--admin-border);">
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              ${statusBadge}
+              ${configBadge}
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="AdminUI.editGamme('${g.id}')" title="Modifier">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="admin-btn admin-btn--sm admin-btn--danger" onclick="AdminUI.deleteGamme('${g.id}')" title="Supprimer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  function editGamme(id) {
+    if (typeof MistralGammes === 'undefined') return;
+    const gamme = MistralGammes.getById(id);
+    if (!gamme) return;
+
+    $('#modal-gamme-title').textContent = 'Modifier la gamme';
+    $('#gamme-id').value = gamme.id;
+    $('#gamme-code').value = gamme.code || '';
+    $('#gamme-nom').value = gamme.nom || '';
+    $('#gamme-categorie').value = gamme.categorie || 'autre';
+    $('#gamme-mode').value = gamme.mode || 'aeolian';
+    $('#gamme-baseroot').value = gamme.baseRoot || '';
+    $('#gamme-baseoctave').value = gamme.baseOctave || 3;
+    $('#gamme-ordre').value = gamme.ordre || 1;
+    $('#gamme-description').value = gamme.description || '';
+    $('#gamme-mood').value = gamme.mood || '';
+    $('#gamme-disponible').checked = gamme.disponible !== false;
+    $('#gamme-visible-config').checked = gamme.visible_configurateur || false;
+
+    AdminUI.showModal('gamme');
+  }
+
+  function saveGamme() {
+    if (typeof MistralGammes === 'undefined') {
+      Toast.error('Module gammes non chargé');
+      return;
+    }
+
+    const id = $('#gamme-id')?.value;
+    const code = $('#gamme-code')?.value?.toLowerCase().trim();
+    const nom = $('#gamme-nom')?.value?.trim();
+
+    if (!code || !nom) {
+      Toast.error('Le code et le nom sont requis');
+      return;
+    }
+
+    const existing = MistralGammes.getByCode(code);
+    if (existing && existing.id !== id) {
+      Toast.error(`Le code "${code}" existe déjà`);
+      return;
+    }
+
+    const gamme = {
+      id: id || null,
+      code: code,
+      nom: nom,
+      categorie: $('#gamme-categorie')?.value || 'autre',
+      mode: $('#gamme-mode')?.value || 'aeolian',
+      baseRoot: $('#gamme-baseroot')?.value?.trim() || '',
+      baseOctave: parseInt($('#gamme-baseoctave')?.value) || 3,
+      ordre: parseInt($('#gamme-ordre')?.value) || 1,
+      description: $('#gamme-description')?.value?.trim() || '',
+      mood: $('#gamme-mood')?.value?.trim() || '',
+      disponible: $('#gamme-disponible')?.checked,
+      visible_configurateur: $('#gamme-visible-config')?.checked
+    };
+
+    MistralGammes.save(gamme);
+    AdminUI.closeModal('gamme');
+    renderGammes();
+    Toast.success(id ? 'Gamme modifiée' : 'Gamme créée');
+  }
+
+  async function deleteGamme(id) {
+    if (typeof MistralGammes === 'undefined') return;
+    const gamme = MistralGammes.getById(id);
+    if (!gamme) return;
+
+    const confirmed = await Confirm.show({
+      title: 'Supprimer la gamme',
+      message: `Voulez-vous vraiment supprimer "${gamme.nom}" (${gamme.code}) ?`,
+      confirmText: 'Supprimer',
+      type: 'danger'
+    });
+
+    if (confirmed) {
+      MistralGammes.remove(id);
+      renderGammes();
+      Toast.success('Gamme supprimée');
+    }
+  }
+
+  async function resetGammes() {
+    if (typeof MistralGammes === 'undefined') return;
+    const confirmed = await Confirm.show({
+      title: 'Réinitialiser les gammes',
+      message: 'Ceci remplacera toutes les gammes par les valeurs par défaut. Continuer ?',
+      confirmText: 'Réinitialiser',
+      type: 'warning'
+    });
+    if (confirmed) {
+      MistralGammes.reset();
+      renderGammes();
+      Toast.success('Gammes réinitialisées');
+    }
+  }
+
+  // ============================================================================
+  // GAMMES SEARCHABLE SELECT (for instrument form)
+  // ============================================================================
+
+  function populateGammesSelect(selectedCode = '') {
+    const searchInput = $('#instrument-gamme-search');
+    const hiddenInput = $('#instrument-gamme');
+    if (!searchInput || !hiddenInput) return;
+
+    if (selectedCode && typeof MistralGammes !== 'undefined') {
+      const gamme = MistralGammes.getByCode(selectedCode);
+      if (gamme) {
+        searchInput.value = gamme.nom;
+        hiddenInput.value = gamme.code;
+      }
+    } else {
+      searchInput.value = '';
+      hiddenInput.value = '';
+    }
+  }
+
+  function filterGammeDropdown(query) {
+    const dropdown = $('#instrument-gamme-dropdown');
+    const hiddenInput = $('#instrument-gamme');
+    if (!dropdown) return;
+
+    if (typeof MistralGammes === 'undefined') {
+      dropdown.innerHTML = '<div class="searchable-dropdown__empty">Module gammes non chargé</div>';
+      dropdown.style.display = 'block';
+      return;
+    }
+
+    const gammes = MistralGammes.getDisponibles();
+    const q = (query || '').toLowerCase();
+    const filtered = q
+      ? gammes.filter(g =>
+          g.nom.toLowerCase().includes(q) ||
+          g.code.toLowerCase().includes(q) ||
+          (g.categorie && g.categorie.toLowerCase().includes(q)) ||
+          (g.mood && g.mood.toLowerCase().includes(q))
+        )
+      : gammes;
+
+    if (filtered.length === 0) {
+      dropdown.innerHTML = '<div class="searchable-dropdown__empty">Aucune gamme trouvée</div>';
+    } else {
+      const CATEGORIES = MistralGammes.CATEGORIES;
+      // Group by category
+      const grouped = {};
+      filtered.forEach(g => {
+        const cat = g.categorie || 'autre';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(g);
+      });
+
+      let html = '';
+      for (const [cat, items] of Object.entries(grouped)) {
+        const catLabel = CATEGORIES[cat] ? CATEGORIES[cat].label : cat;
+        html += `<div class="searchable-dropdown__category">${escapeHtml(catLabel)}</div>`;
+        items.forEach(g => {
+          const configIcon = g.visible_configurateur ? ' ⚙' : '';
+          html += `<div class="searchable-dropdown__item" data-code="${g.code}">
+            <strong>${escapeHtml(g.nom)}</strong>${configIcon}
+            <span style="color: var(--admin-text-muted); font-size: 0.8rem; margin-left: 0.5rem;">${g.baseRoot || ''}${g.baseOctave || ''} · ${g.mode || ''}</span>
+          </div>`;
+        });
+      }
+      dropdown.innerHTML = html;
+    }
+
+    dropdown.style.display = 'block';
+
+    // Click handler for items
+    dropdown.onclick = function(e) {
+      const item = e.target.closest('.searchable-dropdown__item');
+      if (item) {
+        const code = item.dataset.code;
+        const gamme = MistralGammes.getByCode(code);
+        if (gamme) {
+          $('#instrument-gamme-search').value = gamme.nom;
+          hiddenInput.value = gamme.code;
+          dropdown.style.display = 'none';
+          if (AdminUI.updateInstrumentReference) AdminUI.updateInstrumentReference();
+        }
+      }
+    };
+  }
+
+  // Close gamme dropdown on outside click
+  document.addEventListener('click', function(e) {
+    const dropdown = $('#instrument-gamme-dropdown');
+    if (dropdown && !e.target.closest('#instrument-gamme-search') && !e.target.closest('#instrument-gamme-dropdown')) {
+      dropdown.style.display = 'none';
+    }
+  });
+
+  // ============================================================================
+  // TAILLES MANAGEMENT
+  // ============================================================================
+
+  function renderTailles() {
+    const container = $('#tailles-list');
+    if (!container) return;
+
+    if (typeof MistralTailles === 'undefined') {
+      container.innerHTML = '<p style="color: var(--admin-text-muted);">Module tailles non chargé</p>';
+      return;
+    }
+
+    const tailles = MistralTailles.getAll();
+    if (tailles.length === 0) {
+      container.innerHTML = '<p style="color: var(--admin-text-muted);">Aucune taille configurée</p>';
+      return;
+    }
+
+    let html = '';
+    tailles.forEach(t => {
+      const statusBadge = t.disponible
+        ? '<span style="color: var(--color-success, #4A7C59); font-size: 0.75rem;">✓ Disponible</span>'
+        : '<span style="color: var(--admin-text-muted); font-size: 0.75rem;">✗ Indisponible</span>';
+      const configBadge = t.visible_configurateur
+        ? '<span style="background: var(--admin-accent); color: white; font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px;">Configurateur</span>'
+        : '';
+      const malusDisplay = t.prix_malus > 0
+        ? `<span style="color: var(--color-warning, #F59E0B); font-size: 0.8rem;">+${t.prix_malus}%</span>`
+        : '<span style="color: var(--admin-text-muted); font-size: 0.8rem;">Standard</span>';
+
+      html += `
+        <div style="background: var(--admin-surface); border: 1px solid var(--admin-border); border-radius: 8px; padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <div>
+              <div style="font-weight: 600; font-size: 1.1rem;">${escapeHtml(t.label || t.code + ' cm')}</div>
+              ${t.description ? `<div style="font-size: 0.85rem; color: var(--admin-text-muted);">${escapeHtml(t.description)}</div>` : ''}
+            </div>
+            ${malusDisplay}
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--admin-border);">
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              ${statusBadge}
+              ${configBadge}
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="AdminUI.editTaille('${t.id}')" title="Modifier">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="admin-btn admin-btn--sm admin-btn--danger" onclick="AdminUI.deleteTaille('${t.id}')" title="Supprimer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  function editTaille(id) {
+    if (typeof MistralTailles === 'undefined') return;
+    const taille = MistralTailles.getById(id);
+    if (!taille) return;
+
+    $('#modal-taille-title').textContent = 'Modifier la taille';
+    $('#taille-id').value = taille.id;
+    $('#taille-code').value = taille.code || '';
+    $('#taille-label').value = taille.label || '';
+    $('#taille-prix-malus').value = taille.prix_malus || 0;
+    $('#taille-description').value = taille.description || '';
+    $('#taille-ordre').value = taille.ordre || 1;
+    $('#taille-disponible').checked = taille.disponible !== false;
+    $('#taille-visible-config').checked = taille.visible_configurateur !== false;
+
+    AdminUI.showModal('taille');
+  }
+
+  function saveTaille() {
+    if (typeof MistralTailles === 'undefined') {
+      Toast.error('Module tailles non chargé');
+      return;
+    }
+
+    const id = $('#taille-id')?.value;
+    const code = $('#taille-code')?.value?.trim();
+    if (!code) {
+      Toast.error('Le code est requis');
+      return;
+    }
+
+    const existing = MistralTailles.getByCode(code);
+    if (existing && existing.id !== id) {
+      Toast.error(`Le code "${code}" existe déjà`);
+      return;
+    }
+
+    const taille = {
+      id: id || null,
+      code: code,
+      label: $('#taille-label')?.value?.trim() || code + ' cm',
+      prix_malus: parseFloat($('#taille-prix-malus')?.value) || 0,
+      description: $('#taille-description')?.value?.trim() || '',
+      ordre: parseInt($('#taille-ordre')?.value) || 1,
+      disponible: $('#taille-disponible')?.checked,
+      visible_configurateur: $('#taille-visible-config')?.checked
+    };
+
+    // Preserve feasibility data if editing
+    if (id) {
+      const existingTaille = MistralTailles.getById(id);
+      if (existingTaille && existingTaille.feasibility) {
+        taille.feasibility = existingTaille.feasibility;
+      }
+    }
+
+    MistralTailles.save(taille);
+    AdminUI.closeModal('taille');
+    renderTailles();
+    Toast.success(id ? 'Taille modifiée' : 'Taille créée');
+  }
+
+  async function deleteTaille(id) {
+    if (typeof MistralTailles === 'undefined') return;
+    const taille = MistralTailles.getById(id);
+    if (!taille) return;
+
+    const confirmed = await Confirm.show({
+      title: 'Supprimer la taille',
+      message: `Voulez-vous vraiment supprimer "${taille.label}" ?`,
+      confirmText: 'Supprimer',
+      type: 'danger'
+    });
+
+    if (confirmed) {
+      MistralTailles.remove(id);
+      renderTailles();
+      Toast.success('Taille supprimée');
+    }
+  }
+
+  async function resetTailles() {
+    if (typeof MistralTailles === 'undefined') return;
+    const confirmed = await Confirm.show({
+      title: 'Réinitialiser les tailles',
+      message: 'Ceci remplacera toutes les tailles par les valeurs par défaut (45, 50, 53 cm). Continuer ?',
+      confirmText: 'Réinitialiser',
+      type: 'warning'
+    });
+    if (confirmed) {
+      MistralTailles.reset();
+      renderTailles();
+      Toast.success('Tailles réinitialisées');
+    }
+  }
+
+  function populateTaillesSelect(selectedCode = '53') {
+    const select = $('#instrument-taille');
+    if (!select) return;
+
+    if (typeof MistralTailles !== 'undefined') {
+      select.innerHTML = MistralTailles.toSelectOptions(selectedCode);
+    } else {
+      select.innerHTML = `
+        <option value="45" ${selectedCode === '45' ? 'selected' : ''}>45 cm</option>
+        <option value="50" ${selectedCode === '50' ? 'selected' : ''}>50 cm</option>
+        <option value="53" ${selectedCode === '53' ? 'selected' : ''}>53 cm</option>
+      `;
+    }
+  }
+
   // Export functions to AdminUI
   Object.assign(window.AdminUI, {
     renderConfiguration,
@@ -577,6 +1006,19 @@
     deleteMateriau,
     resetMateriaux,
     populateMateriauxSelect,
+    renderGammes,
+    editGamme,
+    saveGamme,
+    deleteGamme,
+    resetGammes,
+    populateGammesSelect,
+    filterGammeDropdown,
+    renderTailles,
+    editTaille,
+    saveTaille,
+    deleteTaille,
+    resetTailles,
+    populateTaillesSelect,
     renderEmailAutomations,
     saveEmailConfig,
     testEmailAutomation,

@@ -73,7 +73,9 @@
           location: 'Nouvelle location',
           commande: 'Nouvelle commande',
           facture: 'Nouvelle facture',
-          materiau: 'Nouveau matériau'
+          materiau: 'Nouveau matériau',
+          gamme: 'Nouvelle gamme',
+          taille: 'Nouvelle taille'
         };
         if (titleEl && titles[name]) {
           titleEl.textContent = titles[name];
@@ -168,8 +170,29 @@
         }
 
         if (name === 'instrument') {
-          // Populate material select with dynamic options
+          // Populate dynamic selects
           AdminUI.populateMateriauxSelect();
+          if (AdminUI.populateGammesSelect) AdminUI.populateGammesSelect();
+          if (AdminUI.populateTaillesSelect) AdminUI.populateTaillesSelect();
+        }
+
+        if (name === 'gamme') {
+          $('#modal-gamme-title').textContent = 'Nouvelle gamme';
+          $('#gamme-id').value = '';
+          $('#form-gamme')?.reset();
+          $('#gamme-ordre').value = 1;
+          $('#gamme-baseoctave').value = 3;
+          $('#gamme-disponible').checked = true;
+          $('#gamme-visible-config').checked = false;
+        }
+
+        if (name === 'taille') {
+          $('#modal-taille-title').textContent = 'Nouvelle taille';
+          $('#taille-id').value = '';
+          $('#form-taille')?.reset();
+          $('#taille-ordre').value = 1;
+          $('#taille-disponible').checked = true;
+          $('#taille-visible-config').checked = true;
         }
       }
 
@@ -350,6 +373,8 @@
     $('#instrument-notes').value = instrument.nombre_notes || 9;
     $('#instrument-taille').value = instrument.taille || '53';
     AdminUI.populateMateriauxSelect(instrument.materiau || 'NS');
+    if (AdminUI.populateGammesSelect) AdminUI.populateGammesSelect(instrument.gamme || '');
+    if (AdminUI.populateTaillesSelect) AdminUI.populateTaillesSelect(instrument.taille || '53');
     $('#instrument-accordage').value = instrument.accordage || '440';
     $('#instrument-prix').value = instrument.prix_vente || '';
     $('#instrument-statut').value = instrument.statut || 'disponible';

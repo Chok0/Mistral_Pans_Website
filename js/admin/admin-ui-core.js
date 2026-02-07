@@ -301,6 +301,8 @@
       case 'configuration':
         if (window.AdminUI.renderConfiguration) window.AdminUI.renderConfiguration();
         if (window.AdminUI.renderMateriaux) window.AdminUI.renderMateriaux();
+        if (window.AdminUI.renderGammes) window.AdminUI.renderGammes();
+        if (window.AdminUI.renderTailles) window.AdminUI.renderTailles();
         if (window.AdminUI.renderEmailAutomations) window.AdminUI.renderEmailAutomations();
         break;
       case 'comptabilite':
