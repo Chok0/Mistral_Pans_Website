@@ -222,6 +222,35 @@
       color: #0070BA;
     }
 
+    /* ---- 4-column grid (stock items) ---- */
+    .order-options--four {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    @media (max-width: 900px) {
+      .order-options--four {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 500px) {
+      .order-options--four {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ---- Accessories summary ---- */
+    .order-accessories {
+      background: var(--color-bg-warm);
+      border-radius: var(--radius-md);
+      padding: var(--space-md) var(--space-lg);
+      margin-bottom: var(--space-xl);
+      font-size: 0.9375rem;
+    }
+    .order-accessories__list .order-accessories__item {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-xs) 0;
+    }
+
     /* ---- Oney installment selector ---- */
     .oney-selector {
       display: flex;
@@ -436,13 +465,33 @@
         </div>
       </div>
       
+      <!-- Accessory summary (populated by JS if housse/livraison present) -->
+      <div id="order-accessories" class="order-accessories" style="display:none;">
+        <div class="order-accessories__list" id="accessories-list"></div>
+      </div>
+
       <h2 style="margin-bottom: var(--space-lg);">Choisissez votre option</h2>
 
-      <div class="order-options order-options--three">
+      <div class="order-options order-options--three" id="order-options-grid">
+
+        <!-- Option 0: Paiement intégral (stock only, hidden by default) -->
+        <div class="order-option" data-option="full" style="display:none;" onclick="selectOption('full')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('full')" tabindex="0" role="button" aria-label="Payer maintenant">
+          <span class="order-option__badge" id="badge-full">Recommandé</span>
+          <div class="order-option__icon">💳</div>
+          <h3 class="order-option__title">Payer maintenant</h3>
+          <p class="order-option__description">
+            Réglez le montant total et recevez votre instrument.
+          </p>
+          <ul class="order-option__details">
+            <li>Paiement unique de <strong id="option-full-amount">1 400 €</strong></li>
+            <li>Expédition immédiate</li>
+            <li>Paiement sécurisé</li>
+          </ul>
+        </div>
 
         <!-- Option 1: Acompte 30% -->
         <div class="order-option" data-option="deposit" onclick="selectOption('deposit')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('deposit')" tabindex="0" role="button" aria-label="Réserver avec acompte de 30%">
-          <span class="order-option__badge">Populaire</span>
+          <span class="order-option__badge" id="badge-deposit">Populaire</span>
           <div class="order-option__icon">💳</div>
           <h3 class="order-option__title">Réserver avec acompte</h3>
           <p class="order-option__description">
@@ -607,6 +656,84 @@
         </form>
       </div>
       
+      <!-- Form: Full Payment (stock items) -->
+      <div id="form-full" class="order-form">
+        <h3 class="order-form__title">Paiement intégral</h3>
+
+        <div class="order-summary">
+          <div class="order-summary__row">
+            <span>Instrument</span>
+            <span id="summary-full-product">D Kurd 9 notes</span>
+          </div>
+          <div class="order-summary__row" id="summary-full-housse-row" style="display:none;">
+            <span>Housse</span>
+            <span id="summary-full-housse">—</span>
+          </div>
+          <div class="order-summary__row total">
+            <span>Total à payer</span>
+            <span id="summary-full-total">1 400 €</span>
+          </div>
+        </div>
+
+        <form data-form="full" data-honeypot>
+          <!-- Honeypot anti-spam -->
+          <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+            <label for="hp-full-website">Site web</label>
+            <input type="text" name="website" id="hp-full-website" autocomplete="off" tabindex="-1">
+          </div>
+
+          <input type="hidden" name="type" value="Commande paiement intégral">
+          <input type="hidden" name="product" id="form-product-full" value="D Kurd 9 notes">
+          <input type="hidden" name="amount" id="form-full-amount" value="1400">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="full-firstname">Prénom *</label>
+              <input type="text" id="full-firstname" name="firstname" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="full-lastname">Nom *</label>
+              <input type="text" id="full-lastname" name="lastname" class="form-input" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="full-email">Email *</label>
+            <input type="email" id="full-email" name="email" class="form-input" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="full-phone">Téléphone *</label>
+            <input type="tel" id="full-phone" name="phone" class="form-input" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="full-address">Adresse de livraison *</label>
+            <textarea id="full-address" name="address" class="form-textarea" rows="3" placeholder="Adresse complète ou 'Retrait atelier'" required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="full-message">Message (optionnel)</label>
+            <textarea id="full-message" name="message" class="form-textarea" rows="2" placeholder="Précisions, questions..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-checkbox">
+              <input type="checkbox" required>
+              <span>J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</span>
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn--primary btn--lg btn--full" id="full-submit-btn">
+            Payer <span id="full-btn-amount">1 400 €</span>
+          </button>
+
+          <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
+            Paiement sécurisé par carte bancaire.
+          </p>
+        </form>
+      </div>
+
       <!-- Form: Oney 3x/4x -->
       <div id="form-oney" class="order-form">
         <h3 class="order-form__title">Paiement en plusieurs fois</h3>

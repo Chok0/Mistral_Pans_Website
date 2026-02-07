@@ -1,5 +1,6 @@
 // Netlify Function : Webhook Payplug
-// Reçoit les notifications de paiement/remboursement et met à jour la base de données
+// Reçoit les notifications de paiement/remboursement
+// Orchestre: création commande, mise à jour stock, emails
 
 /**
  * Récupère les détails d'un paiement via l'API Payplug
@@ -45,8 +46,206 @@ async function getRefundDetails(paymentId, refundId, secretKey) {
   return response.json();
 }
 
+// ============================================================================
+// SUPABASE HELPERS
+// ============================================================================
+
+function getSupabaseConfig() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return null;
+
+  return {
+    url,
+    headers: {
+      'apikey': key,
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    }
+  };
+}
+
+// ============================================================================
+// CRÉATION COMMANDE
+// ============================================================================
+
 /**
- * Envoie un email de confirmation de paiement
+ * Crée (ou met à jour) une commande dans Supabase à partir du paiement
+ */
+async function createOrUpdateOrder(payment, metadata) {
+  const sb = getSupabaseConfig();
+  if (!sb) return;
+
+  const paymentType = metadata.payment_type || 'full';
+  const isFullPayment = paymentType === 'full' || paymentType === 'installments';
+  const isStock = metadata.source === 'stock';
+
+  const orderRecord = {
+    reference: metadata.order_reference,
+    source: metadata.source || 'custom',
+    instrument_id: metadata.instrument_id || null,
+
+    // Client
+    customer_email: payment.billing?.email || null,
+    customer_name: `${payment.billing?.first_name || ''} ${payment.billing?.last_name || ''}`.trim(),
+    customer_phone: payment.billing?.mobile_phone_number || null,
+    customer_address: payment.billing?.address1
+      ? `${payment.billing.address1}, ${payment.billing.postcode || ''} ${payment.billing.city || ''}`.trim()
+      : null,
+
+    // Produit
+    product_name: metadata.product_name || metadata.gamme || 'Handpan sur mesure',
+    specifications: {
+      gamme: metadata.gamme || null,
+      taille: metadata.taille || null,
+      housse_id: metadata.housse_id || null,
+      housse_nom: metadata.housse_nom || null,
+      housse_prix: metadata.housse_prix || null,
+      livraison: metadata.livraison || false
+    },
+
+    // Montants (en EUR)
+    montant_total: (metadata.total_price_cents || payment.amount) / 100,
+    montant_paye: payment.amount / 100,
+
+    // Paiement
+    payment_type: paymentType,
+    payplug_payment_id: payment.id,
+
+    // Statuts
+    statut: isStock && isFullPayment ? 'pret' : 'en_attente',
+    statut_paiement: isFullPayment ? 'paye' : 'partiel',
+
+    // Dates
+    created_at: new Date().toISOString(),
+    paid_at: payment.paid_at
+      ? new Date(payment.paid_at * 1000).toISOString()
+      : new Date().toISOString()
+  };
+
+  try {
+    // Upsert sur reference pour idempotence
+    const upsertHeaders = {
+      ...sb.headers,
+      'Prefer': 'return=minimal,resolution=merge-duplicates'
+    };
+
+    const response = await fetch(
+      `${sb.url}/rest/v1/commandes?on_conflict=reference`,
+      {
+        method: 'POST',
+        headers: upsertHeaders,
+        body: JSON.stringify(orderRecord)
+      }
+    );
+
+    if (!response.ok) {
+      console.warn('Erreur création commande Supabase:', await response.text());
+    } else {
+      console.log('Commande créée/mise à jour:', metadata.order_reference);
+    }
+  } catch (error) {
+    console.error('Erreur création commande:', error);
+  }
+}
+
+// ============================================================================
+// ENREGISTREMENT PAIEMENT
+// ============================================================================
+
+/**
+ * Enregistre le paiement dans la table paiements
+ */
+async function recordPayment(payment, metadata) {
+  const sb = getSupabaseConfig();
+  if (!sb) return;
+
+  const paymentRecord = {
+    payplug_id: payment.id,
+    reference: metadata.order_reference,
+    amount: payment.amount,
+    currency: payment.currency,
+    payment_type: metadata.payment_type,
+    customer_email: payment.billing?.email,
+    customer_name: `${payment.billing?.first_name || ''} ${payment.billing?.last_name || ''}`.trim(),
+    status: 'paid',
+    paid_at: payment.paid_at
+      ? new Date(payment.paid_at * 1000).toISOString()
+      : new Date().toISOString(),
+    metadata: metadata,
+    raw_response: payment
+  };
+
+  try {
+    const upsertHeaders = {
+      ...sb.headers,
+      'Prefer': 'return=minimal,resolution=merge-duplicates'
+    };
+
+    const response = await fetch(
+      `${sb.url}/rest/v1/paiements?on_conflict=payplug_id`,
+      {
+        method: 'POST',
+        headers: upsertHeaders,
+        body: JSON.stringify(paymentRecord)
+      }
+    );
+
+    if (!response.ok) {
+      console.warn('Erreur enregistrement paiement Supabase:', await response.text());
+    }
+  } catch (error) {
+    console.error('Erreur enregistrement paiement:', error);
+  }
+}
+
+// ============================================================================
+// MISE À JOUR STOCK
+// ============================================================================
+
+/**
+ * Si instrument en stock → marquer comme vendu/réservé
+ */
+async function updateInstrumentStock(metadata, paymentType) {
+  const sb = getSupabaseConfig();
+  if (!sb) return;
+
+  const instrumentId = metadata.instrument_id;
+  if (!instrumentId || metadata.source !== 'stock') return;
+
+  const isFullPayment = paymentType === 'full' || paymentType === 'installments';
+  const newStatus = isFullPayment ? 'vendu' : 'en_fabrication'; // 'en_fabrication' = réservé
+
+  try {
+    const response = await fetch(
+      `${sb.url}/rest/v1/instruments?id=eq.${instrumentId}`,
+      {
+        method: 'PATCH',
+        headers: sb.headers,
+        body: JSON.stringify({
+          statut: newStatus,
+          updated_at: new Date().toISOString()
+        })
+      }
+    );
+
+    if (!response.ok) {
+      console.warn('Erreur mise à jour instrument:', await response.text());
+    } else {
+      console.log(`Instrument ${instrumentId} → ${newStatus}`);
+    }
+  } catch (error) {
+    console.error('Erreur mise à jour stock:', error);
+  }
+}
+
+// ============================================================================
+// EMAILS
+// ============================================================================
+
+/**
+ * Envoie un email de confirmation de paiement au client
  */
 async function sendPaymentConfirmationEmail(payment, metadata) {
   try {
@@ -73,102 +272,66 @@ async function sendPaymentConfirmationEmail(payment, metadata) {
       console.warn('Erreur envoi email confirmation:', await response.text());
     }
   } catch (error) {
-    console.error('Erreur envoi email:', error);
+    console.error('Erreur envoi email confirmation:', error);
   }
 }
 
 /**
- * Met à jour Supabase avec les données de paiement
+ * Notifie l'artisan d'une nouvelle commande
  */
-async function updateSupabasePayment(payment, metadata) {
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return;
-
-  const supabaseHeaders = {
-    'apikey': SUPABASE_SERVICE_KEY,
-    'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-    'Content-Type': 'application/json',
-    'Prefer': 'return=minimal'
-  };
-
+async function sendArtisanNotification(payment, metadata) {
   try {
-    // Enregistrer le paiement dans la table paiements
-    const paymentRecord = {
-      payplug_id: payment.id,
-      reference: metadata.order_reference,
-      amount: payment.amount,
-      currency: payment.currency,
-      payment_type: metadata.payment_type,
-      customer_email: payment.billing?.email,
-      customer_name: `${payment.billing?.first_name || ''} ${payment.billing?.last_name || ''}`.trim(),
-      status: 'paid',
-      paid_at: payment.paid_at
-        ? new Date(payment.paid_at * 1000).toISOString()
-        : new Date().toISOString(),
-      metadata: metadata,
-      raw_response: payment
-    };
-
-    // Upsert sur payplug_id pour garantir l'idempotence (notifications dupliquées)
-    const upsertHeaders = {
-      ...supabaseHeaders,
-      'Prefer': 'return=minimal,resolution=merge-duplicates'
-    };
-
-    const insertResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/paiements?on_conflict=payplug_id`,
-      {
-        method: 'POST',
-        headers: upsertHeaders,
-        body: JSON.stringify(paymentRecord)
-      }
-    );
-
-    if (!insertResponse.ok) {
-      console.warn('Erreur enregistrement paiement Supabase:', await insertResponse.text());
-    }
-
-    // Mettre à jour la commande si order_id présent
-    if (metadata.order_id) {
-      const paymentType = metadata.payment_type;
-      const updateData = paymentType === 'acompte'
-        ? { statut: 'acompte_paye', acompte_paye: true, date_acompte: new Date().toISOString() }
-        : { statut: 'paye', solde_paye: true, date_paiement: new Date().toISOString() };
-
-      await fetch(`${SUPABASE_URL}/rest/v1/commandes?id=eq.${metadata.order_id}`, {
-        method: 'PATCH',
-        headers: supabaseHeaders,
-        body: JSON.stringify(updateData)
-      });
-    }
-  } catch (dbError) {
-    console.error('Erreur mise à jour base de données:', dbError);
-  }
-}
-
-/**
- * Met à jour Supabase pour un remboursement
- */
-async function updateSupabaseRefund(refund, payment) {
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return;
-
-  try {
-    // Mettre à jour le paiement dans la table paiements
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/paiements?payplug_id=eq.${refund.payment_id}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
+    const baseUrl = process.env.URL || 'https://mistralpans.fr';
+    const response = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        emailType: 'new_order_notification',
+        order: {
+          reference: metadata.order_reference,
+          source: metadata.source || 'custom',
+          productName: metadata.product_name || metadata.gamme || 'Handpan',
+          gamme: metadata.gamme,
+          taille: metadata.taille,
+          instrumentId: metadata.instrument_id
         },
+        client: {
+          email: payment.billing?.email,
+          prenom: payment.billing?.first_name,
+          nom: payment.billing?.last_name,
+          telephone: payment.billing?.mobile_phone_number
+        },
+        payment: {
+          amount: payment.amount / 100,
+          totalAmount: (metadata.total_price_cents || payment.amount) / 100,
+          type: metadata.payment_type,
+          isFullPayment: metadata.payment_type === 'full' || metadata.payment_type === 'installments'
+        }
+      })
+    });
+
+    if (!response.ok) {
+      console.warn('Erreur envoi notification artisan:', await response.text());
+    }
+  } catch (error) {
+    console.error('Erreur envoi notification artisan:', error);
+  }
+}
+
+// ============================================================================
+// REMBOURSEMENT
+// ============================================================================
+
+async function updateSupabaseRefund(refund, payment) {
+  const sb = getSupabaseConfig();
+  if (!sb) return;
+
+  try {
+    await fetch(
+      `${sb.url}/rest/v1/paiements?payplug_id=eq.${refund.payment_id}`,
+      {
+        method: 'PATCH',
+        headers: sb.headers,
         body: JSON.stringify({
           status: payment.is_refunded ? 'refunded' : 'partially_refunded',
           amount_refunded: payment.amount_refunded,
@@ -181,8 +344,11 @@ async function updateSupabaseRefund(refund, payment) {
   }
 }
 
+// ============================================================================
+// HANDLER PRINCIPAL
+// ============================================================================
+
 exports.handler = async (event, context) => {
-  // Autoriser seulement POST
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -204,7 +370,6 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // La notification PayPlug contient: { id, object, is_live }
     const notification = JSON.parse(event.body);
     const { id, object: objectType, is_live } = notification;
 
@@ -218,12 +383,10 @@ exports.handler = async (event, context) => {
 
     console.log('Webhook reçu:', { id, objectType, is_live });
 
-    // Traitement selon le type d'objet
     if (objectType === 'refund') {
       return await handleRefundNotification(id, notification, PAYPLUG_SECRET_KEY, headers);
     }
 
-    // Par défaut: traitement comme un paiement
     return await handlePaymentNotification(id, PAYPLUG_SECRET_KEY, headers);
 
   } catch (error) {
@@ -236,11 +399,12 @@ exports.handler = async (event, context) => {
   }
 };
 
-/**
- * Traite une notification de paiement
- */
+// ============================================================================
+// TRAITEMENT PAIEMENT
+// ============================================================================
+
 async function handlePaymentNotification(paymentId, secretKey, headers) {
-  // Vérifier le paiement via l'API Payplug (sécurité: s'assurer que la notif vient bien de PayPlug)
+  // Vérifier le paiement via l'API Payplug (sécurité)
   const payment = await getPaymentDetails(paymentId, secretKey);
 
   if (!payment) {
@@ -260,14 +424,30 @@ async function handlePaymentNotification(paymentId, secretKey, headers) {
     amount: payment.amount / 100,
     is_paid: payment.is_paid,
     is_refunded: payment.is_refunded,
-    type: metadata.payment_type
+    type: metadata.payment_type,
+    source: metadata.source
   });
 
   if (payment.is_paid) {
     console.log(`Paiement ${paymentId} confirmé pour ${payment.amount / 100} €`);
 
-    await updateSupabasePayment(payment, metadata);
-    await sendPaymentConfirmationEmail(payment, metadata);
+    // Orchestrer toutes les actions post-paiement en parallèle
+    await Promise.all([
+      // 1. Enregistrer le paiement
+      recordPayment(payment, metadata),
+
+      // 2. Créer/mettre à jour la commande
+      createOrUpdateOrder(payment, metadata),
+
+      // 3. Mettre à jour le stock (instrument en stock → vendu/réservé)
+      updateInstrumentStock(metadata, metadata.payment_type),
+
+      // 4. Email confirmation client
+      sendPaymentConfirmationEmail(payment, metadata),
+
+      // 5. Notification artisan
+      sendArtisanNotification(payment, metadata)
+    ]);
 
     return {
       statusCode: 200,
@@ -307,7 +487,6 @@ async function handlePaymentNotification(paymentId, secretKey, headers) {
     };
 
   } else {
-    // Paiement en attente (ex: Oney pending)
     console.log(`Paiement ${paymentId} en attente`);
 
     return {
@@ -322,15 +501,14 @@ async function handlePaymentNotification(paymentId, secretKey, headers) {
   }
 }
 
-/**
- * Traite une notification de remboursement
- */
+// ============================================================================
+// TRAITEMENT REMBOURSEMENT
+// ============================================================================
+
 async function handleRefundNotification(refundId, notification, secretKey, headers) {
-  // La notif de refund contient aussi payment_id
   const paymentId = notification.payment_id;
 
   if (!paymentId) {
-    // Essayer de récupérer via l'ID du refund en listant les paiements
     console.warn('payment_id absent de la notification de remboursement');
     return {
       statusCode: 200,
@@ -339,7 +517,6 @@ async function handleRefundNotification(refundId, notification, secretKey, heade
     };
   }
 
-  // Récupérer les détails du remboursement et du paiement
   const [refund, payment] = await Promise.all([
     getRefundDetails(paymentId, refundId, secretKey),
     getPaymentDetails(paymentId, secretKey)
