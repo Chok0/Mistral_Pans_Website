@@ -92,9 +92,6 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 │   └── pages/               # Page-specific logic
 │       └── commander.js     # Order form + payment
 │
-├── php/
-│   ├── upload.php           # File upload processing
-│   └── delete.php           # File deletion
 ├── ressources/
 │   ├── images/              # Product photos, logos, brand assets
 │   └── audio/               # FLAC audio samples (56 notes)
@@ -156,7 +153,7 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 ### Backend Services
 - **Database:** Supabase PostgreSQL with RLS
 - **Email:** Brevo SMTP via Netlify Functions
-- **Hosting:** OVH Mutualise (supports PHP)
+- **Hosting:** Netlify (site) + OVH (domaine)
 - **Serverless:** Netlify Functions
 
 ---
@@ -399,8 +396,7 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 - Manage admin users in the Supabase dashboard (Authentication > Users)
 - `js/services/supabase-auth.js` provides `MistralAuth` API
 - `js/admin/admin-core.js` Auth object delegates to MistralAuth
-- PHP upload/delete endpoints validate Supabase JWT via `/auth/v1/user`
-- PHP config: create `php/.supabase_config` from `php/.supabase_config.example`
+- Image uploads use Supabase Storage (bucket `galerie`, admin-only write, public read)
 
 ---
 
