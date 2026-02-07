@@ -468,18 +468,11 @@
   // ============================================================================
   
   /**
-   * RÃ©cupÃ¨re le token admin depuis la session localStorage
+   * Recupere le JWT Supabase pour authentifier les requetes serveur
    */
   function getAdminToken() {
-    const sessionData = localStorage.getItem('mistral_admin_session');
-    if (sessionData) {
-      try {
-        const parsed = JSON.parse(sessionData);
-        // Retourne le hash stockÃ© dans la session
-        return parsed.hash || '';
-      } catch (e) {
-        return '';
-      }
+    if (window.MistralAuth && window.MistralAuth.getAccessTokenSync) {
+      return window.MistralAuth.getAccessTokenSync() || '';
     }
     return '';
   }

@@ -81,7 +81,7 @@
       </div>
       <div id="login-error" class="login-error">Identifiants incorrects</div>
       <form id="login-form">
-        <div class="admin-form__group"><label class="admin-form__label" for="username">Identifiant</label><input type="text" class="admin-form__input" id="username" placeholder="admin" autocomplete="username" required></div>
+        <div class="admin-form__group"><label class="admin-form__label" for="username">Email</label><input type="email" class="admin-form__input" id="username" placeholder="admin@mistralpans.fr" autocomplete="username" required></div>
         <div class="admin-form__group"><label class="admin-form__label" for="password">Mot de passe</label><input type="password" class="admin-form__input" id="password" autocomplete="current-password" required></div>
         <button type="submit" class="admin-btn admin-btn--primary" style="width:100%;">Connexion</button>
       </form>
@@ -1213,8 +1213,13 @@
       const loginForm = document.getElementById('login-form');
       const loginError = document.getElementById('login-error');
       
-      function updateView() {
-        if (Auth.isLoggedIn()) {
+      async function updateView() {
+        // Verifier la session Supabase (async, source de verite)
+        let loggedIn = false;
+        if (typeof MistralAuth !== 'undefined') {
+          loggedIn = await MistralAuth.isLoggedIn();
+        }
+        if (loggedIn) {
           loginView.style.display = 'none';
           adminView.style.display = 'block';
           initAdmin();
@@ -1262,7 +1267,15 @@ loginForm.addEventListener('submit', async function(e) {
         btn.disabled = false;
       });
       
-      document.getElementById('btn-logout').addEventListener('click', function() { Auth.logout(); updateView(); });
+      document.getElementById('btn-logout').addEventListener('click', async function() {
+        if (typeof MistralAuth !== 'undefined') {
+          // MistralAuth.logout() redirige vers index.html
+          await MistralAuth.logout();
+        } else {
+          Auth.logout();
+          updateView();
+        }
+      });
       
       function initAdmin() {
         if (typeof AdminUI !== 'undefined') {

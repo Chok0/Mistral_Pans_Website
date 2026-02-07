@@ -2,13 +2,14 @@
  * =============================================================================
  * MISTRAL PANS - Authentification Supabase
  * =============================================================================
- * 
- * Remplace le système d'authentification localStorage par Supabase Auth.
- * 
- * Installation:
- * 1. Ajouter ce script APRÈS supabase-client.js
- * 2. Remplacer les appels à MistralAdmin.Auth par MistralAuth
- * 
+ *
+ * Authentification via Supabase Auth exclusivement.
+ * Aucun fallback localStorage — si Supabase est indisponible, l'admin
+ * est inaccessible (comportement voulu pour la securite).
+ *
+ * API publique : window.MistralAuth
+ * Alias compat : window.MistralAdmin.Auth (set apres chargement admin-core)
+ *
  * =============================================================================
  */
 
@@ -18,33 +19,31 @@
   // ============================================================================
   // CONFIGURATION
   // ============================================================================
-  
+
   const AUTH_CONFIG = {
-    // Redirection après login/logout
-    loginRedirect: 'admin.html',
     logoutRedirect: 'index.html',
-    
-    // Clé localStorage pour compatibilité avec l'ancien système
-    legacySessionKey: 'mistral_admin_session'
+    // Cle legacy a nettoyer (migration)
+    legacySessionKey: 'mistral_admin_session',
+    legacyCredentialsKey: 'mistral_admin_credentials'
   };
 
-  // État de l'authentification
+  // Etat de l'authentification (en memoire uniquement)
   let currentUser = null;
+  let currentSession = null;
   let isInitialized = false;
+  let authSubscription = null;
 
   // ============================================================================
   // HELPERS
   // ============================================================================
-  
+
   function log(message, type = 'info') {
-    const prefix = {
-      'info': '🔐',
-      'success': '✅',
-      'error': '❌',
-      'warning': '⚠️'
-    }[type] || '🔐';
-    
-    console.log(`[Auth] ${prefix} ${message}`);
+    const prefix = { 'info': '[Auth]', 'success': '[Auth]', 'error': '[Auth ERR]', 'warning': '[Auth WARN]' }[type] || '[Auth]';
+    if (type === 'error') {
+      console.error(`${prefix} ${message}`);
+    } else {
+      console.log(`${prefix} ${message}`);
+    }
   }
 
   function getSupabaseClient() {
@@ -57,9 +56,9 @@
   // ============================================================================
   // AUTHENTIFICATION
   // ============================================================================
-  
+
   /**
-   * Connexion avec email et mot de passe
+   * Connexion avec email et mot de passe via Supabase Auth
    */
   async function login(email, password) {
     const client = getSupabaseClient();
@@ -67,103 +66,99 @@
       log('Supabase client non disponible', 'error');
       return { success: false, error: 'Service non disponible' };
     }
-    
+
     try {
       const { data, error } = await client.auth.signInWithPassword({
         email: email.trim(),
         password: password
       });
-      
+
       if (error) {
-        log(`Échec connexion: ${error.message}`, 'error');
+        log('Echec connexion: ' + error.message, 'error');
         return { success: false, error: translateError(error.message) };
       }
-      
+
       currentUser = data.user;
-      
-      // Créer une session compatible avec l'ancien système
-      // pour que le reste du code continue à fonctionner
-      createLegacySession(data.user);
-      
-      log(`Connecté: ${data.user.email}`, 'success');
+      currentSession = data.session;
+
+      log('Connecte: ' + data.user.email, 'success');
       return { success: true, user: data.user };
-      
+
     } catch (e) {
-      log(`Exception: ${e.message}`, 'error');
+      log('Exception: ' + e.message, 'error');
       return { success: false, error: 'Erreur de connexion' };
     }
   }
 
   /**
-   * Déconnexion
+   * Deconnexion via Supabase Auth
    */
   async function logout() {
     const client = getSupabaseClient();
-    if (!client) return;
-    
+
     try {
-      await client.auth.signOut();
-      currentUser = null;
-      
-      // Supprimer la session legacy
-      localStorage.removeItem(AUTH_CONFIG.legacySessionKey);
-      
-      log('Déconnecté', 'success');
-      
-      // Rediriger si configuré
-      if (AUTH_CONFIG.logoutRedirect) {
-        window.location.href = AUTH_CONFIG.logoutRedirect;
+      if (client) {
+        await client.auth.signOut();
       }
-      
     } catch (e) {
-      log(`Erreur déconnexion: ${e.message}`, 'error');
+      log('Erreur deconnexion: ' + e.message, 'error');
+    }
+
+    currentUser = null;
+    currentSession = null;
+
+    // Nettoyer les anciennes cles localStorage (migration)
+    cleanupLegacyStorage();
+
+    log('Deconnecte', 'success');
+
+    if (AUTH_CONFIG.logoutRedirect) {
+      window.location.href = AUTH_CONFIG.logoutRedirect;
     }
   }
 
   /**
-   * Vérifie si l'utilisateur est connecté
+   * Verifie si l'utilisateur est connecte (async, source de verite)
    */
   async function isLoggedIn() {
     const client = getSupabaseClient();
-    if (!client) {
-      // Fallback sur l'ancien système
-      return checkLegacySession();
-    }
-    
+    if (!client) return false;
+
     try {
       const { data: { session } } = await client.auth.getSession();
-      
+
       if (session) {
         currentUser = session.user;
+        currentSession = session;
         return true;
       }
-      
-      // Vérifier aussi l'ancienne session (période de transition)
-      return checkLegacySession();
-      
+
+      currentUser = null;
+      currentSession = null;
+      return false;
+
     } catch (e) {
-      return checkLegacySession();
+      log('Erreur verification session: ' + e.message, 'error');
+      return false;
     }
   }
 
   /**
-   * Version synchrone de isLoggedIn (pour compatibilité)
+   * Verification synchrone via l'etat en memoire.
+   * Fiable apres init() ou apres un login/logout.
+   * Ne fait PAS d'appel reseau.
    */
   function isLoggedInSync() {
-    // D'abord vérifier si on a un user en mémoire
-    if (currentUser) return true;
-    
-    // Sinon vérifier la session legacy
-    return checkLegacySession();
+    return currentUser !== null && currentSession !== null;
   }
 
   /**
-   * Récupère l'utilisateur courant
+   * Recupere l'utilisateur courant (async, depuis Supabase)
    */
   async function getUser() {
     const client = getSupabaseClient();
     if (!client) return null;
-    
+
     try {
       const { data: { user } } = await client.auth.getUser();
       currentUser = user;
@@ -174,153 +169,148 @@
   }
 
   /**
-   * Récupère l'utilisateur courant (synchrone)
+   * Recupere l'utilisateur courant (synchrone, depuis memoire)
    */
   function getUserSync() {
     return currentUser;
   }
 
-  // ============================================================================
-  // COMPATIBILITÉ AVEC L'ANCIEN SYSTÈME
-  // ============================================================================
-  
   /**
-   * Crée une session compatible avec l'ancien code
+   * Recupere le JWT access token pour les requetes authentifiees
+   * (upload PHP, API calls, etc.)
    */
-  function createLegacySession(user) {
-    const session = {
-      user: user.email,
-      expiry: Date.now() + (24 * 60 * 60 * 1000), // 24h
-      supabase: true
-    };
-    localStorage.setItem(AUTH_CONFIG.legacySessionKey, JSON.stringify(session));
-  }
+  async function getAccessToken() {
+    const client = getSupabaseClient();
+    if (!client) return null;
 
-  /**
-   * Vérifie la session de l'ancien système
-   */
-  function checkLegacySession() {
     try {
-      const stored = localStorage.getItem(AUTH_CONFIG.legacySessionKey);
-      if (!stored) return false;
-      
-      const session = JSON.parse(stored);
-      if (session.expiry && session.expiry > Date.now()) {
-        return true;
+      const { data: { session } } = await client.auth.getSession();
+      if (session) {
+        currentSession = session;
+        return session.access_token;
       }
-      
-      // Session expirée
-      localStorage.removeItem(AUTH_CONFIG.legacySessionKey);
-      return false;
+      return null;
     } catch (e) {
-      return false;
+      return null;
     }
   }
 
   /**
-   * Legacy login désactivé - utiliser Supabase Auth
-   * @deprecated Utilisez login() avec un email Supabase
+   * Version synchrone — renvoie le token en memoire
    */
-  function legacyLogin(username, password) {
-    log('Legacy login désactivé. Utilisez un compte Supabase (email).', 'warning');
-    return false;
+  function getAccessTokenSync() {
+    return currentSession?.access_token || null;
   }
 
   // ============================================================================
   // TRADUCTION DES ERREURS
   // ============================================================================
-  
+
   function translateError(message) {
     const translations = {
       'Invalid login credentials': 'Email ou mot de passe incorrect',
-      'Email not confirmed': 'Email non confirmé',
-      'User not found': 'Utilisateur non trouvé',
+      'Email not confirmed': 'Email non confirme',
+      'User not found': 'Utilisateur non trouve',
       'Invalid email': 'Email invalide',
-      'Password should be at least 6 characters': 'Le mot de passe doit faire au moins 6 caractères'
+      'Password should be at least 6 characters': 'Le mot de passe doit faire au moins 6 caracteres'
     };
-    
+
     return translations[message] || message;
   }
 
   // ============================================================================
-  // ÉCOUTE DES CHANGEMENTS D'AUTH
+  // ECOUTE DES CHANGEMENTS D'AUTH
   // ============================================================================
-  
+
   function setupAuthListener() {
     const client = getSupabaseClient();
     if (!client) return;
-    
-    client.auth.onAuthStateChange((event, session) => {
-      log(`Auth event: ${event}`);
-      
+
+    const { data } = client.auth.onAuthStateChange((event, session) => {
+      log('Auth event: ' + event);
+
       if (event === 'SIGNED_IN' && session) {
         currentUser = session.user;
-        createLegacySession(session.user);
-        
-        // Dispatch un événement custom
+        currentSession = session;
+
         window.dispatchEvent(new CustomEvent('mistral-auth-change', {
           detail: { event: 'login', user: session.user }
         }));
-        
+
       } else if (event === 'SIGNED_OUT') {
         currentUser = null;
-        localStorage.removeItem(AUTH_CONFIG.legacySessionKey);
-        
+        currentSession = null;
+
         window.dispatchEvent(new CustomEvent('mistral-auth-change', {
           detail: { event: 'logout', user: null }
         }));
+
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        currentSession = session;
+        currentUser = session.user;
       }
     });
+
+    // Stocker la subscription pour pouvoir la nettoyer
+    authSubscription = data?.subscription || null;
+  }
+
+  // ============================================================================
+  // NETTOYAGE LEGACY
+  // ============================================================================
+
+  /**
+   * Supprime les anciennes cles localStorage de l'ancien systeme d'auth
+   */
+  function cleanupLegacyStorage() {
+    try {
+      localStorage.removeItem(AUTH_CONFIG.legacySessionKey);
+      localStorage.removeItem(AUTH_CONFIG.legacyCredentialsKey);
+    } catch (e) {
+      // Ignorer les erreurs localStorage
+    }
   }
 
   // ============================================================================
   // PROTECTION DES PAGES
   // ============================================================================
-  
+
   /**
-   * Protège une page (redirige si non connecté)
+   * Protege une page (redirige si non connecte)
    */
   async function requireAuth(redirectTo = 'admin.html') {
     const loggedIn = await isLoggedIn();
-    
-    if (!loggedIn) {
-      log('Accès non autorisé, redirection...', 'warning');
-      window.location.href = redirectTo;
-      return false;
-    }
-    
-    return true;
-  }
 
-  /**
-   * Version synchrone de requireAuth
-   */
-  function requireAuthSync(redirectTo = 'admin.html') {
-    if (!isLoggedInSync()) {
+    if (!loggedIn) {
+      log('Acces non autorise, redirection...', 'warning');
       window.location.href = redirectTo;
       return false;
     }
+
     return true;
   }
 
   // ============================================================================
   // INITIALISATION
   // ============================================================================
-  
+
   async function init() {
     log('Initialisation...');
-    
-    // Vérifier la session existante
+
+    // Nettoyer les anciennes cles localStorage (one-time migration)
+    cleanupLegacyStorage();
+
+    // Verifier la session Supabase existante
     await isLoggedIn();
-    
-    // Setup listener
+
+    // Ecouter les changements d'auth
     setupAuthListener();
-    
+
     isInitialized = true;
-    log('Prêt', 'success');
+    log('Pret (user: ' + (currentUser ? currentUser.email : 'none') + ')');
   }
 
-  // Initialiser quand le DOM est prêt
+  // Initialiser quand le DOM est pret
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => setTimeout(init, 100));
   } else {
@@ -330,7 +320,7 @@
   // ============================================================================
   // API PUBLIQUE
   // ============================================================================
-  
+
   window.MistralAuth = {
     // Authentification
     login,
@@ -339,35 +329,21 @@
     isLoggedInSync,
     getUser,
     getUserSync,
-    
+
+    // Token JWT
+    getAccessToken,
+    getAccessTokenSync,
+
     // Protection
     requireAuth,
-    requireAuthSync,
-    
-    // Compatibilité
-    legacyLogin,
-    
-    // État
+
+    // Etat
     isInitialized: () => isInitialized
   };
 
-  // Alias pour compatibilité avec l'ancien code MistralAdmin.Auth
-  if (window.MistralAdmin) {
-    window.MistralAdmin.Auth = {
-      login: async function(username, password) {
-        // Supabase Auth requiert un email
-        if (!username.includes('@')) {
-          log('Connexion requiert un email Supabase valide', 'error');
-          return false;
-        }
-        const result = await login(username, password);
-        return result.success;
-      },
-      logout: logout,
-      isLoggedIn: isLoggedInSync
-    };
-  }
+  // Note: MistralAdmin.Auth est defini dans admin-core.js et delegue
+  // deja vers MistralAuth. Pas besoin d'alias ici.
 
-  console.log('✅ MistralAuth chargé');
+  console.log('[MistralAuth] charge');
 
 })(window);

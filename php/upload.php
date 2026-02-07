@@ -1,8 +1,10 @@
 <?php
 /**
- * MISTRAL PANS - Upload d'images et vidéos sécurisé
+ * MISTRAL PANS - Upload d'images et videos securise
  * Compression et redimensionnement automatique pour images
- * Stockage direct pour vidéos
+ * Stockage direct pour videos
+ *
+ * Authentification via Supabase JWT (envoye dans X-Admin-Token)
  */
 
 // Configuration
@@ -17,8 +19,7 @@ define('JPEG_QUALITY', 85);
 define('ALLOWED_IMAGE_TYPES', ['image/jpeg', 'image/png', 'image/webp']);
 define('ALLOWED_VIDEO_TYPES', ['video/mp4', 'video/webm']);
 
-// Headers CORS pour les requêtes AJAX
-// IMPORTANT: Restreindre à votre domaine en production
+// Headers CORS pour les requetes AJAX
 $allowedOrigins = [
     'https://mistralpans.fr',
     'https://www.mistralpans.fr'
@@ -34,7 +35,7 @@ $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $allowedOrigins)) {
     header('Access-Control-Allow-Origin: ' . $origin);
 } else if (empty($origin)) {
-    // Requête same-origin (pas de header Origin)
+    // Requete same-origin (pas de header Origin)
     header('Access-Control-Allow-Origin: https://mistralpans.fr');
 }
 
@@ -43,25 +44,24 @@ header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-Admin-Token');
 header('Access-Control-Allow-Credentials: true');
 
-// Gérer les requêtes OPTIONS (preflight CORS)
+// Gerer les requetes OPTIONS (preflight CORS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-// Vérifier la méthode
+// Verifier la methode
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    sendError('Méthode non autorisée', 405);
+    sendError('Methode non autorisee', 405);
 }
 
-// Vérifier le token admin (simple vérification)
+// Verifier le token admin (Supabase JWT)
 $token = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? '';
-$storedHash = getAdminHash();
-if (!$storedHash || !verifyToken($token, $storedHash)) {
-    sendError('Non autorisé', 401);
+if (!verifySupabaseJWT($token)) {
+    sendError('Non autorise', 401);
 }
 
-// Détecter le type d'upload
+// Detecter le type d'upload
 $uploadType = $_GET['type'] ?? 'image';
 
 if ($uploadType === 'video') {
@@ -75,7 +75,7 @@ if ($uploadType === 'video') {
 // =============================================================================
 
 function handleImageUpload() {
-    // Vérifier qu'un fichier a été envoyé
+    // Verifier qu'un fichier a ete envoye
     if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
         $errorMsg = getUploadErrorMessage($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE);
         sendError($errorMsg, 400);
@@ -83,21 +83,21 @@ function handleImageUpload() {
 
     $file = $_FILES['image'];
 
-    // Vérifier la taille
+    // Verifier la taille
     if ($file['size'] > MAX_IMAGE_SIZE) {
         sendError('Image trop volumineuse (max 5 Mo)', 400);
     }
 
-    // Vérifier le type MIME réel
+    // Verifier le type MIME reel
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $mimeType = finfo_file($finfo, $file['tmp_name']);
     finfo_close($finfo);
 
     if (!in_array($mimeType, ALLOWED_IMAGE_TYPES)) {
-        sendError('Format non autorisé. Utilisez JPG, PNG ou WebP', 400);
+        sendError('Format non autorise. Utilisez JPG, PNG ou WebP', 400);
     }
 
-    // Créer les dossiers si nécessaire
+    // Creer les dossiers si necessaire
     if (!is_dir(UPLOAD_DIR)) {
         mkdir(UPLOAD_DIR, 0755, true);
     }
@@ -105,7 +105,7 @@ function handleImageUpload() {
         mkdir(THUMB_DIR, 0755, true);
     }
 
-    // Générer un nom de fichier unique
+    // Generer un nom de fichier unique
     $filename = 'handpan-' . date('Ymd-His') . '-' . bin2hex(random_bytes(4)) . '.jpg';
     $filepath = UPLOAD_DIR . $filename;
     $thumbpath = THUMB_DIR . $filename;
@@ -120,7 +120,7 @@ function handleImageUpload() {
     $origWidth = imagesx($sourceImage);
     $origHeight = imagesy($sourceImage);
 
-    // Redimensionner l'image principale si nécessaire
+    // Redimensionner l'image principale si necessaire
     if ($origWidth > MAX_WIDTH) {
         $newWidth = MAX_WIDTH;
         $newHeight = intval($origHeight * (MAX_WIDTH / $origWidth));
@@ -131,7 +131,7 @@ function handleImageUpload() {
         $newHeight = $origHeight;
     }
 
-    // Créer la miniature
+    // Creer la miniature
     $thumbHeight = intval($origHeight * (THUMB_WIDTH / $origWidth));
     $thumbImage = resizeImage($sourceImage, $origWidth, $origHeight, THUMB_WIDTH, $thumbHeight);
 
@@ -139,7 +139,7 @@ function handleImageUpload() {
     $mainSaved = imagejpeg($mainImage, $filepath, JPEG_QUALITY);
     $thumbSaved = imagejpeg($thumbImage, $thumbpath, JPEG_QUALITY);
 
-    // Libérer la mémoire
+    // Liberer la memoire
     if ($mainImage !== $sourceImage) {
         imagedestroy($mainImage);
     }
@@ -168,7 +168,7 @@ function handleImageUpload() {
 // =============================================================================
 
 function handleVideoUpload() {
-    // Vérifier qu'un fichier vidéo a été envoyé
+    // Verifier qu'un fichier video a ete envoye
     if (!isset($_FILES['video']) || $_FILES['video']['error'] !== UPLOAD_ERR_OK) {
         $errorMsg = getUploadErrorMessage($_FILES['video']['error'] ?? UPLOAD_ERR_NO_FILE);
         sendError($errorMsg, 400);
@@ -176,21 +176,21 @@ function handleVideoUpload() {
 
     $file = $_FILES['video'];
 
-    // Vérifier la taille
+    // Verifier la taille
     if ($file['size'] > MAX_VIDEO_SIZE) {
-        sendError('Vidéo trop volumineuse (max 100 Mo)', 400);
+        sendError('Video trop volumineuse (max 100 Mo)', 400);
     }
 
-    // Vérifier le type MIME
+    // Verifier le type MIME
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $mimeType = finfo_file($finfo, $file['tmp_name']);
     finfo_close($finfo);
 
     if (!in_array($mimeType, ALLOWED_VIDEO_TYPES)) {
-        sendError('Format vidéo non autorisé. Utilisez MP4 ou WebM', 400);
+        sendError('Format video non autorise. Utilisez MP4 ou WebM', 400);
     }
 
-    // Créer les dossiers si nécessaire
+    // Creer les dossiers si necessaire
     if (!is_dir(VIDEO_DIR)) {
         mkdir(VIDEO_DIR, 0755, true);
     }
@@ -198,17 +198,17 @@ function handleVideoUpload() {
         mkdir(THUMB_DIR, 0755, true);
     }
 
-    // Déterminer l'extension
+    // Determiner l'extension
     $extension = ($mimeType === 'video/webm') ? 'webm' : 'mp4';
     $filename = 'video-' . date('Ymd-His') . '-' . bin2hex(random_bytes(4)) . '.' . $extension;
     $filepath = VIDEO_DIR . $filename;
 
-    // Déplacer le fichier
+    // Deplacer le fichier
     if (!move_uploaded_file($file['tmp_name'], $filepath)) {
-        sendError('Erreur lors de la sauvegarde de la vidéo', 500);
+        sendError('Erreur lors de la sauvegarde de la video', 500);
     }
 
-    // Gérer la miniature (envoyée par le JS)
+    // Gerer la miniature (envoyee par le JS)
     $thumbnailPath = '';
     if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
         // Valider le type MIME de la miniature
@@ -251,41 +251,86 @@ function createImageFromFile($path, $mimeType) {
 
 function resizeImage($source, $origW, $origH, $newW, $newH) {
     $newImage = imagecreatetruecolor($newW, $newH);
-    
-    // Préserver la transparence pour PNG
+
+    // Preserver la transparence pour PNG
     imagealphablending($newImage, false);
     imagesavealpha($newImage, true);
-    
-    // Redimensionner avec interpolation de haute qualité
+
+    // Redimensionner avec interpolation de haute qualite
     imagecopyresampled($newImage, $source, 0, 0, 0, 0, $newW, $newH, $origW, $origH);
-    
+
     return $newImage;
 }
 
-function getAdminHash() {
-    // Lire le hash depuis un fichier local (plus sécurisé que dans le code)
-    // IMPORTANT: Créez ce fichier avec un hash sécurisé en production
-    $hashFile = __DIR__ . '/.admin_hash';
-    if (file_exists($hashFile)) {
-        return trim(file_get_contents($hashFile));
+/**
+ * Verifie un JWT Supabase en appelant l'API Supabase /auth/v1/user
+ * Retourne true si le token est valide et correspond a un utilisateur.
+ */
+function verifySupabaseJWT($token) {
+    if (empty($token) || strlen($token) < 20) return false;
+
+    // Lire la configuration Supabase
+    $config = getSupabaseConfig();
+    if (!$config) {
+        error_log('ERREUR: Configuration Supabase manquante pour la validation JWT.');
+        return false;
     }
 
-    // Aussi vérifier une variable d'environnement
-    $envHash = getenv('MISTRAL_ADMIN_HASH');
-    if ($envHash) {
-        return $envHash;
+    // Appeler Supabase /auth/v1/user pour valider le token
+    $ch = curl_init($config['url'] . '/auth/v1/user');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $token,
+            'apikey: ' . $config['anon_key']
+        ],
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_CONNECTTIMEOUT => 5
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode !== 200 || !$response) {
+        return false;
     }
 
-    // Aucun hash configuré : accès refusé
-    error_log('ERREUR: Aucun hash admin configuré. Créez php/.admin_hash ou définissez MISTRAL_ADMIN_HASH.');
-    return null;
+    $user = json_decode($response, true);
+    // Verifier que la reponse contient un ID utilisateur valide
+    return !empty($user['id']);
 }
 
-function verifyToken($token, $storedHash) {
-    if (empty($token) || strlen($token) < 8) return false;
+/**
+ * Lit la configuration Supabase depuis un fichier local ou des variables d'env
+ */
+function getSupabaseConfig() {
+    // Option 1: Fichier de configuration local
+    $configFile = __DIR__ . '/.supabase_config';
+    if (file_exists($configFile)) {
+        $lines = file($configFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        $config = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line) || $line[0] === '#') continue;
+            $parts = explode('=', $line, 2);
+            if (count($parts) === 2) {
+                $config[trim($parts[0])] = trim($parts[1]);
+            }
+        }
+        if (!empty($config['url']) && !empty($config['anon_key'])) {
+            return $config;
+        }
+    }
 
-    // Comparaison timing-safe pour éviter les attaques temporelles
-    return hash_equals($storedHash, $token);
+    // Option 2: Variables d'environnement
+    $url = getenv('SUPABASE_URL');
+    $anonKey = getenv('SUPABASE_ANON_KEY');
+    if ($url && $anonKey) {
+        return ['url' => $url, 'anon_key' => $anonKey];
+    }
+
+    return null;
 }
 
 function getUploadErrorMessage($errorCode) {
@@ -293,10 +338,10 @@ function getUploadErrorMessage($errorCode) {
         UPLOAD_ERR_INI_SIZE => 'Fichier trop volumineux (limite serveur)',
         UPLOAD_ERR_FORM_SIZE => 'Fichier trop volumineux',
         UPLOAD_ERR_PARTIAL => 'Upload interrompu',
-        UPLOAD_ERR_NO_FILE => 'Aucun fichier sélectionné',
+        UPLOAD_ERR_NO_FILE => 'Aucun fichier selectionne',
         UPLOAD_ERR_NO_TMP_DIR => 'Erreur serveur (tmp)',
-        UPLOAD_ERR_CANT_WRITE => 'Erreur d\'écriture',
-        UPLOAD_ERR_EXTENSION => 'Extension bloquée'
+        UPLOAD_ERR_CANT_WRITE => 'Erreur d\'ecriture',
+        UPLOAD_ERR_EXTENSION => 'Extension bloquee'
     ];
     return $messages[$errorCode] ?? 'Erreur inconnue';
 }

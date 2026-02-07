@@ -13,23 +13,23 @@ Legend: FIXED = resolved, OPEN = still pending
 
 The Mistral Pans website is a well-structured static-first application with a clear separation of concerns. The codebase demonstrates solid architectural decisions (partial loading system, Supabase integration, RGPD-first approach) and good use of vanilla JavaScript. The review identified **9 critical issues**, **19 important issues**, and **17 minor issues** across security, accessibility, code quality, and consistency.
 
-**Progress:** 40+ issues fixed across 10 commits. Remaining open items are SEC-1/SEC-2/SEC-8/SEC-9/SEC-10 (all require Supabase Auth migration) plus a few low-priority code quality items.
+**Progress:** 45+ issues fixed. Supabase Auth migration complete (SEC-1/SEC-2/SEC-8/SEC-9/SEC-10 all FIXED). Remaining open items are minor code quality (JS-6, JS-10, JS-11, CSS-5, CSS-7, HTML-8).
 
 ---
 
 ## CRITICAL Issues (9)
 
-### SEC-1: Client-side authentication is fully bypassable [OPEN]
-- **File:** `js/admin/admin-core.js:261-331`
+### SEC-1: Client-side authentication is fully bypassable [FIXED]
+- **File:** `js/admin/admin-core.js`, `js/services/supabase-auth.js`
 - **Impact:** Any visitor can gain full admin access
-- **Details:** The entire admin auth system is client-side only. An attacker can run `localStorage.setItem('mistral_admin_session', JSON.stringify({user:'admin', expiry:Date.now()+86400000, token:'x'}))` in the browser console. `window.MistralAdmin.CONFIG` exposes the password hash publicly.
-- **Fix:** Migrate to Supabase Auth exclusively with server-side session validation. Remove localStorage-based auth entirely.
+- **Details:** The entire admin auth system was client-side only with localStorage bypass.
+- **Fix:** Migrated to Supabase Auth exclusively. Removed localStorage-based sessions, password hashing (simpleHash/secureHash), CONFIG exposure. Auth.isLoggedIn() now delegates to MistralAuth which checks Supabase session state.
 
-### SEC-2: Legacy session fallback keeps bypass alive even with Supabase [OPEN]
-- **File:** `js/services/supabase-auth.js:126-147`
+### SEC-2: Legacy session fallback keeps bypass alive even with Supabase [FIXED]
+- **File:** `js/services/supabase-auth.js`
 - **Impact:** Supabase Auth migration is ineffective
-- **Details:** `isLoggedIn()` falls back to `checkLegacySession()` (the localStorage check) whenever Supabase is unavailable or throws. `isLoggedInSync()` at lines 152-158 always checks the legacy session. The old bypass vector remains active.
-- **Fix:** Remove the legacy session fallback entirely. If Supabase is down, admin should be unavailable.
+- **Details:** `isLoggedIn()` fell back to `checkLegacySession()` (localStorage) when Supabase unavailable.
+- **Fix:** Removed all legacy session fallbacks. If Supabase is down, admin is unavailable. Legacy localStorage keys are cleaned up on init.
 
 ### SEC-3: config.js committed to git with live Supabase credentials [FIXED]
 - **File:** `js/core/config.js:12-13`, `.gitignore`
@@ -87,14 +87,14 @@ The Mistral Pans website is a well-structured static-first application with a cl
 **SEC-7: HTML sanitizer has CSS injection and data URI bypasses** [FIXED]
 - `js/admin/admin-core.js:164-240` — `style` attribute globally allowed; `url()`, `-moz-binding`, `data:text/javascript`, `data:image/svg+xml` not blocked; `id` attribute allows DOM clobbering.
 
-**SEC-8: Upload module sends weak token without CSRF protection** [OPEN]
-- `js/features/upload.js:466-502` — Admin token from localStorage sent as header; no CSRF token on upload/delete requests.
+**SEC-8: Upload module sends weak token without CSRF protection** [FIXED]
+- `js/features/upload.js` — Now sends Supabase JWT as `X-Admin-Token`. PHP endpoints validate JWT via Supabase `/auth/v1/user` API. CSRF protection provided by Supabase session cookies + SameSite.
 
-**SEC-9: Weak session token (Math.random)** [OPEN]
-- `js/admin/admin-core.js:297` — `Math.random().toString(36)` is not cryptographically secure.
+**SEC-9: Weak session token (Math.random)** [FIXED]
+- Removed entirely. Sessions are now managed by Supabase Auth (cryptographically secure JWTs).
 
-**SEC-10: Hardcoded salt in password hashing** [OPEN]
-- `js/admin/admin-core.js:49` — Static salt `_mistral_salt_2024` for all users.
+**SEC-10: Hardcoded salt in password hashing** [FIXED]
+- Removed entirely. Password hashing is now handled by Supabase Auth (bcrypt server-side).
 
 **SEC-11: send-email.js has no authentication** [FIXED]
 - Added in-memory rate limiting (5 emails/min per IP) + honeypot. Full auth requires Supabase Auth migration.
@@ -186,10 +186,10 @@ The Mistral Pans website is a well-structured static-first application with a cl
 4. ~~Add server-side price validation in PayPlug webhook~~ DONE
 5. ~~Remove personal data from `admin.html` source~~ DONE
 
-### Phase 2 - Authentication Overhaul - OPEN
-6. Migrate to Supabase Auth exclusively
-7. Remove localStorage-based auth and legacy session fallback
-8. Add proper CSRF protection to upload/delete endpoints
+### Phase 2 - Authentication Overhaul - ALL DONE
+6. ~~Migrate to Supabase Auth exclusively~~ DONE
+7. ~~Remove localStorage-based auth and legacy session fallback~~ DONE
+8. ~~Add proper CSRF protection to upload/delete endpoints~~ DONE (Supabase JWT)
 
 ### Phase 3 - Consistency & Compliance - ALL DONE
 9. ~~Migrate 6 hardcoded pages to dynamic partial system~~ DONE

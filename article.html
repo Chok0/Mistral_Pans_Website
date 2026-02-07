@@ -239,7 +239,7 @@
     }
 
     // Vérifier si l'article est publié (ou si admin connecté)
-    const isAdmin = !!localStorage.getItem('mistral_admin_session');
+    const isAdmin = window.MistralAuth ? window.MistralAuth.isLoggedInSync() : false;
     if (article.status !== 'published' && !isAdmin) {
       showNotFound(container);
       return;

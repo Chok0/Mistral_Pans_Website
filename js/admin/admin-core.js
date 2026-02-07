@@ -1,6 +1,6 @@
 /* ==========================================================================
    MISTRAL PANS - Admin Core
-   SystÃ¨me d'administration centralisÃ©
+   Systeme d'administration centralise
    ========================================================================== */
 
 (function(window) {
@@ -9,16 +9,8 @@
   // ============================================================================
   // CONFIGURATION
   // ============================================================================
-  
+
   const CONFIG = {
-    // Session
-    SESSION_KEY: 'mistral_admin_session',
-    SESSION_EXPIRY: 24 * 60 * 60 * 1000, // 24 heures
-    
-    // Credentials (Ã   modifier en production)
-    ADMIN_USER: null, // Configure via setAdminCredentials()
-    ADMIN_PASS_HASH: null, // Sera calculÃ© Ã   l'init
-    
     // Storage keys
     STORAGE_KEYS: {
       annonces: 'mistral_flash_annonces',
@@ -30,108 +22,26 @@
     }
   };
 
-  // Calculer le hash du mot de passe par dÃ©faut
-  // SECURITE: Ne pas utiliser de mot de passe par defaut
-  // Utiliser setAdminCredentials() ou Supabase Auth
-  CONFIG.ADMIN_PASS_HASH = null;
-
   // ============================================================================
   // UTILITAIRES
   // ============================================================================
-  
-  /**
-   * Hash SHA-256 pour mot de passe (plus securise que simpleHash)
-   * Utilise SubtleCrypto si disponible, sinon fallback
-   */
-  async function secureHash(str) {
-    if (window.crypto && window.crypto.subtle) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(str + '_mistral_salt_2024');
-      const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-    // Fallback si SubtleCrypto non disponible
-    return simpleHash(str);
-  }
 
   /**
-   * Hash simple (fallback uniquement)
-   */
-  function simpleHash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return hash.toString(16);
-  }
-
-  /**
-   * Configure les credentials admin (a appeler une seule fois)
-   */
-  async function setAdminCredentials(username, password) {
-    if (!username || !password) {
-      console.error('Username et password requis');
-      return false;
-    }
-    if (password.length < 8) {
-      console.error('Le mot de passe doit faire au moins 8 caracteres');
-      return false;
-    }
-
-    const hash = await secureHash(password);
-    const creds = { user: username, hash: hash };
-    localStorage.setItem('mistral_admin_credentials', JSON.stringify(creds));
-
-    // Mettre a jour la config en memoire
-    CONFIG.ADMIN_USER = username;
-    CONFIG.ADMIN_PASS_HASH = hash;
-
-    console.log('Credentials admin configures avec succes');
-    return true;
-  }
-
-  /**
-   * Verifie si les credentials sont configures
-   */
-  function isCredentialsConfigured() {
-    return CONFIG.ADMIN_USER !== null && CONFIG.ADMIN_PASS_HASH !== null;
-  }
-
-  // Charger les credentials depuis localStorage au demarrage
-  (function loadStoredCredentials() {
-    const stored = localStorage.getItem('mistral_admin_credentials');
-    if (stored) {
-      try {
-        const creds = JSON.parse(stored);
-        if (creds.user && creds.hash) {
-          CONFIG.ADMIN_USER = creds.user;
-          CONFIG.ADMIN_PASS_HASH = creds.hash;
-        }
-      } catch (e) {
-        console.warn('Credentials stockes invalides');
-      }
-    }
-  })();
-
-  /**
-   * GÃ©nÃ¨re un ID unique
+   * Genere un ID unique
    */
   function generateId(prefix = 'id') {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
-   * Formate une date en franÃ§ais
+   * Formate une date en francais
    */
   function formatDate(dateString, options = {}) {
     const date = new Date(dateString);
-    const defaultOptions = { 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
+    const defaultOptions = {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
     };
     return date.toLocaleDateString('fr-FR', { ...defaultOptions, ...options });
   }
@@ -148,7 +58,7 @@
   }
 
   /**
-   * Échappe le HTML pour éviter les injections XSS
+   * Echappe le HTML pour eviter les injections XSS
    */
   function escapeHtml(text) {
     if (!text) return '';
@@ -158,38 +68,38 @@
   }
 
   /**
-   * Sanitize HTML - garde les balises sûres, supprime les dangereuses
+   * Sanitize HTML - garde les balises sures, supprime les dangereuses
    * Pour le contenu WYSIWYG (blog, descriptions)
    */
   function sanitizeHtml(html) {
     if (!html) return '';
 
-    // Balises autorisées
+    // Balises autorisees
     const allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'a', 'ul', 'ol', 'li',
       'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'img', 'figure',
       'figcaption', 'span', 'div', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
 
-    // Attributs autorisés par balise
+    // Attributs autorises par balise
     const allowedAttrs = {
       'a': ['href', 'title', 'target', 'rel'],
       'img': ['src', 'alt', 'title', 'width', 'height'],
       '*': ['class', 'style']
     };
 
-    // Créer un DOM temporaire
+    // Creer un DOM temporaire
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const body = doc.body;
 
     // Supprimer les scripts et styles
     body.querySelectorAll('script, style, iframe, object, embed, form, input, textarea, button').forEach(el => el.remove());
 
-    // Supprimer les handlers d'événements
+    // Supprimer les handlers d'evenements
     body.querySelectorAll('*').forEach(el => {
       const tagName = el.tagName.toLowerCase();
 
-      // Supprimer si balise non autorisée
+      // Supprimer si balise non autorisee
       if (!allowedTags.includes(tagName)) {
-        // Garder le contenu texte mais supprimer l'élément
+        // Garder le contenu texte mais supprimer l'element
         el.replaceWith(...el.childNodes);
         return;
       }
@@ -204,7 +114,7 @@
           return;
         }
 
-        // Vérifier si attribut autorisé
+        // Verifier si attribut autorise
         const tagAllowed = allowedAttrs[tagName] || [];
         const globalAllowed = allowedAttrs['*'] || [];
         if (!tagAllowed.includes(attrName) && !globalAllowed.includes(attrName)) {
@@ -246,7 +156,7 @@
   }
 
   /**
-   * Débounce une fonction
+   * Debounce une fonction
    */
   function debounce(func, wait) {
     let timeout;
@@ -261,88 +171,61 @@
   }
 
   // ============================================================================
-  // AUTHENTIFICATION
+  // AUTHENTIFICATION (delegue a MistralAuth / Supabase)
   // ============================================================================
-  
+
   const Auth = {
     /**
-     * VÃ©rifie si l'admin est connectÃ©
+     * Verifie si l'admin est connecte (synchrone, via MistralAuth)
      */
     isLoggedIn() {
-      const session = localStorage.getItem(CONFIG.SESSION_KEY);
-      if (!session) return false;
-      
-      try {
-        const data = JSON.parse(session);
-        if (Date.now() > data.expiry) {
-          localStorage.removeItem(CONFIG.SESSION_KEY);
-          return false;
-        }
-        return true;
-      } catch {
-        return false;
-      }
-    },
-
-    /**
-     * Connexion admin (async pour hash securise)
-     */
-    async login(username, password) {
-      // Verifier si les credentials sont configures
-      if (!isCredentialsConfigured()) {
-        console.error('Credentials admin non configures. Utilisez MistralAdmin.setCredentials(user, pass)');
-        return false;
-      }
-
-      const hash = await secureHash(password);
-      if (username === CONFIG.ADMIN_USER && hash === CONFIG.ADMIN_PASS_HASH) {
-        const session = {
-          user: CONFIG.ADMIN_USER,
-          expiry: Date.now() + CONFIG.SESSION_EXPIRY,
-          token: Math.random().toString(36).substring(2)
-        };
-        localStorage.setItem(CONFIG.SESSION_KEY, JSON.stringify(session));
-        return true;
+      if (window.MistralAuth) {
+        return window.MistralAuth.isLoggedInSync();
       }
       return false;
     },
 
     /**
-     * Verifie si les credentials sont configures
+     * Connexion admin via Supabase Auth
      */
-    isConfigured() {
-      return isCredentialsConfigured();
+    async login(email, password) {
+      if (!window.MistralAuth) {
+        console.error('[Admin] MistralAuth non disponible');
+        return false;
+      }
+      const result = await window.MistralAuth.login(email, password);
+      return result.success;
     },
 
     /**
-     * DÃ©connexion
+     * Deconnexion via Supabase Auth
      */
     logout() {
-      localStorage.removeItem(CONFIG.SESSION_KEY);
-      // Dispatch un Ã©vÃ©nement pour que les pages puissent rÃ©agir
+      if (window.MistralAuth) {
+        window.MistralAuth.logout();
+      }
+      // Dispatch un evenement pour que les pages puissent reagir
       window.dispatchEvent(new CustomEvent('adminLogout'));
     },
 
     /**
-     * RÃ©cupÃ¨re les infos de session
+     * Recupere les infos de session
      */
     getSession() {
-      if (!this.isLoggedIn()) return null;
-      try {
-        return JSON.parse(localStorage.getItem(CONFIG.SESSION_KEY));
-      } catch {
-        return null;
-      }
+      if (!window.MistralAuth) return null;
+      const user = window.MistralAuth.getUserSync();
+      if (!user) return null;
+      return { user: user.email, supabase: true };
     }
   };
 
   // ============================================================================
-  // STOCKAGE GÃ‰NÃ‰RIQUE (CRUD)
+  // STOCKAGE GENERIQUE (CRUD)
   // ============================================================================
-  
+
   const Storage = {
     /**
-     * RÃ©cupÃ¨re des donnÃ©es depuis localStorage
+     * Recupere des donnees depuis localStorage
      */
     get(key, defaultValue = []) {
       try {
@@ -354,12 +237,12 @@
     },
 
     /**
-     * Sauvegarde des donnÃ©es dans localStorage
+     * Sauvegarde des donnees dans localStorage
      */
     set(key, value) {
       try {
         localStorage.setItem(key, JSON.stringify(value));
-        // Dispatch un Ã©vÃ©nement pour synchronisation entre onglets
+        // Dispatch un evenement pour synchronisation entre onglets
         window.dispatchEvent(new CustomEvent('storageUpdate', { detail: { key, value } }));
         return true;
       } catch (e) {
@@ -369,82 +252,82 @@
     },
 
     /**
-     * Ajoute un Ã©lÃ©ment Ã   une collection
+     * Ajoute un element a une collection
      */
     add(key, item, idField = 'id') {
       const items = this.get(key, []);
-      
-      // GÃ©nÃ©rer un ID si non prÃ©sent
+
+      // Generer un ID si non present
       if (!item[idField]) {
         const prefix = key.split('_').pop();
         item[idField] = generateId(prefix);
       }
-      
+
       // Ajouter timestamps
       item.createdAt = item.createdAt || new Date().toISOString();
       item.updatedAt = new Date().toISOString();
-      
+
       items.push(item);
       this.set(key, items);
       return item;
     },
 
     /**
-     * Met Ã   jour un Ã©lÃ©ment dans une collection
+     * Met a jour un element dans une collection
      */
     update(key, id, updates, idField = 'id') {
       const items = this.get(key, []);
       const index = items.findIndex(item => String(item[idField]) === String(id));
-      
+
       if (index === -1) return null;
-      
-      items[index] = { 
-        ...items[index], 
-        ...updates, 
-        updatedAt: new Date().toISOString() 
+
+      items[index] = {
+        ...items[index],
+        ...updates,
+        updatedAt: new Date().toISOString()
       };
       this.set(key, items);
       return items[index];
     },
 
     /**
-     * Supprime un Ã©lÃ©ment d'une collection
+     * Supprime un element d'une collection
      */
     remove(key, id, idField = 'id') {
       const items = this.get(key, []);
       const filtered = items.filter(item => String(item[idField]) !== String(id));
-      
+
       if (filtered.length === items.length) return false;
-      
+
       this.set(key, filtered);
       return true;
     },
 
     /**
-     * Trouve un Ã©lÃ©ment par ID
+     * Trouve un element par ID
      */
     find(key, id, idField = 'id') {
       const items = this.get(key, []);
-      // Comparaison souple pour gÃ©rer les IDs numÃ©riques et strings
+      // Comparaison souple pour gerer les IDs numeriques et strings
       return items.find(item => String(item[idField]) === String(id)) || null;
     },
 
     /**
-     * RÃ©ordonne une collection
+     * Reordonne une collection
      */
     reorder(key, orderedIds, idField = 'id') {
       const items = this.get(key, []);
       const reordered = orderedIds
         .map(id => items.find(item => item[idField] === id))
         .filter(Boolean);
-      
-      // Ajouter les items non prÃ©sents dans orderedIds Ã   la fin
+
+      // Ajouter les items non presents dans orderedIds a la fin
       items.forEach(item => {
         if (!orderedIds.includes(item[idField])) {
           reordered.push(item);
         }
       });
-      
+
       this.set(key, reordered);
       return reordered;
     }
@@ -453,14 +336,14 @@
   // ============================================================================
   // COMPOSANT FAB (FLOATING ACTION BUTTON)
   // ============================================================================
-  
+
   const FAB = {
     element: null,
     menu: null,
     isOpen: false,
 
     /**
-     * CrÃ©e et injecte le FAB admin
+     * Cree et injecte le FAB admin
      */
     create(options = {}) {
       if (!Auth.isLoggedIn()) return null;
@@ -472,7 +355,7 @@
         position = 'bottom-right'
       } = options;
 
-      // CrÃ©er le conteneur
+      // Creer le conteneur
       this.element = document.createElement('div');
       this.element.className = `admin-fab-container admin-fab--${position}`;
       this.element.innerHTML = `
@@ -496,7 +379,7 @@
           `).join('')}
           ${advancedLink ? `
             <a href="${advancedLink}" class="admin-fab__action admin-fab__action--link" role="menuitem">
-              <span>Gestion complÃ¨te</span>
+              <span>Gestion complete</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="5" y1="12" x2="19" y2="12"></line>
                 <polyline points="12 5 19 12 12 19"></polyline>
@@ -509,13 +392,13 @@
       // Ajouter au DOM
       document.body.appendChild(this.element);
 
-      // RÃ©fÃ©rences
+      // References
       this.menu = this.element.querySelector('.admin-fab__menu');
       const trigger = this.element.querySelector('.admin-fab__trigger');
 
       // Events
       trigger.addEventListener('click', () => this.toggle());
-      
+
       // Fermer au clic externe
       document.addEventListener('click', (e) => {
         if (this.isOpen && !this.element.contains(e.target)) {
@@ -573,7 +456,7 @@
     },
 
     /**
-     * Met Ã   jour un badge
+     * Met a jour un badge
      */
     updateBadge(actionId, count) {
       if (!this.element) return;
@@ -609,12 +492,12 @@
   // ============================================================================
   // COMPOSANT MODAL
   // ============================================================================
-  
+
   const Modal = {
     activeModals: [],
 
     /**
-     * CrÃ©e une modale
+     * Cree une modale
      */
     create(options = {}) {
       const {
@@ -683,10 +566,10 @@
      * Ouvre une modale
      */
     open(modalOrId) {
-      const modal = typeof modalOrId === 'string' 
-        ? document.getElementById(modalOrId) 
+      const modal = typeof modalOrId === 'string'
+        ? document.getElementById(modalOrId)
         : modalOrId;
-      
+
       if (!modal) return;
 
       modal.classList.add('open');
@@ -697,7 +580,7 @@
         modal._onOpen(modal);
       }
 
-      // Focus le premier Ã©lÃ©ment focusable
+      // Focus le premier element focusable
       setTimeout(() => {
         const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (focusable) focusable.focus();
@@ -708,14 +591,14 @@
      * Ferme une modale
      */
     close(modalOrId) {
-      const modal = typeof modalOrId === 'string' 
-        ? document.getElementById(modalOrId) 
+      const modal = typeof modalOrId === 'string'
+        ? document.getElementById(modalOrId)
         : modalOrId;
-      
+
       if (!modal) return;
 
       modal.classList.remove('open');
-      
+
       const index = this.activeModals.indexOf(modal.id);
       if (index > -1) {
         this.activeModals.splice(index, 1);
@@ -731,15 +614,15 @@
     },
 
     /**
-     * Met Ã   jour le contenu d'une modale
+     * Met a jour le contenu d'une modale
      */
     setContent(modalOrId, content) {
-      const modal = typeof modalOrId === 'string' 
-        ? document.getElementById(modalOrId) 
+      const modal = typeof modalOrId === 'string'
+        ? document.getElementById(modalOrId)
         : modalOrId;
-      
+
       if (!modal) return;
-      
+
       const body = modal.querySelector('.admin-modal__body');
       if (body) {
         body.innerHTML = content;
@@ -751,10 +634,10 @@
      */
     destroy(modalOrId) {
       this.close(modalOrId);
-      const modal = typeof modalOrId === 'string' 
-        ? document.getElementById(modalOrId) 
+      const modal = typeof modalOrId === 'string'
+        ? document.getElementById(modalOrId)
         : modalOrId;
-      
+
       if (modal) {
         modal.remove();
       }
@@ -764,7 +647,7 @@
   // ============================================================================
   // COMPOSANT TOAST (NOTIFICATIONS)
   // ============================================================================
-  
+
   const Toast = {
     container: null,
 
@@ -773,7 +656,7 @@
      */
     init() {
       if (this.container) return;
-      
+
       this.container = document.createElement('div');
       this.container.className = 'admin-toast-container';
       document.body.appendChild(this.container);
@@ -787,7 +670,7 @@
 
       const toast = document.createElement('div');
       toast.className = `admin-toast admin-toast--${type}`;
-      
+
       const icons = {
         success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>',
         error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
@@ -808,7 +691,7 @@
 
       this.container.appendChild(toast);
 
-      // Animation d'entrÃ©e
+      // Animation d'entree
       requestAnimationFrame(() => {
         toast.classList.add('show');
       });
@@ -844,16 +727,16 @@
   // ============================================================================
   // COMPOSANT CONFIRM
   // ============================================================================
-  
+
   const Confirm = {
     /**
-     * Affiche une boÃ®te de dialogue de confirmation
+     * Affiche une boite de dialogue de confirmation
      */
     show(options = {}) {
       return new Promise((resolve) => {
         const {
           title = 'Confirmation',
-          message = 'ÃŠtes-vous sÃ»r ?',
+          message = 'Etes-vous sur ?',
           confirmText = 'Confirmer',
           cancelText = 'Annuler',
           type = 'warning' // warning, danger, info
@@ -894,10 +777,10 @@
     /**
      * Raccourci pour suppression
      */
-    delete(itemName = 'cet Ã©lÃ©ment') {
+    delete(itemName = 'cet element') {
       return this.show({
         title: 'Supprimer',
-        message: `Voulez-vous vraiment supprimer ${itemName} ? Cette action est irrÃ©versible.`,
+        message: `Voulez-vous vraiment supprimer ${itemName} ? Cette action est irreversible.`,
         confirmText: 'Supprimer',
         cancelText: 'Annuler',
         type: 'danger'
@@ -906,7 +789,7 @@
   };
 
   // ============================================================================
-  // MODULES MÃ‰TIER
+  // MODULES METIER
   // ============================================================================
 
   // --- Module Migrations (cleanup orphaned data) ---
@@ -928,7 +811,7 @@
       let cleaned = false;
       if (this.cleanupOldAnnonces()) cleaned = true;
       if (cleaned) {
-        console.log('[MistralAdmin] Migrations terminées');
+        console.log('[MistralAdmin] Migrations terminees');
       }
       return cleaned;
     }
@@ -942,7 +825,7 @@
     KEY: CONFIG.STORAGE_KEYS.teachers,
     PENDING_KEY: CONFIG.STORAGE_KEYS.pendingTeachers,
 
-    // Professeurs validÃ©s
+    // Professeurs valides
     getAll() {
       return Storage.get(this.KEY, []);
     },
@@ -1095,7 +978,7 @@
     },
 
     add(article) {
-      // GÃ©nÃ©rer un slug si non fourni
+      // Generer un slug si non fourni
       if (!article.slug) {
         article.slug = this.generateSlug(article.title);
       }
@@ -1106,7 +989,7 @@
     },
 
     update(id, updates) {
-      // RegÃ©nÃ©rer le slug si le titre change
+      // Regenerer le slug si le titre change
       if (updates.title && !updates.slug) {
         updates.slug = this.generateSlug(updates.title);
       }
@@ -1118,7 +1001,7 @@
     },
 
     publish(id) {
-      return this.update(id, { 
+      return this.update(id, {
         status: 'published',
         publishedAt: new Date().toISOString()
       });
@@ -1164,19 +1047,17 @@
   // ============================================================================
   // INITIALISATION
   // ============================================================================
-  
+
   function init() {
-    // Ã‰couter les dÃ©connexions pour nettoyer le FAB
+    // Ecouter les deconnexions pour nettoyer le FAB
     window.addEventListener('adminLogout', () => {
       FAB.destroy();
     });
 
-    // Synchronisation entre onglets
-    window.addEventListener('storage', (e) => {
-      if (e.key === CONFIG.SESSION_KEY && !e.newValue) {
-        // Session supprimÃ©e dans un autre onglet
+    // Ecouter les changements d'auth de MistralAuth
+    window.addEventListener('mistral-auth-change', (e) => {
+      if (e.detail.event === 'logout') {
         FAB.destroy();
-        window.dispatchEvent(new CustomEvent('adminLogout'));
       }
     });
   }
@@ -1191,19 +1072,10 @@
   // ============================================================================
   // EXPORT PUBLIC API
   // ============================================================================
-  
+
   window.MistralAdmin = {
-    // Config
-    CONFIG,
-
-    // Setup credentials (a appeler une seule fois pour configurer l'admin)
-    setCredentials: setAdminCredentials,
-    isCredentialsConfigured,
-
     // Utils
     utils: {
-      simpleHash,
-      secureHash,
       generateId,
       formatDate,
       formatPrice,
