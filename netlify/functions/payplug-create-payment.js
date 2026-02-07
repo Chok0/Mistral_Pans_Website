@@ -374,8 +374,7 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           error: 'Erreur création paiement',
-          details: result.message || 'Erreur inconnue',
-          payplug_details: result.details || null
+          details: result.message || 'Erreur inconnue'
         })
       };
     }

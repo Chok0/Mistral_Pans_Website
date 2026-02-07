@@ -278,8 +278,7 @@ exports.handler = async (event, context) => {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Erreur serveur',
-        details: error.message
+        error: 'Erreur serveur'
       })
     };
   }
