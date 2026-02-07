@@ -101,12 +101,7 @@
         <div class="option-group">
           <label class="option-label">Gamme</label>
           <div class="option-chips" id="chips-scale">
-            <button class="chip active" data-value="kurd">Kurd</button>
-            <button class="chip" data-value="amara">Amara</button>
-            <button class="chip" data-value="lowpygmy">Low Pygmy</button>
-            <button class="chip" data-value="hijaz">Hijaz</button>
-            <button class="chip" data-value="myxolydian">Myxolydian</button>
-            <button class="chip" data-value="equinox">Equinox</button>
+            <!-- Populated dynamically from MistralGammes -->
           </div>
         </div>
 
@@ -190,20 +185,7 @@
             <div class="option-group">
               <label class="option-label">Taille (diamètre)</label>
               <div class="option-cards" id="cards-size">
-                <div class="radio-card" data-value="45">
-                  <div class="radio-card__value">45 cm</div>
-                  <div class="radio-card__label">Compact</div>
-                  <div class="radio-card__price">+100 €</div>
-                </div>
-                <div class="radio-card" data-value="50">
-                  <div class="radio-card__value">50 cm</div>
-                  <div class="radio-card__label">Medium</div>
-                  <div class="radio-card__price">+100 €</div>
-                </div>
-                <div class="radio-card active" data-value="53">
-                  <div class="radio-card__value">53 cm</div>
-                  <div class="radio-card__label">Standard</div>
-                </div>
+                <!-- Populated dynamically from MistralTailles -->
               </div>
             </div>
             
@@ -466,6 +448,12 @@
   <!-- Scales data (unified source) -->
   <script src="js/data/scales-data.js"></script>
 
+  <!-- Gammes data (centralized) -->
+  <script src="js/data/gammes-data.js"></script>
+
+  <!-- Tailles data (centralized) -->
+  <script src="js/data/tailles-data.js"></script>
+
   <!-- Matériaux data (unified source) -->
   <script src="js/data/materiaux-data.js"></script>
 
@@ -514,8 +502,13 @@
     const pricePerNote = 115;
     const priceOctave2Bonus = 50;  // +50€ par note en octave 2
     const priceBottomBonus = 25;   // +25€ si l'instrument a des bottoms
-    const sizeMalus = { '53': 0, '50': 0.025, '45': 0.05 };  // +2.5% pour 50cm, +5% pour 45cm
-    
+    // Size malus - read dynamically from centralized module
+    function getSizeMalus() {
+      return typeof MistralTailles !== 'undefined'
+        ? MistralTailles.getSizeMalusMap()
+        : { '53': 0, '50': 0.025, '45': 0.05 };
+    }
+
     function calculatePrice(notes, size, feasibilityStatus, materialCode) {
       let price = 0;
       let hasBottom = false;
@@ -536,6 +529,7 @@
       }
 
       // Malus taille (en %)
+      const sizeMalus = getSizeMalus();
       const sizeMultiplier = 1 + (sizeMalus[size] || 0);
       price = price * sizeMultiplier;
 
@@ -1136,6 +1130,107 @@
       });
     }
 
+    // ===== RENDER SCALE CHIPS =====
+    function renderScaleChips() {
+      const container = document.getElementById('chips-scale');
+      if (!container) return;
+
+      // Get gammes from centralized module, with fallback
+      const gammes = typeof MistralGammes !== 'undefined'
+        ? MistralGammes.getForConfigurateur()
+        : [
+            { code: 'kurd', nom: 'Kurd' },
+            { code: 'amara', nom: 'Amara' },
+            { code: 'lowpygmy', nom: 'Low Pygmy' },
+            { code: 'hijaz', nom: 'Hijaz' },
+            { code: 'myxolydian', nom: 'Myxolydian' },
+            { code: 'equinox', nom: 'Equinox' }
+          ];
+
+      // Only show gammes that have patterns in scales-data.js
+      const availableGammes = gammes.filter(g => SCALES_DATA[g.code]);
+
+      let html = '';
+      availableGammes.forEach(g => {
+        const isActive = g.code === state.scale ? ' active' : '';
+        html += `<button class="chip${isActive}" data-value="${g.code}">${g.nom}</button>`;
+      });
+
+      container.innerHTML = html;
+
+      // Bind click events
+      container.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          state.scale = chip.dataset.value;
+
+          const scaleData = SCALES_DATA[state.scale];
+          state.tonality = scaleData.baseRoot + scaleData.baseOctave;
+          document.querySelectorAll('#chips-tonality .chip').forEach(c => {
+            c.classList.toggle('active', c.dataset.value === state.tonality);
+          });
+
+          updateTonalityChipsLabels();
+          updateDisplay();
+        });
+      });
+
+      // If current scale is not in the list, select the first available
+      if (availableGammes.length > 0 && !availableGammes.find(g => g.code === state.scale)) {
+        state.scale = availableGammes[0].code;
+        const firstChip = container.querySelector('.chip');
+        if (firstChip) firstChip.classList.add('active');
+      }
+    }
+
+    // ===== RENDER SIZE CARDS =====
+    function renderSizeCards() {
+      const container = document.getElementById('cards-size');
+      if (!container) return;
+
+      // Get tailles from centralized module, with fallback
+      const tailles = typeof MistralTailles !== 'undefined'
+        ? MistralTailles.getDisponibles()
+        : [
+            { code: '45', label: '45 cm', description: 'Compact', prix_malus: 5 },
+            { code: '50', label: '50 cm', description: 'Medium', prix_malus: 2.5 },
+            { code: '53', label: '53 cm', description: 'Standard', prix_malus: 0 }
+          ];
+
+      let html = '';
+      tailles.forEach(t => {
+        const isActive = t.code === state.size ? ' active' : '';
+        const priceHtml = t.prix_malus > 0
+          ? `<div class="radio-card__price">+${Math.round(t.prix_malus)}%</div>`
+          : '';
+        const desc = t.description ? t.description.split('—')[0].trim() : t.code + ' cm';
+        html += `<div class="radio-card${isActive}" data-value="${t.code}">
+                  <div class="radio-card__value">${t.label || t.code + ' cm'}</div>
+                  <div class="radio-card__label">${desc}</div>
+                  ${priceHtml}
+                </div>`;
+      });
+
+      container.innerHTML = html;
+
+      // Bind click events
+      container.querySelectorAll('.radio-card').forEach(card => {
+        card.addEventListener('click', () => {
+          container.querySelectorAll('.radio-card').forEach(c => c.classList.remove('active'));
+          card.classList.add('active');
+          state.size = card.dataset.value;
+          updateDisplay();
+        });
+      });
+
+      // If current size is not in the list, select the default (53) or first
+      if (tailles.length > 0 && !tailles.find(t => t.code === state.size)) {
+        const defaultTaille = tailles.find(t => t.code === '53') || tailles[tailles.length - 1];
+        state.size = defaultTaille.code;
+      }
+    }
+
     // ===== RENDER ACCESSOIRES (HOUSSE) =====
     function getAccessoiresForConfigurateur(size) {
       // Get accessoires from localStorage (same source as boutique-admin)
@@ -1251,24 +1346,7 @@
         if (state.notes < 17) { state.notes++; updateDisplay(); }
       });
       
-      document.querySelectorAll('#chips-scale .chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          document.querySelectorAll('#chips-scale .chip').forEach(c => c.classList.remove('active'));
-          chip.classList.add('active');
-          state.scale = chip.dataset.value;
-          
-          const scaleData = SCALES_DATA[state.scale];
-          state.tonality = scaleData.baseRoot + scaleData.baseOctave;
-          document.querySelectorAll('#chips-tonality .chip').forEach(c => {
-            c.classList.toggle('active', c.dataset.value === state.tonality);
-          });
-
-          // Update chip labels to match scale notation (Gb/Ab/Bb for Kurd, F#/G#/A# for Hijaz)
-          updateTonalityChipsLabels();
-
-          updateDisplay();
-        });
-      });
+      // Scale chip events are bound in renderScaleChips()
       
       document.querySelectorAll('#chips-tonality .chip').forEach(chip => {
         chip.addEventListener('click', () => {
@@ -1295,14 +1373,7 @@
         });
       });
       
-      document.querySelectorAll('#cards-size .radio-card').forEach(card => {
-        card.addEventListener('click', () => {
-          document.querySelectorAll('#cards-size .radio-card').forEach(c => c.classList.remove('active'));
-          card.classList.add('active');
-          state.size = card.dataset.value;
-          updateDisplay();
-        });
-      });
+      // Size card events are bound in renderSizeCards()
       
       document.getElementById('btn-play').addEventListener('click', playScale);
     }
@@ -1531,14 +1602,24 @@
     
     // ===== INIT =====
     document.addEventListener('DOMContentLoaded', () => {
-      renderMaterialCards();  // Render material cards first
+      renderScaleChips();      // Render scale chips from MistralGammes
+      renderSizeCards();       // Render size cards from MistralTailles
+      renderMaterialCards();   // Render material chips from MistralMateriaux
       bindEvents();
       updateTonalityChipsLabels();  // Set chip labels based on default scale (Kurd = flats)
       updateDisplay();
 
-      // Listen for material updates from admin
+      // Listen for data module updates from admin
       window.addEventListener('materiauxUpdated', () => {
         renderMaterialCards();
+        updateDisplay();
+      });
+      window.addEventListener('gammesUpdated', () => {
+        renderScaleChips();
+        updateDisplay();
+      });
+      window.addEventListener('taillesUpdated', () => {
+        renderSizeCards();
         updateDisplay();
       });
     });

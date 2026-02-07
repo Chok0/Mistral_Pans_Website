@@ -23,8 +23,11 @@
       description: 'Compact — idéal voyage et enfants',
       prix_malus: 5,
       feasibility: {
-        maxSurface: 55,
-        warnSurface: 42,
+        shell: 182400,           // Total shell area (mm²)
+        comfortPct: 45,          // OK threshold (%)
+        warningPct: 50,          // Warning threshold (%)
+        maxPct: 59,              // Difficult threshold (%, above = impossible)
+        forbiddenNotes: ['C#5'], // Notes that conflict with cavity
         noteSize: 7.8,
         bottomSize: 9.0,
         totalArea: 1590
@@ -40,8 +43,11 @@
       description: 'Polyvalent — bon compromis taille/son',
       prix_malus: 2.5,
       feasibility: {
-        maxSurface: 57,
-        warnSurface: 44,
+        shell: 235200,           // Total shell area (mm²)
+        comfortPct: 45,
+        warningPct: 50,
+        maxPct: 59,
+        forbiddenNotes: ['B4'],
         noteSize: 8.5,
         bottomSize: 9.8,
         totalArea: 1963
@@ -57,8 +63,11 @@
       description: 'Standard — meilleure résonance',
       prix_malus: 0,
       feasibility: {
-        maxSurface: 59,
-        warnSurface: 45,
+        shell: 272900,           // Total shell area (mm²)
+        comfortPct: 45,
+        warningPct: 50,
+        maxPct: 59,
+        forbiddenNotes: ['A#4'],
         noteSize: 9.0,
         bottomSize: 10.5,
         totalArea: 2206

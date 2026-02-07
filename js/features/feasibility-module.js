@@ -34,24 +34,24 @@ const FeasibilityModule = (function() {
     'E5': 4259, 'F5': 4053
   };
   
-  // Seuils par taille de tôle
+  // Seuils par taille de tôle (fallback hardcoded)
   // Pourcentages: OK ≤45%, WARNING ≤50%, DIFFICULT ≤59%, IMPOSSIBLE >59%
-  const FEASIBILITY_BY_SIZE = {
-    '53': { 
+  const DEFAULT_FEASIBILITY_BY_SIZE = {
+    '53': {
       SHELL: 272900,
       COMFORT: 122805,   // 45% - OK jusqu'ici
       WARNING: 136450,   // 50% - WARNING jusqu'ici
       MAX: 161011,       // 59% - DIFFICULT jusqu'ici, au-delà IMPOSSIBLE
       FORBIDDEN_NOTES: ['A#4']
     },
-    '50': { 
+    '50': {
       SHELL: 235200,
       COMFORT: 105840,   // 45%
       WARNING: 117600,   // 50%
       MAX: 138768,       // 59%
       FORBIDDEN_NOTES: ['B4']
     },
-    '45': { 
+    '45': {
       SHELL: 182400,
       COMFORT: 82080,    // 45%
       WARNING: 91200,    // 50%
@@ -59,6 +59,42 @@ const FeasibilityModule = (function() {
       FORBIDDEN_NOTES: ['C#5']
     }
   };
+
+  /**
+   * Build FEASIBILITY_BY_SIZE from MistralTailles if available.
+   * Computes absolute thresholds from shell area + percentages.
+   */
+  function buildFeasibilityMap() {
+    if (typeof MistralTailles === 'undefined') return DEFAULT_FEASIBILITY_BY_SIZE;
+
+    const tailles = MistralTailles.getAll();
+    const map = {};
+    tailles.forEach(t => {
+      const f = t.feasibility;
+      if (f && f.shell) {
+        map[t.code] = {
+          SHELL: f.shell,
+          COMFORT: Math.round(f.shell * (f.comfortPct || 45) / 100),
+          WARNING: Math.round(f.shell * (f.warningPct || 50) / 100),
+          MAX: Math.round(f.shell * (f.maxPct || 59) / 100),
+          FORBIDDEN_NOTES: f.forbiddenNotes || []
+        };
+      }
+    });
+
+    // Merge with defaults for any missing sizes
+    return { ...DEFAULT_FEASIBILITY_BY_SIZE, ...map };
+  }
+
+  // Read dynamically so admin changes take effect immediately
+  let FEASIBILITY_BY_SIZE = buildFeasibilityMap();
+
+  // Refresh when tailles data changes
+  if (typeof window !== 'undefined') {
+    window.addEventListener('taillesUpdated', () => {
+      FEASIBILITY_BY_SIZE = buildFeasibilityMap();
+    });
+  }
   
   const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   
@@ -336,7 +372,7 @@ const FeasibilityModule = (function() {
   return {
     // Données (pour debug)
     NOTE_SURFACE_TABLE,
-    FEASIBILITY_BY_SIZE,
+    get FEASIBILITY_BY_SIZE() { return FEASIBILITY_BY_SIZE; },
     
     // Fonctions de calcul
     checkFeasibility,
