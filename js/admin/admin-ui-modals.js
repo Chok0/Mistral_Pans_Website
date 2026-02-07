@@ -169,7 +169,7 @@
 
         if (name === 'instrument') {
           // Populate material select with dynamic options
-          populateMateriauxSelect();
+          AdminUI.populateMateriauxSelect();
         }
       }
 
@@ -238,7 +238,7 @@
       
       if (confirmed) {
         MistralGestion.Clients.update(id, { archived: true, archived_at: new Date().toISOString() });
-        renderClients();
+        AdminUI.renderClients();
         AdminUI.refreshDashboard();
         Toast.info('Client archivé');
       }
@@ -253,7 +253,7 @@
       
       if (confirmed) {
         MistralGestion.Clients.delete(id);
-        renderClients();
+        AdminUI.renderClients();
         AdminUI.refreshDashboard();
         Toast.success('Client supprimé');
       }
@@ -264,7 +264,7 @@
     if (typeof MistralGestion === 'undefined') return;
     
     MistralGestion.Clients.update(id, { archived: false, archived_at: null });
-    renderClients();
+    AdminUI.renderClients();
     Toast.success('Client restauré');
   }
   
@@ -301,7 +301,7 @@
     }
     
     closeModal('client');
-    renderClients();
+    AdminUI.renderClients();
     AdminUI.refreshDashboard();
     
     // Reset form
@@ -349,7 +349,7 @@
     $('#instrument-gamme').value = instrument.gamme || '';
     $('#instrument-notes').value = instrument.nombre_notes || 9;
     $('#instrument-taille').value = instrument.taille || '53';
-    populateMateriauxSelect(instrument.materiau || 'NS');
+    AdminUI.populateMateriauxSelect(instrument.materiau || 'NS');
     $('#instrument-accordage').value = instrument.accordage || '440';
     $('#instrument-prix').value = instrument.prix_vente || '';
     $('#instrument-statut').value = instrument.statut || 'disponible';
@@ -392,7 +392,7 @@
       
       // Supprimer l'instrument
       MistralGestion.Instruments.delete(id);
-      renderInstruments();
+      AdminUI.renderInstruments();
       AdminUI.refreshDashboard();
       Toast.success('Instrument supprimé');
     }
@@ -467,8 +467,8 @@
     });
 
     // Rafraîchir les affichages
-    if (typeof renderInstruments === 'function') renderInstruments();
-    if (typeof renderBoutique === 'function') renderBoutique();
+    if (AdminUI.renderInstruments) AdminUI.renderInstruments();
+    if (AdminUI.renderBoutique) AdminUI.renderBoutique();
     if (AdminUI.refreshDashboard) AdminUI.refreshDashboard();
 
     Toast.success('Instrument marqué comme vendu');
@@ -1072,7 +1072,7 @@
     }
     
     closeModal('instrument');
-    renderInstruments();
+    AdminUI.renderInstruments();
     AdminUI.refreshDashboard();
     
     // Reset
@@ -1111,7 +1111,7 @@
       // Vérifier qu'il a un prix
       if (createdInstrument.prix_vente && createdInstrument.prix_vente > 0) {
         MistralGestion.Instruments.update(createdInstrument.id, { statut: 'en_ligne' });
-        renderBoutique();
+        AdminUI.renderBoutique();
         Toast.success('Instrument créé et publié dans la boutique');
       } else {
         Toast.info('Instrument créé. Ajoutez un prix pour le publier.');
@@ -1190,8 +1190,8 @@
     }
     
     closeModal('location');
-    renderLocations();
-    renderInstruments();
+    AdminUI.renderLocations();
+    AdminUI.renderInstruments();
     AdminUI.refreshDashboard();
     
     // Reset
@@ -1273,7 +1273,7 @@
     }
 
     closeModal('commande');
-    renderCommandes();
+    AdminUI.renderCommandes();
     AdminUI.refreshDashboard();
 
     // Reset
@@ -1476,7 +1476,7 @@
     instrumentEnVente = null;
 
     closeModal('facture');
-    renderFactures();
+    AdminUI.renderFactures();
     AdminUI.refreshDashboard();
 
     // Reset
@@ -1682,8 +1682,8 @@
         }
       }
 
-      renderFactures();
-      renderInstruments();
+      AdminUI.renderFactures();
+      AdminUI.renderInstruments();
       AdminUI.refreshDashboard();
       Toast.success('Facture marquée comme payée');
     }
@@ -1770,7 +1770,7 @@
         email_envoye: true
       });
 
-      renderFactures();
+      AdminUI.renderFactures();
       Toast.success(`Facture envoyée à ${client.email}`);
 
     } catch (error) {
@@ -1811,7 +1811,7 @@
         statut: 'annulee',
         date_annulation: new Date().toISOString().split('T')[0]
       });
-      renderFactures();
+      AdminUI.renderFactures();
       AdminUI.refreshDashboard();
       Toast.info('Facture annulée');
     }
@@ -1839,8 +1839,8 @@
         MistralGestion.Instruments.update(location.instrument_id, { statut: 'disponible' });
       }
       
-      renderLocations();
-      renderInstruments();
+      AdminUI.renderLocations();
+      AdminUI.renderInstruments();
       AdminUI.refreshDashboard();
       Toast.success('Location terminée');
     }
@@ -1867,7 +1867,7 @@
 
     if (confirmed) {
       MistralGestion.Locations.delete(id);
-      renderLocations();
+      AdminUI.renderLocations();
       AdminUI.refreshDashboard();
       Toast.success('Location supprimée');
     }
@@ -1896,7 +1896,7 @@
 
     if (confirmed) {
       MistralGestion.Commandes.delete(id);
-      renderCommandes();
+      AdminUI.renderCommandes();
       AdminUI.refreshDashboard();
       Toast.success('Commande supprimée');
     }
@@ -1928,7 +1928,7 @@
       teachers.push(teacher);
       Storage.set('mistral_teachers', teachers);
       Storage.set('mistral_pending_teachers', pending.filter(t => t.id !== id));
-      renderProfesseurs();
+      AdminUI.renderProfesseurs();
       AdminUI.refreshDashboard();
       Toast.success('Professeur approuvé');
     }
@@ -1944,7 +1944,7 @@
     if (confirmed) {
       const pending = Storage.get('mistral_pending_teachers', []);
       Storage.set('mistral_pending_teachers', pending.filter(t => t.id !== id));
-      renderProfesseurs();
+      AdminUI.renderProfesseurs();
       AdminUI.refreshDashboard();
       Toast.info('Demande rejetée');
     }
@@ -2086,7 +2086,7 @@
       closeModal('professeur');
       
       // Rafraîchir l'affichage
-      renderProfesseurs();
+      AdminUI.renderProfesseurs();
       
       // Reset
       currentEditingTeacherId = null;
@@ -2107,7 +2107,7 @@
     if (confirmed) {
       const teachers = Storage.get('mistral_teachers', []);
       Storage.set('mistral_teachers', teachers.filter(t => t.id !== id));
-      renderProfesseurs();
+      AdminUI.renderProfesseurs();
       Toast.success('Professeur supprimé');
     }
   }
@@ -2166,7 +2166,7 @@
     TeacherForm.reset('add-teacher-form');
     
     // Rafraîchir l'affichage
-    renderProfesseurs();
+    AdminUI.renderProfesseurs();
     AdminUI.refreshDashboard();
     
     // Basculer vers l'onglet des professeurs actifs
@@ -2216,7 +2216,9 @@
     editTeacher,
     saveTeacher,
     deleteTeacher,
-    submitAddTeacherForm
+    submitAddTeacherForm,
+    fileToBase64,
+    isCompressionEnabled
   });
 
   console.log('[admin-ui-modals] Module chargé');

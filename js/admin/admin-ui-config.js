@@ -269,7 +269,7 @@
     };
 
     MistralMateriaux.save(materiau);
-    closeModal('materiau');
+    AdminUI.closeModal('materiau');
     renderMateriaux();
     Toast.success(id ? 'Matériau modifié' : 'Matériau créé');
   }
