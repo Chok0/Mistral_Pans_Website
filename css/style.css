@@ -851,7 +851,7 @@ h3 {
   text-decoration: underline;
 }
 
-@media (max-width: 968px) {
+@media (max-width: 1024px) {
   .product-hero__grid {
     grid-template-columns: 1fr;
   }
@@ -1142,7 +1142,7 @@ h3 {
   font-size: 0.9375rem;
 }
 
-@media (max-width: 968px) {
+@media (max-width: 1024px) {
   .location-hero__grid {
     grid-template-columns: 1fr;
   }
@@ -1274,7 +1274,7 @@ h3 {
   font-size: 0.9375rem;
 }
 
-@media (max-width: 968px) {
+@media (max-width: 1024px) {
   .teachers-grid {
     grid-template-columns: 1fr;
   }

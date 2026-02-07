@@ -92,9 +92,16 @@
   function loadImage(file) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('Impossible de charger l\'image'));
-      img.src = URL.createObjectURL(file);
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Impossible de charger l\'image'));
+      };
+      img.src = objectUrl;
     });
   }
 
@@ -884,7 +891,7 @@
 
       try {
         const result = await uploadMedia(selectedFile, (percent, text) => {
-          progressBar.style.width = percent + '%';
+          progressBar.style.setProperty('--progress', percent + '%');
           progressText.textContent = text || (percent + '%');
         });
 

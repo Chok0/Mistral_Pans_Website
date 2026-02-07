@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Article du blog Mistral Pans">
+  <meta property="og:title" content="Blog - Mistral Pans">
+  <meta property="og:description" content="Article du blog Mistral Pans - Handpans artisanaux en Ile-de-France">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Mistral Pans">
 
   <title>Article — Mistral Pans</title>
 
@@ -241,8 +245,19 @@
       return;
     }
 
-    // Mettre à jour le titre de la page
+    // Mettre à jour le titre et les meta OG
     document.title = article.title + ' — Mistral Pans';
+    const setMeta = (prop, content) => {
+      let el = document.querySelector(`meta[property="${prop}"]`);
+      if (el) el.setAttribute('content', content);
+    };
+    setMeta('og:title', article.title + ' — Mistral Pans');
+    if (article.excerpt) setMeta('og:description', article.excerpt);
+    if (article.coverImage) {
+      let ogImg = document.querySelector('meta[property="og:image"]');
+      if (!ogImg) { ogImg = document.createElement('meta'); ogImg.setAttribute('property', 'og:image'); document.head.appendChild(ogImg); }
+      ogImg.setAttribute('content', article.coverImage);
+    }
 
     // Afficher l'article
     container.innerHTML = `

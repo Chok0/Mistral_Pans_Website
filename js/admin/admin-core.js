@@ -173,7 +173,7 @@
     const allowedAttrs = {
       'a': ['href', 'title', 'target', 'rel'],
       'img': ['src', 'alt', 'title', 'width', 'height'],
-      '*': ['class', 'id', 'style']
+      '*': ['class', 'style']
     };
 
     // Créer un DOM temporaire
@@ -212,10 +212,13 @@
           return;
         }
 
-        // Nettoyer les URLs javascript:
+        // Nettoyer les URLs javascript: et data:
         if (attrName === 'href' || attrName === 'src') {
-          const value = attr.value.toLowerCase().trim();
-          if (value.startsWith('javascript:') || value.startsWith('data:text/html')) {
+          const value = attr.value.toLowerCase().replace(/\s+/g, '').trim();
+          if (value.startsWith('javascript:') ||
+              value.startsWith('data:') ||
+              value.startsWith('vbscript:') ||
+              value.startsWith('blob:')) {
             el.removeAttribute(attr.name);
           }
         }
@@ -224,8 +227,11 @@
         if (attrName === 'style') {
           const cleanStyle = attr.value
             .replace(/expression\s*\(/gi, '')
-            .replace(/javascript:/gi, '')
-            .replace(/behavior\s*:/gi, '');
+            .replace(/javascript\s*:/gi, '')
+            .replace(/behavior\s*:/gi, '')
+            .replace(/-moz-binding\s*:/gi, '')
+            .replace(/url\s*\(/gi, '')
+            .replace(/@import/gi, '');
           el.setAttribute('style', cleanStyle);
         }
       });

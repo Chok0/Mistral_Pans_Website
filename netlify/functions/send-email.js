@@ -691,6 +691,23 @@ function getAllowedOrigin(event) {
   return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
 }
 
+// Rate limiting (in-memory, best-effort for serverless)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 5; // 5 emails per minute per IP
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.start > RATE_LIMIT_WINDOW) {
+    rateLimitMap.set(ip, { start: now, count: 1 });
+    return true;
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) return false;
+  return true;
+}
+
 exports.handler = async (event, context) => {
   const allowedOrigin = getAllowedOrigin(event);
 
@@ -743,6 +760,19 @@ exports.handler = async (event, context) => {
     if (data.website) {
       console.log('Bot détecté (honeypot)');
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+    }
+
+    // Rate limiting par IP
+    const clientIp = event.headers['x-forwarded-for']?.split(',')[0]?.trim()
+      || event.headers['client-ip']
+      || 'unknown';
+    if (!checkRateLimit(clientIp)) {
+      console.warn(`Rate limit dépassé pour ${clientIp}`);
+      return {
+        statusCode: 429,
+        headers,
+        body: JSON.stringify({ error: 'Trop de requêtes. Réessayez dans une minute.' })
+      };
     }
 
     let emailData;

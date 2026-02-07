@@ -11,10 +11,14 @@ define('THUMB_DIR', '../ressources/images/galerie/thumbs/');
 // IMPORTANT: Restreindre à votre domaine en production
 $allowedOrigins = [
     'https://mistralpans.fr',
-    'https://www.mistralpans.fr',
-    'http://localhost:8000',  // Développement local
-    'http://127.0.0.1:8000'   // Développement local
+    'https://www.mistralpans.fr'
 ];
+// Autoriser localhost uniquement si le serveur est local
+$serverName = $_SERVER['SERVER_NAME'] ?? '';
+if ($serverName === 'localhost' || $serverName === '127.0.0.1') {
+    $allowedOrigins[] = 'http://localhost:8000';
+    $allowedOrigins[] = 'http://127.0.0.1:8000';
+}
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $allowedOrigins)) {
