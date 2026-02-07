@@ -10,6 +10,9 @@ sql/
 .env.local
 .env.production
 
+# Configuration (contient les clés Supabase)
+js/core/config.js
+
 # Hash admin (fichier de production)
 php/.admin_hash
 

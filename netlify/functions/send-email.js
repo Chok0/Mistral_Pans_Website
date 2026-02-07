@@ -14,6 +14,9 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+// Alias used by buildBalanceRequestEmail, buildShippingNotificationEmail, buildNewOrderNotificationEmail
+const sanitize = escapeHtml;
+
 /**
  * Sanitize les en-têtes email pour prévenir l'injection
  */
