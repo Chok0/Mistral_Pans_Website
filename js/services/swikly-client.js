@@ -44,6 +44,12 @@
      * @private
      */
     async _createDeposit(options) {
+      // Prevent concurrent deposit requests
+      if (this._depositInProgress) {
+        throw new Error('Une demande de caution est déjà en cours');
+      }
+      this._depositInProgress = true;
+
       const {
         amount,
         customer,
@@ -106,6 +112,8 @@
           success: false,
           error: error.message
         };
+      } finally {
+        this._depositInProgress = false;
       }
     },
 

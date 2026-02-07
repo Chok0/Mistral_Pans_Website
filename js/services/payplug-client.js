@@ -149,6 +149,12 @@
      * @private
      */
     async _createPayment(options) {
+      // Prevent concurrent payment requests
+      if (this._paymentInProgress) {
+        throw new Error('Un paiement est déjà en cours');
+      }
+      this._paymentInProgress = true;
+
       const {
         amount,
         customer,
@@ -236,6 +242,8 @@
           success: false,
           error: error.message
         };
+      } finally {
+        this._paymentInProgress = false;
       }
     },
 

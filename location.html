@@ -29,36 +29,12 @@
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230D7377'/></svg>">
 </head>
-<body>
-  
-  <!-- ========== HEADER ========== -->
-<header class="header">
-  <div class="header__inner">
-    <a href="index.html" class="logo">
-      <img src="ressources/images/Mistral_logov3_ball_black.png" alt="Mistral Pans" class="logo__img">
-      <span class="logo__text">Mistral Pans</span>
-    </a>
-    
-    <nav class="nav">
-      <ul class="nav__list">
-        <li><a href="boutique.html" class="nav__link ">Boutique</a></li>
-        <li><a href="location.html" class="nav__link active">Location</a></li>
-        <li><a href="apprendre.html" class="nav__link ">Apprendre</a></li>
-        <li><a href="galerie.html" class="nav__link ">Galerie</a></li>
-        <li><a href="blog.html" class="nav__link ">Blog</a></li>
-        <li><a href="#" class="nav__link" data-modal="contact">Contact</a></li>
-      </ul>
-      
-      <button class="nav__toggle" aria-label="Menu" aria-expanded="false">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-    </nav>
-  </div>
-</header>
+<body data-page="location">
+
+  <div id="site-header"></div>
 
   
+  <main>
   <!-- ========== HERO ========== -->
   <section id="main-content" class="hero" style="background-image: url('ressources/images/20240225_112013.jpg');">
     <div class="hero__overlay"></div>
@@ -238,73 +214,9 @@
       </div>
     </div>
   </section>
-  
-  <!-- ========== FOOTER ========== -->
-<footer class="footer">
-  <div class="container">
-    <div class="footer__grid">
-      <div class="footer__brand">
-        <p class="footer__logo">Mistral Pans</p>
-        <p class="footer__description">
-          Handpans d'exception fabriqués artisanalement 
-          en Île-de-France depuis 2022.
-        </p>
-      </div>
-      
-      <div>
-        <p class="footer__title">Navigation</p>
-        <ul class="footer__links">
-          <li><a href="boutique.html" class="footer__link">Boutique</a></li>
-          <li><a href="location.html" class="footer__link">Location</a></li>
-          <li><a href="apprendre.html" class="footer__link">Apprendre</a></li>
-          <li><a href="galerie.html" class="footer__link">Galerie</a></li>
-        </ul>
-      </div>
-      
-      <div>
-        <p class="footer__title">Ressources</p>
-        <ul class="footer__links">
-          <li><a href="blog.html" class="footer__link">Blog</a></li>
-          <li><a href="#" class="footer__link" data-modal="contact">Contact</a></li>
-          <li><a href="mentions-legales.html" class="footer__link">Mentions légales</a></li>
-          <li><a href="cgv.html" class="footer__link">CGV</a></li>
-        </ul>
-      </div>
-      
-      <div>
-        <p class="footer__title">Contact</p>
-        <ul class="footer__links">
-          <li><span class="footer__link">Île-de-France, France</span></li>
-          <li><a href="mailto:contact@mistralpans.fr" class="footer__link">contact@mistralpans.fr</a></li>
-        </ul>
-      </div>
-    </div>
-    
-    <div class="footer__bottom">
-      <p>© 2026 Mistral Pans. Tous droits réservés.</p>
-      <div class="footer__social">
-        <a href="#" aria-label="Instagram">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="2" width="20" height="20" rx="5"/>
-            <circle cx="12" cy="12" r="4"/>
-            <circle cx="18" cy="6" r="1"/>
-          </svg>
-        </a>
-        <a href="#" aria-label="YouTube">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="4" width="20" height="16" rx="4"/>
-            <polygon points="10,8 16,12 10,16"/>
-          </svg>
-        </a>
-        <a href="#" aria-label="Facebook">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
-          </svg>
-        </a>
-      </div>
-    </div>
-  </div>
-</footer>
+  </main>
+
+  <div id="site-footer"></div>
 
 
   <!-- ========== MODAL RÉSERVATION LOCATION ========== -->

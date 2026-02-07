@@ -499,13 +499,17 @@
     });
     thumbsContainer.innerHTML = thumbsHtml;
 
-    // Bind thumbnail clicks
-    thumbsContainer.querySelectorAll('.annonce-gallery__thumb').forEach(function(thumb) {
-      thumb.addEventListener('click', function() {
-        const idx = parseInt(this.dataset.index);
-        setGalleryIndex(idx, images);
+    // Use event delegation for thumbnail clicks (avoids memory leak from per-element listeners)
+    if (!thumbsContainer._delegated) {
+      thumbsContainer.addEventListener('click', function(e) {
+        const thumb = e.target.closest('.annonce-gallery__thumb');
+        if (thumb) {
+          const idx = parseInt(thumb.dataset.index);
+          setGalleryIndex(idx);
+        }
       });
-    });
+      thumbsContainer._delegated = true;
+    }
 
     updateGalleryNav(images);
   }

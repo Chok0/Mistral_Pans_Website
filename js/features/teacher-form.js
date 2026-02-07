@@ -318,16 +318,20 @@
    * @param {string} city - Ville
    * @returns {Promise<{lat: number, lng: number}>} CoordonnÃ©es
    */
+  let _geocodeController = null;
+
   async function geocodeAddress(postalcode, city) {
+    // Cancel any in-flight geocoding request
+    if (_geocodeController) _geocodeController.abort();
+    _geocodeController = new AbortController();
+
     try {
-      // Utiliser l'API adresse du gouvernement franÃ§ais - trÃ¨s fiable
       const query = encodeURIComponent(`${postalcode} ${city}`);
       const response = await fetch(
         `https://api-adresse.data.gouv.fr/search/?q=${query}&limit=1`,
         {
-          headers: {
-            'Accept': 'application/json'
-          }
+          headers: { 'Accept': 'application/json' },
+          signal: _geocodeController.signal
         }
       );
       
@@ -353,9 +357,8 @@
       const nominatimResponse = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${nominatimQuery}&format=json&limit=1&countrycodes=fr`,
         {
-          headers: {
-            'User-Agent': 'MistralPans/1.0'
-          }
+          headers: { 'User-Agent': 'MistralPans/1.0' },
+          signal: _geocodeController.signal
         }
       );
       
@@ -375,7 +378,8 @@
       return { lat: 48.8566, lng: 2.3522 };
       
     } catch (error) {
-      console.error('Erreur gÃ©ocodage:', error);
+      if (error.name === 'AbortError') return null; // Cancelled, ignore
+      console.error('Erreur géocodage:', error);
       return { lat: 48.8566, lng: 2.3522 };
     }
   }

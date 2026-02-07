@@ -143,7 +143,7 @@
     
     MistralGestion.Instruments.update(id, { statut: 'disponible' });
     renderBoutique();
-    renderInstruments();
+    AdminUI.renderInstruments();
     Toast.success('Instrument retiré de la boutique');
   }
   
@@ -258,7 +258,7 @@
     if ($('#boutique-instrument-search')) $('#boutique-instrument-search').value = '';
     
     renderBoutique();
-    renderInstruments();
+    AdminUI.renderInstruments();
     Toast.success('Instrument publié dans la boutique');
   }
   
@@ -295,8 +295,8 @@
         acceptType: 'image',
         onSelect: async (file) => {
           try {
-            const compress = isCompressionEnabled('accessoire');
-            const base64 = await fileToBase64(file, compress, 'standard');
+            const compress = AdminUI.isCompressionEnabled ? AdminUI.isCompressionEnabled('accessoire') : false;
+            const base64 = AdminUI.fileToBase64 ? await AdminUI.fileToBase64(file, compress, 'standard') : await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
             accessoireUploadedImage = {
               type: 'base64',
               data: base64,
@@ -425,7 +425,7 @@
     }
     
     Storage.set('mistral_accessoires', accessoires);
-    closeModal('accessoire');
+    AdminUI.closeModal('accessoire');
     renderBoutique();
   }
   

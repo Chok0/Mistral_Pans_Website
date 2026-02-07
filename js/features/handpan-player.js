@@ -38,7 +38,7 @@ class HandpanPlayer {
 
     this.currentScale = this.options.scale;
     this.audioCache = {};
-    this.audioBufferCache = {};
+    this.activeAudioClones = new Set();
     this.audioPath = options.audioPath || 'ressources/audio/';
 
     // State management
@@ -685,6 +685,11 @@ class HandpanPlayer {
     if (this.audioCache[fileName]) {
       const audio = this.audioCache[fileName].cloneNode();
       audio.volume = 0.7;
+      this.activeAudioClones.add(audio);
+      audio.addEventListener('ended', () => {
+        this.activeAudioClones.delete(audio);
+        audio.src = '';
+      }, { once: true });
       audio.play().catch(e => console.warn('Erreur lecture audio:', e));
       return;
     }
@@ -832,6 +837,10 @@ class HandpanPlayer {
     // Remove overlay if enlarged
     const overlay = document.querySelector('.handpan-overlay');
     if (overlay) overlay.remove();
+
+    // Clean up active audio clones
+    this.activeAudioClones.forEach(a => { a.pause(); a.src = ''; });
+    this.activeAudioClones.clear();
 
     // Clear audio cache
     Object.values(this.audioCache).forEach(audio => {

@@ -75,6 +75,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-height) + var(--space-xl));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -850,7 +851,7 @@ h3 {
   text-decoration: underline;
 }
 
-@media (max-width: 968px) {
+@media (max-width: 1024px) {
   .product-hero__grid {
     grid-template-columns: 1fr;
   }
@@ -1141,7 +1142,7 @@ h3 {
   font-size: 0.9375rem;
 }
 
-@media (max-width: 968px) {
+@media (max-width: 1024px) {
   .location-hero__grid {
     grid-template-columns: 1fr;
   }
@@ -1273,7 +1274,7 @@ h3 {
   font-size: 0.9375rem;
 }
 
-@media (max-width: 968px) {
+@media (max-width: 1024px) {
   .teachers-grid {
     grid-template-columns: 1fr;
   }
@@ -1512,9 +1513,10 @@ h3 {
 .form-input:focus,
 .form-textarea:focus,
 .form-select:focus {
-  outline: none;
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.1);
+  box-shadow: 0 0 0 3px rgba(13, 115, 119, 0.15);
 }
 
 .form-textarea {
@@ -1769,11 +1771,6 @@ h3 {
   animation: fadeInUp 0.6s ease forwards;
 }
 
-/* Scroll padding for anchor links */
-html {
-  scroll-padding-top: calc(var(--header-height) + var(--space-xl));
-}
-
 /* Partner Cards */
 .partner-card:hover {
   transform: translateY(-4px);
@@ -1914,6 +1911,20 @@ html {
   .cookie-btn {
     width: 100%;
     text-align: center;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Accessibility: Reduced Motion (WCAG 2.1 AA)
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

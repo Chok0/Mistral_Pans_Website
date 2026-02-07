@@ -400,6 +400,91 @@ exports.handler = async (event, context) => {
 };
 
 // ============================================================================
+// VALIDATION PRIX
+// ============================================================================
+
+/**
+ * Pour les instruments en stock, vérifie que le montant payé correspond
+ * au prix enregistré en base de données. Empêche la manipulation de prix
+ * côté client (paramètres URL).
+ * @returns {{ valid: boolean, reason?: string }}
+ */
+async function validatePaymentAmount(payment, metadata) {
+  const sb = getSupabaseConfig();
+
+  // Pas de Supabase = pas de validation possible, on laisse passer
+  if (!sb) return { valid: true };
+
+  const source = metadata.source;
+  const instrumentId = metadata.instrument_id;
+  const paymentType = metadata.payment_type;
+
+  // Seuls les achats stock avec un ID instrument peuvent être vérifiés
+  if (source !== 'stock' || !instrumentId) return { valid: true };
+
+  try {
+    const response = await fetch(
+      `${sb.url}/rest/v1/instruments?id=eq.${instrumentId}&select=prix_vente`,
+      {
+        method: 'GET',
+        headers: {
+          'apikey': sb.headers['apikey'],
+          'Authorization': sb.headers['Authorization'],
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.warn('Impossible de vérifier le prix instrument:', await response.text());
+      return { valid: true }; // Fail open si DB indisponible
+    }
+
+    const instruments = await response.json();
+    if (!instruments || instruments.length === 0) {
+      console.warn(`Instrument ${instrumentId} non trouvé en base`);
+      return { valid: true };
+    }
+
+    const dbPrice = instruments[0].prix_vente; // En euros
+    if (!dbPrice) return { valid: true };
+
+    const expectedCents = dbPrice * 100;
+    const totalFromMetadata = metadata.total_price_cents || payment.amount;
+
+    // Tolérance : le total peut inclure des accessoires (housse, livraison)
+    // On vérifie juste que le montant n'est pas inférieur au prix instrument
+    if (totalFromMetadata < expectedCents) {
+      const diff = (expectedCents - totalFromMetadata) / 100;
+      console.error(
+        `ALERTE PRIX: Instrument ${instrumentId} prix DB=${dbPrice}€, ` +
+        `metadata total=${totalFromMetadata / 100}€ (écart: -${diff}€)`
+      );
+      return {
+        valid: false,
+        reason: `Montant inférieur au prix catalogue (${dbPrice}€ vs ${totalFromMetadata / 100}€)`
+      };
+    }
+
+    // Pour paiement intégral, vérifier que le montant payé couvre le total
+    if (paymentType === 'full' && payment.amount < expectedCents) {
+      console.error(
+        `ALERTE PRIX: Paiement intégral ${payment.amount / 100}€ < prix instrument ${dbPrice}€`
+      );
+      return {
+        valid: false,
+        reason: `Paiement intégral insuffisant (${payment.amount / 100}€ vs ${dbPrice}€ minimum)`
+      };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    console.error('Erreur validation prix:', error);
+    return { valid: true }; // Fail open
+  }
+}
+
+// ============================================================================
 // TRAITEMENT PAIEMENT
 // ============================================================================
 
@@ -430,6 +515,24 @@ async function handlePaymentNotification(paymentId, secretKey, headers) {
 
   if (payment.is_paid) {
     console.log(`Paiement ${paymentId} confirmé pour ${payment.amount / 100} €`);
+
+    // Valider le montant contre la base de données (protection anti-manipulation)
+    const priceCheck = await validatePaymentAmount(payment, metadata);
+    if (!priceCheck.valid) {
+      console.error(`PAIEMENT BLOQUÉ: ${priceCheck.reason} (ref: ${orderReference})`);
+      // On enregistre quand même le paiement mais on le flag comme suspect
+      await recordPayment(payment, { ...metadata, flagged: true, flag_reason: priceCheck.reason });
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          message: 'Paiement enregistré - vérification manuelle requise',
+          reference: orderReference,
+          flagged: true
+        })
+      };
+    }
 
     // Orchestrer toutes les actions post-paiement en parallèle
     await Promise.all([

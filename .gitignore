@@ -10,8 +10,14 @@ sql/
 .env.local
 .env.production
 
-# Hash admin (fichier de production)
+# Configuration (contient les clés Supabase)
+js/core/config.js
+
+# Hash admin (ancien systeme, peut etre supprime)
 php/.admin_hash
+
+# Configuration Supabase pour PHP (contient URL + anon key)
+php/.supabase_config
 
 # OS
 .DS_Store

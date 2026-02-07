@@ -92,9 +92,16 @@
   function loadImage(file) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('Impossible de charger l\'image'));
-      img.src = URL.createObjectURL(file);
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Impossible de charger l\'image'));
+      };
+      img.src = objectUrl;
     });
   }
 
@@ -461,18 +468,11 @@
   // ============================================================================
   
   /**
-   * RÃ©cupÃ¨re le token admin depuis la session localStorage
+   * Recupere le JWT Supabase pour authentifier les requetes serveur
    */
   function getAdminToken() {
-    const sessionData = localStorage.getItem('mistral_admin_session');
-    if (sessionData) {
-      try {
-        const parsed = JSON.parse(sessionData);
-        // Retourne le hash stockÃ© dans la session
-        return parsed.hash || '';
-      } catch (e) {
-        return '';
-      }
+    if (window.MistralAuth && window.MistralAuth.getAccessTokenSync) {
+      return window.MistralAuth.getAccessTokenSync() || '';
     }
     return '';
   }
@@ -772,7 +772,7 @@
         </div>
       </label>
       <div class="upload-input__preview" style="display:none;">
-        <img src="" alt="Preview" class="upload-input__preview-img">
+        <img alt="Preview" class="upload-input__preview-img" style="display:none;">
         <video class="upload-input__preview-video" style="display:none;" muted></video>
         <div class="upload-input__preview-play" style="display:none;">â–¶</div>
         <button type="button" class="upload-input__remove" title="Supprimer">Ã—</button>
@@ -884,7 +884,7 @@
 
       try {
         const result = await uploadMedia(selectedFile, (percent, text) => {
-          progressBar.style.width = percent + '%';
+          progressBar.style.setProperty('--progress', percent + '%');
           progressText.textContent = text || (percent + '%');
         });
 

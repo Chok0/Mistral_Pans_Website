@@ -82,7 +82,7 @@
         </button>
         
         <div class="instrument-lightbox__content">
-          <img class="instrument-lightbox__image" src="" alt="" style="display:none;">
+          <img class="instrument-lightbox__image" alt="" style="display:none;">
           <video class="instrument-lightbox__video" controls style="display:none;"></video>
         </div>
         
