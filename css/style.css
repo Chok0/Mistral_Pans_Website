@@ -75,6 +75,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-height) + var(--space-xl));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -1768,11 +1769,6 @@ h3 {
 
 .fade-in-up {
   animation: fadeInUp 0.6s ease forwards;
-}
-
-/* Scroll padding for anchor links */
-html {
-  scroll-padding-top: calc(var(--header-height) + var(--space-xl));
 }
 
 /* Partner Cards */
