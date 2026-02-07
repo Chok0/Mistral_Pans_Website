@@ -1,6 +1,11 @@
 /**
  * Configuration Supabase - Mistral Pans
- * Ce fichier est ignoré par git (.gitignore)
+ *
+ * La clé anon est conçue pour être exposée côté client.
+ * La sécurité repose sur les politiques RLS de Supabase, pas sur le secret de cette clé.
+ *
+ * En cas d'exposition non souhaitée, régénérez la clé dans :
+ * Supabase Dashboard > Settings > API > Regenerate anon key
  */
 
 window.MISTRAL_CONFIG = {

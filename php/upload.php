@@ -272,10 +272,9 @@ function getAdminHash() {
         return $envHash;
     }
 
-    // ATTENTION: En production, créez le fichier .admin_hash
-    // ou définissez la variable d'environnement MISTRAL_ADMIN_HASH
-    error_log('AVERTISSEMENT: Utilisation du hash par défaut. Créez php/.admin_hash en production.');
-    return '-6de5765f';
+    // Aucun hash configuré : accès refusé
+    error_log('ERREUR: Aucun hash admin configuré. Créez php/.admin_hash ou définissez MISTRAL_ADMIN_HASH.');
+    return null;
 }
 
 function verifyToken($token, $storedHash) {

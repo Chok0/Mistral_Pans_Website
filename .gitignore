@@ -10,6 +10,9 @@ sql/
 .env.local
 .env.production
 
+# Hash admin (fichier de production)
+php/.admin_hash
+
 # OS
 .DS_Store
 Thumbs.db

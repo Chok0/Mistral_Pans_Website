@@ -68,7 +68,9 @@
       commande: {
         en_attente: 'En attente',
         en_fabrication: 'En fabrication',
+        accordage: 'Accordage',
         pret: 'Prêt',
+        expedie: 'Expédié',
         livre: 'Livré',
         annule: 'Annulé'
       },
