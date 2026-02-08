@@ -231,12 +231,12 @@
       });
       
       if (confirmed) {
-        GestionBoutique.depublierInstrument(instrumentId);
+        GestionBoutique.retirer(instrumentId);
         renderInstruments();
         Toast.success('Instrument dépublié');
       }
     } else {
-      GestionBoutique.publierInstrument(instrumentId);
+      GestionBoutique.publier(instrumentId);
       renderInstruments();
       Toast.success('Instrument publié sur la boutique');
     }
