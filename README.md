@@ -557,9 +557,9 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 
 - [x] Supprimer les fichiers PHP residuels (`php/upload.php`, `php/delete.php`)
 - [ ] Regenerer cle LIVE PayPlug (exposee en clair) et mettre a jour Netlify
-- [ ] Rate limiting sur `payplug-create-payment.js` et `swikly-create-deposit.js`
-- [ ] Masquer `error.message` internes dans les reponses Netlify Functions
-- [ ] Filtrer les cles metadata dans le webhook Swikly
+- [x] Rate limiting sur `payplug-create-payment.js` et `swikly-create-deposit.js`
+- [x] Masquer `error.message` internes dans les reponses Netlify Functions
+- [x] Filtrer les cles metadata dans le webhook Swikly
 - [ ] Verifier encodage UTF-8 sur tout le contenu
 - [ ] Optimiser images (WebP, ~26 Mo -> ~5 Mo)
 - [ ] Tester flux complet sandbox PayPlug et Swikly
@@ -652,7 +652,7 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 ## Audit de securite
 
 > Audit complet de l'integration paiement (PayPlug, Swikly) et de la securite generale du projet.
-> Derniere revue : 6 fevrier 2026.
+> Derniere revue : 8 fevrier 2026.
 
 ### Tableau de synthese
 
@@ -661,14 +661,14 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 | 1 | ~~CRITIQUE~~ | Netlify Functions | CORS whitelist implementee (`ALLOWED_ORIGINS`) | **Resolu** |
 | 2 | ~~CRITIQUE~~ | Swikly webhook | Verification HMAC SHA-256 avec `timingSafeEqual()` | **Resolu** |
 | 3 | ~~HAUTE~~ | commander.js | XSS corrigee — `escapeHtml()` applique sur toutes les variables | **Resolu** |
-| 4 | **HAUTE** | Netlify Functions | Pas de rate limiting sur creation de paiement | A corriger |
+| 4 | ~~HAUTE~~ | Netlify Functions | Rate limiting in-memory implementee (5/min PayPlug, 3/min Swikly) | **Resolu** |
 | 5 | ~~HAUTE~~ | PayPlug webhook | Idempotence via `upsert` avec `on_conflict=payplug_id` | **Resolu** |
-| 6 | **HAUTE** | Swikly webhook | Validation de schema des donnees avant ecriture en base | A corriger |
+| 6 | ~~HAUTE~~ | Swikly webhook | Validation schema + filtrage metadata avant ecriture en base | **Resolu** |
 | 7 | **MOYENNE** | Admin auth | Pas de rate limiting client (Supabase gere cote serveur) | A evaluer |
 | 8 | ~~MOYENNE~~ | ~~Admin auth~~ | ~~Token `Math.random()`~~ — **OBSOLETE** : auth migree vers Supabase JWT | Resolu |
 | 9 | ~~MOYENNE~~ | ~~PHP endpoints~~ | ~~Hash admin par defaut~~ — **OBSOLETE** : uploads via Supabase Storage | Resolu |
-| 10 | **MOYENNE** | Netlify Functions | Messages d'erreur internes exposes au client (`error.message`) | A corriger |
-| 11 | **MOYENNE** | Swikly create/webhook | Metadata non filtrees avant stockage en base | A corriger |
+| 10 | ~~MOYENNE~~ | Netlify Functions | Messages generiques retournes, details logges cote serveur | **Resolu** |
+| 11 | ~~MOYENNE~~ | Swikly create/webhook | Metadata filtrees — whitelist de cles explicites | **Resolu** |
 | 12 | **FAIBLE** | commander.html | CSP defini dans `netlify.toml` (actif en production, absent en local) | Partiel |
 | 13 | **FAIBLE** | Integrated Payment | Securite partagee avec PayPlug (integrite de la page requise) | Risque accepte |
 | 14 | ~~INFO~~ | ~~Admin auth~~ | ~~Credentials localStorage~~ — **OBSOLETE** : auth via Supabase Auth | Resolu |
@@ -711,19 +711,17 @@ var safeProduct = escapeHtml(pendingOrder?.product?.productName || '...');
 
 ---
 
-### #4 HAUTE — Pas de rate limiting sur creation de paiement
+### #4 ~~HAUTE~~ RESOLU — Rate limiting sur creation de paiement
 
-**Fichier :** `payplug-create-payment.js`
+**Fichiers :** `payplug-create-payment.js`, `swikly-create-deposit.js`
 
-**Probleme :** Aucune protection contre l'abus. Un attaquant peut :
-- Creer des centaines de paiements PayPlug (consommation API, risque de blocage du compte)
-- Surcharger la Netlify Function (limites du plan)
-- Generer du spam si combine avec l'endpoint email
+**Resolution :** Rate limiting in-memory par IP implemente :
+- PayPlug : 5 requetes/minute par IP
+- Swikly : 3 requetes/minute par IP
+- Retourne HTTP 429 si depassement
+- IP extraite via `x-forwarded-for` (Netlify proxy)
 
-**Correction recommandee :**
-- Activer le rate limiting Netlify (si disponible sur le plan)
-- Implementer un token CSRF ou un token jetable cote client
-- Ajouter un delai minimum entre deux creations (ex: via Supabase)
+> **Note :** En serverless, le rate limiting in-memory est best-effort (la Map est reinitalisee a chaque cold start). Pour un rate limiting strict, utiliser un store externe (Redis, Supabase).
 
 ---
 
@@ -735,21 +733,15 @@ var safeProduct = escapeHtml(pendingOrder?.product?.productName || '...');
 
 ---
 
-### #6 HAUTE — Swikly webhook : donnees non verifiees en base
+### #6 ~~HAUTE~~ RESOLU — Swikly webhook : validation des donnees
 
-**Fichier :** `swikly-webhook.js:242-256`
+**Fichier :** `swikly-webhook.js`
 
-**Probleme :** Sans verification de signature (#2), les donnees du webhook sont directement utilisees pour mettre a jour Supabase :
-```javascript
-// metadata.rental_id vient du payload non verifie
-await fetch(`${SUPABASE_URL}/rest/v1/locations?id=eq.${metadata.rental_id}`, {
-  method: 'PATCH', ...
-});
-```
-
-Un attaquant pourrait envoyer un payload forge avec un `rental_id` arbitraire pour changer le statut de n'importe quelle location en "active".
-
-**Correction :** Implementer la verification de signature (#2) ET valider les donnees via un GET a l'API Swikly.
+**Resolution :**
+- Signature HMAC verifiee (#2) — seul Swikly peut envoyer des webhooks valides
+- Validation de schema avant ecriture : `data.id` (string requis), `data.amount` (nombre positif)
+- Metadata filtrees via whitelist explicite (`safeMetadata`) — suppression de `raw_response`
+- Seules les cles attendues sont stockees en base
 
 ---
 
@@ -777,32 +769,21 @@ Un attaquant pourrait envoyer un payload forge avec un `rental_id` arbitraire po
 
 ---
 
-### #10 MOYENNE — Messages d'erreur internes exposes
+### #10 ~~MOYENNE~~ RESOLU — Messages d'erreur internes masques
 
-**Fichiers :** `payplug-create-payment.js:305`, `payplug-webhook.js:225`, `swikly-webhook.js:187`
+**Fichiers :** `payplug-create-payment.js`, `swikly-create-deposit.js`, `send-email.js`
 
-**Probleme :** `error.message` est retourne au client dans les reponses d'erreur. Cela peut reveler des details d'implementation (noms de tables, URLs internes, stack traces).
-
-**Correction :** Retourner un message generique au client et logger les details cote serveur uniquement.
+**Resolution :** Les reponses d'erreur retournent desormais des messages generiques (`"Erreur creation paiement"`, `"Erreur creation caution"`, `"Erreur lors de l'envoi"`). Les details techniques sont logges cote serveur uniquement via `console.error()`.
 
 ---
 
-### #11 MOYENNE — Spread de metadata non filtre
+### #11 ~~MOYENNE~~ RESOLU — Metadata filtrees (whitelist)
 
-**Fichier :** `swikly-create-deposit.js:139`
+**Fichiers :** `swikly-create-deposit.js`, `swikly-webhook.js`
 
-**Probleme :**
-```javascript
-metadata: {
-  rental_reference: reference,
-  instrument_name: instrumentName,
-  ...metadata  // <-- untrusted user input
-}
-```
-
-L'operateur spread peut ecraser les champs `rental_reference` et `instrument_name` si l'utilisateur envoie des metadata avec les memes cles.
-
-**Correction :** Placer le spread AVANT les champs explicites, ou filtrer les cles autorisees.
+**Resolution :**
+- **Creation :** Les metadata sont construites avec des cles explicites uniquement (`rental_reference`, `instrument_name`, `rental_duration_months`, `client_id`, `instrument_id`, `location_id`). Les valeurs sont sanitizees. Pas de spread d'input utilisateur.
+- **Webhook :** `safeMetadata` construit via whitelist avant stockage en base. `raw_response` supprime du record.
 
 ---
 
@@ -851,6 +832,8 @@ L'operateur spread peut ecraser les champs `rental_reference` et `instrument_nam
 | PayPlug : cle secrete cote serveur | La cle `PAYPLUG_SECRET_KEY` n'est jamais exposee au client |
 | Admin : Supabase Auth | Authentification JWT geree cote serveur |
 | Email : rate limiting | 5 emails/min par IP dans `send-email.js` |
+| Paiement : rate limiting | 5 paiements/min (PayPlug), 3 cautions/min (Swikly) par IP |
+| Metadata : whitelist | Seules les cles attendues sont stockees en base |
 | Integrated Payment : mode test configurable | `testMode: false` avec commentaire pour basculer |
 | Integrated Payment : fallback hosted | Si le SDK ne charge pas, retour transparent au mode heberge |
 
@@ -870,10 +853,10 @@ L'operateur spread peut ecraser les champs `rental_reference` et `instrument_nam
 
 **Avant mise en production :**
 
-- [ ] #4 Ajouter rate limiting sur creation de paiement et depot
-- [ ] #6 Valider le schema des donnees webhook avant ecriture en base
-- [ ] #10 Masquer les messages d'erreur internes dans les reponses
-- [ ] #11 Filtrer les cles metadata Swikly avant stockage
+- [x] #4 Rate limiting in-memory sur creation de paiement et depot
+- [x] #6 Validation schema + filtrage metadata dans webhook Swikly
+- [x] #10 Messages d'erreur generiques (details logges serveur)
+- [x] #11 Whitelist de cles metadata Swikly
 - [x] Supprimer les fichiers PHP residuels
 
 **Ameliorations recommandees :**
