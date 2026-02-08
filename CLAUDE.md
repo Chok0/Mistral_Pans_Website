@@ -78,7 +78,9 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 │   │   └── swikly-client.js     # Swikly deposits
 │   │
 │   ├── data/                # Static data files
-│   │   ├── scales-data.js   # 65+ musical scales + music theory
+│   │   ├── scales-data.js   # Musical scales + music theory
+│   │   ├── gammes-data.js   # Configurator gammes (12 gammes)
+│   │   ├── tailles-data.js  # Sizes and dimensions
 │   │   └── materiaux-data.js # Materials and properties
 │   │
 │   ├── features/            # Business modules
@@ -90,6 +92,7 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 │   │   └── mistral-stats.js     # Anonymous analytics
 │   │
 │   └── pages/               # Page-specific logic
+│       ├── boutique.js      # Configurator + stock logic
 │       └── commander.js     # Order form + payment
 │
 ├── ressources/
@@ -100,8 +103,11 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 │   ├── payplug-create-payment.js  # Payment creation
 │   ├── payplug-webhook.js   # Payment webhooks
 │   ├── swikly-create-deposit.js   # Deposit creation
-│   └── swikly-webhook.js    # Deposit webhooks
+│   ├── swikly-webhook.js    # Deposit webhooks
+│   └── order-status.js      # Order tracking endpoint
+├── netlify.toml              # Netlify config (headers, redirects, CSP)
 ├── CLAUDE.md                # This file (AI assistant guide)
+├── PROJECT-REVIEW.md         # Full code audit report
 └── README.md                # Full project documentation (French)
 ```
 
@@ -119,8 +125,9 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 | `location.html` | Rental service | Rental terms, deposit info (Swikly) |
 | `apprendre.html` | Teacher directory | Leaflet map with RGPD consent, teacher cards |
 | `galerie.html` | Gallery | Responsive mosaic, lightbox |
-| `blog.html` | Blog | Article grid, newsletter signup |
+| `blog.html` | Blog | Article grid |
 | `article.html` | Article template | Dynamic content loading |
+| `suivi.html` | Order tracking | Reference + email lookup |
 | `admin.html` | Admin dashboard | Tabs: Stock, Teachers, Gallery, Blog, Messages, Stats |
 
 ### Core JavaScript Files

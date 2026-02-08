@@ -107,7 +107,9 @@ npx serve .
 |   |   +-- swikly-client.js     # Cautions Swikly
 |   |
 |   |-- data/                # Donnees statiques
-|   |   |-- scales-data.js   # 65+ gammes musicales
+|   |   |-- scales-data.js   # Gammes musicales + theorie
+|   |   |-- gammes-data.js   # Gammes du configurateur (12 gammes)
+|   |   |-- tailles-data.js  # Tailles et dimensions
 |   |   +-- materiaux-data.js # Materiaux et proprietes
 |   |
 |   |-- features/            # Modules metier
@@ -119,6 +121,7 @@ npx serve .
 |   |   +-- mistral-stats.js     # Analytics anonymes
 |   |
 |   +-- pages/               # Logique specifique par page
+|       |-- boutique.js      # Logique configurateur + stock
 |       +-- commander.js     # Formulaire commande + paiement
 |
 |-- ressources/
@@ -130,10 +133,13 @@ npx serve .
 |   |-- payplug-create-payment.js  # Creation paiement
 |   |-- payplug-webhook.js   # Webhook paiement
 |   |-- swikly-create-deposit.js   # Creation caution
-|   +-- swikly-webhook.js    # Webhook caution
+|   |-- swikly-webhook.js    # Webhook caution
+|   +-- order-status.js      # Suivi commande client
 |
-|-- CLAUDE.md                # Guide pour assistants IA
-+-- README.md                # Ce fichier
+|-- netlify.toml              # Configuration Netlify (headers, redirects)
+|-- CLAUDE.md                 # Guide pour assistants IA
+|-- PROJECT-REVIEW.md         # Audit de code complet
++-- README.md                 # Ce fichier
 ```
 
 ---
@@ -196,8 +202,9 @@ npx serve .
 | Location | `location.html` | Service location, FAQ accordeon |
 | Apprendre | `apprendre.html` | Carte Leaflet, professeurs IDF |
 | Galerie | `galerie.html` | Mosaique responsive, lightbox |
-| Blog | `blog.html` | Articles, newsletter |
+| Blog | `blog.html` | Articles |
 | Article | `article.html` | Template article dynamique |
+| Suivi | `suivi.html` | Suivi de commande client (ref + email) |
 | Admin | `admin.html` | Dashboard centralise |
 | CGV | `cgv.html` | Conditions generales de vente |
 | Mentions legales | `mentions-legales.html` | Obligations legales |
@@ -286,13 +293,13 @@ Le module `js/features/feasibility-module.js` verifie automatiquement si une con
 
 ### Acces
 - **URL :** `/admin.html`
-- **Identifiants par defaut :** `admin` / `mistral2024`
+- **Authentification :** Supabase Auth (email + mot de passe)
+- **Gestion des comptes :** Supabase Dashboard > Authentication > Users
 
 ### Stockage localStorage
 
 | Cle | Usage |
 |-----|-------|
-| `mistral_admin_session` | Session admin (24h) |
 | `mistral_flash_annonces` | Annonces boutique |
 | `mistral_teachers` | Professeurs valides |
 | `mistral_pending_teachers` | Demandes en attente |
@@ -304,20 +311,20 @@ Le module `js/features/feasibility-module.js` verifie automatiquement si une con
 
 ## Base de donnees Supabase
 
-### Tables principales
+### Tables principales (10 tables)
 
-| Table | Usage |
-|-------|-------|
-| `clients` | Clients (nom, email, telephone, adresse) |
-| `instruments` | Inventaire (reference, gamme, tonalite, taille, prix) |
-| `locations` | Locations (client, instrument, dates, caution) |
-| `commandes` | Commandes (specifications JSON, montant, statut) |
-| `factures` | Factures (numero auto, lignes JSON) |
-| `professeurs` | Professeurs (nom, location, lat/lng, photo) |
-| `galerie` | Medias (type, src, thumbnail, ordre) |
-| `articles` | Blog (slug, title, content HTML, tags) |
-| `accessoires` | Accessoires (nom, prix, quantite_stock) |
-| `configuration` | Parametres (key/value pairs) |
+| Table | Usage | Sync localStorage |
+|-------|-------|-------------------|
+| `clients` | Clients (nom, email, telephone, adresse) | Oui |
+| `instruments` | Inventaire (reference, gamme, tonalite, taille, prix) | Oui |
+| `locations` | Locations (client, instrument, dates, caution) | Oui |
+| `commandes` | Commandes (specifications JSON, montant, statut) | Oui |
+| `factures` | Factures (numero auto, lignes JSON) | Oui |
+| `professeurs` | Professeurs (nom, location, lat/lng, photo) | Oui |
+| `galerie` | Medias (type, src, thumbnail, ordre) | Oui |
+| `articles` | Blog (slug, title, content HTML, tags) | Oui |
+| `accessoires` | Accessoires (nom, prix, quantite_stock) | Non |
+| `configuration` | Parametres (key/value pairs) | Non |
 
 ### Securite RLS
 - **Lecture publique :** Professeurs actifs, articles publies, instruments en ligne
@@ -394,8 +401,9 @@ Dans Supabase > **Authentication > Users** > "Add User" :
 - [x] Creer module Payplug (client + webhook)
 - [x] Creer module Swikly (client + webhook)
 - [x] Integration formulaire paiement dans commander.html
-- [x] Paiement acompte (300 EUR), solde, 3x sans frais
+- [x] Paiement acompte (30%), solde, 3x sans frais
 - [x] Protection anti-spam honeypot (tous formulaires)
+- [x] Page de suivi commande (suivi.html + order-status.js)
 - [ ] Auto-generation de facture sur paiement confirme
 - [ ] Tests sandbox Payplug/Swikly
 - [ ] Passage en production
@@ -405,29 +413,29 @@ Dans Supabase > **Authentication > Users** > "Add User" :
 - [ ] Audit complet CRUD admin panel
 - [ ] Faire de Supabase la source de verite (pattern localStorage-first)
 - [ ] Audit securite RLS (politiques granulaires)
-- [ ] Ameliorer UX swipe boutique mobile
 - [ ] Scale Batch System (voir section dediee)
-- [ ] Migration auth admin vers Supabase Auth
 - [ ] Optimisations performance (lazy loading, code splitting)
 - [ ] Echelle z-index unifiee
 - [ ] Indicateurs `:focus-visible` complets
 
-### Variables d'environnement requises
+### Variables d'environnement requises (Netlify)
 
 ```env
-# Supabase (existant)
+# Supabase
 SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_ANON_KEY=xxx
+SUPABASE_SERVICE_KEY=xxx          # Cle service (webhooks, functions serveur)
 
-# Brevo (email) - CONFIGURE
+# Brevo (email)
 BREVO_API_KEY=xxx
 
-# Payplug - A CONFIGURER
+# Payplug
 PAYPLUG_SECRET_KEY=xxx
 
-# Swikly - Utilise permalien
-# Permalien: https://v2.swik.link/DxkC1UD
+# Swikly
+SWIKLY_SECRET_KEY=xxx             # Pour verification HMAC webhook
 ```
+
+> **Note :** La cle `SUPABASE_ANON_KEY` est configuree cote client dans `js/core/config.js` (gitignore). Les variables ci-dessus sont les secrets serveur configures dans Netlify.
 
 ---
 
@@ -437,7 +445,7 @@ PAYPLUG_SECRET_KEY=xxx
 
 ### Objectifs
 
-1. Organiser 65+ gammes en batches pour le configurateur
+1. Organiser les gammes en batches pour le configurateur (12 gammes actuellement, extensible)
 2. Simplifier l'UX avec des selections curatees
 3. Permettre le controle admin sur les gammes visibles
 4. Preserver la logique de theorie musicale (dieses/bemols)
@@ -468,7 +476,7 @@ Exemple Kurd 9 : `D/-A-Bb-C-D-E-F-G-A_`
 ### Phases d'implementation
 
 1. **Database** : Creer tables + RLS + seed data
-2. **Migration** : Parser les 65 gammes de `scales-data.js` vers Supabase
+2. **Migration** : Parser les gammes de `scales-data.js` et `gammes-data.js` vers Supabase
 3. **Admin** : Onglet "Gammes" dans admin (CRUD + batch manager)
 4. **Configurateur** : Chips de batch + filtrage dans boutique.html
 5. **Extended** : Note variants pour gammes >9 notes
@@ -540,23 +548,34 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 ## Deploiement
 
 ### Hebergement
-- OVH Mutualise (domaine + hebergement)
-- Site statique avec uploads via Supabase Storage
-- SSL/TLS inclus
+- **Site :** Netlify (site statique + Netlify Functions)
+- **Domaine :** OVH (`mistralpans.fr`)
+- **Stockage media :** Supabase Storage
+- **SSL/TLS :** Inclus (Netlify)
 
 ### Checklist pre-production
 
-- [ ] Changer mot de passe admin par defaut
-- [ ] Configurer cles Payplug (PAYPLUG_SECRET_KEY)
-- [ ] Verifier encodage UTF-8
-- [ ] Optimiser images (WebP)
+- [ ] Supprimer les fichiers PHP residuels (`php/upload.php`, `php/delete.php`)
+- [ ] Regenerer cle LIVE PayPlug (exposee en clair) et mettre a jour Netlify
+- [ ] Rate limiting sur `payplug-create-payment.js` et `swikly-create-deposit.js`
+- [ ] Masquer `error.message` internes dans les reponses Netlify Functions
+- [ ] Filtrer les cles metadata dans le webhook Swikly
+- [ ] Verifier encodage UTF-8 sur tout le contenu
+- [ ] Optimiser images (WebP, ~26 Mo -> ~5 Mo)
+- [ ] Tester flux complet sandbox PayPlug et Swikly
 - [ ] Tester sur vrais appareils mobiles
-- [ ] Configurer email (contact@mistralpans.fr)
+- [ ] Passer cles PayPlug de test a live dans Netlify
 - [x] Creer pages legales (mentions, CGV)
 - [x] Configurer banniere consentement cookies
 - [x] Externaliser identifiants Supabase
-- [x] Migrer uploads vers Supabase Storage (suppression PHP)
+- [x] Migrer uploads vers Supabase Storage
 - [x] Anti-spam honeypot (tous formulaires)
+- [x] CORS whitelist sur Netlify Functions
+- [x] Verification HMAC webhook Swikly
+- [x] Idempotence webhook PayPlug (upsert)
+- [x] Echappement XSS dans commander.js
+- [x] Migration auth admin vers Supabase Auth
+- [x] Page suivi commande (suivi.html)
 
 ### Services externes
 
@@ -639,86 +658,56 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 
 | # | Severite | Zone | Probleme | Statut |
 |---|----------|------|----------|--------|
-| 1 | **CRITIQUE** | Netlify Functions | CORS `Access-Control-Allow-Origin: *` sur endpoints paiement et email | A corriger |
-| 2 | **CRITIQUE** | Swikly webhook | Verification de signature non implementee (TODO dans le code) | A corriger |
-| 3 | **HAUTE** | commander.js | XSS via `innerHTML` dans `showPaymentSuccess()` avec donnees URL/localStorage | A corriger |
+| 1 | ~~CRITIQUE~~ | Netlify Functions | CORS whitelist implementee (`ALLOWED_ORIGINS`) | **Resolu** |
+| 2 | ~~CRITIQUE~~ | Swikly webhook | Verification HMAC SHA-256 avec `timingSafeEqual()` | **Resolu** |
+| 3 | ~~HAUTE~~ | commander.js | XSS corrigee — `escapeHtml()` applique sur toutes les variables | **Resolu** |
 | 4 | **HAUTE** | Netlify Functions | Pas de rate limiting sur creation de paiement | A corriger |
-| 5 | **HAUTE** | PayPlug webhook | Pas de protection contre les doublons (idempotence) | A corriger |
-| 6 | **HAUTE** | Swikly webhook | Donnees non verifiees utilisees pour mettre a jour Supabase | A corriger |
-| 7 | **MOYENNE** | Admin auth | Pas de rate limiting sur les tentatives de connexion | A corriger |
-| 8 | **MOYENNE** | Admin auth | Token de session genere avec `Math.random()` (non cryptographique) | A corriger |
-| 9 | ~~MOYENNE~~ | ~~PHP endpoints~~ | ~~Hash admin par defaut~~ — **OBSOLETE** : endpoints PHP supprimes, uploads via Supabase Storage | Resolu |
+| 5 | ~~HAUTE~~ | PayPlug webhook | Idempotence via `upsert` avec `on_conflict=payplug_id` | **Resolu** |
+| 6 | **HAUTE** | Swikly webhook | Validation de schema des donnees avant ecriture en base | A corriger |
+| 7 | **MOYENNE** | Admin auth | Pas de rate limiting client (Supabase gere cote serveur) | A evaluer |
+| 8 | ~~MOYENNE~~ | ~~Admin auth~~ | ~~Token `Math.random()`~~ — **OBSOLETE** : auth migree vers Supabase JWT | Resolu |
+| 9 | ~~MOYENNE~~ | ~~PHP endpoints~~ | ~~Hash admin par defaut~~ — **OBSOLETE** : uploads via Supabase Storage | Resolu |
 | 10 | **MOYENNE** | Netlify Functions | Messages d'erreur internes exposes au client (`error.message`) | A corriger |
-| 11 | **MOYENNE** | Swikly create | Spread `...metadata` non filtre dans le payload | A corriger |
-| 12 | **FAIBLE** | commander.html | Pas de Content-Security-Policy (CSP) header | Recommande |
+| 11 | **MOYENNE** | Swikly create/webhook | Metadata non filtrees avant stockage en base | A corriger |
+| 12 | **FAIBLE** | commander.html | CSP defini dans `netlify.toml` (actif en production, absent en local) | Partiel |
 | 13 | **FAIBLE** | Integrated Payment | Securite partagee avec PayPlug (integrite de la page requise) | Risque accepte |
-| 14 | **INFO** | Admin auth | Credentials stockes en localStorage (pas de session serveur) | Architecture |
+| 14 | ~~INFO~~ | ~~Admin auth~~ | ~~Credentials localStorage~~ — **OBSOLETE** : auth via Supabase Auth | Resolu |
 | 15 | **INFO** | Admin auth | Fallback `simpleHash()` faible (DJB hash) si SubtleCrypto absent | Architecture |
 
 ---
 
-### #1 CRITIQUE — CORS ouvert sur Netlify Functions
+### #1 ~~CRITIQUE~~ RESOLU — CORS sur Netlify Functions
 
-**Fichiers :** `payplug-create-payment.js`, `send-email.js`, `swikly-create-deposit.js`
+**Fichiers :** Toutes les Netlify Functions
 
-**Probleme :** Les endpoints utilisent `Access-Control-Allow-Origin: *`, ce qui permet a n'importe quel site web d'appeler ces fonctions. Un attaquant pourrait :
-- Creer des paiements PayPlug depuis un site tiers
-- Envoyer des emails via Brevo en usurpant le formulaire de contact
-- Declencher des cautions Swikly avec des donnees forgees
-
-**Note :** Les anciens fichiers PHP d'upload ont ete remplaces par Supabase Storage (authentification via Supabase Auth).
-
-**Correction recommandee :**
+**Resolution :** Whitelist `ALLOWED_ORIGINS` implementee sur toutes les fonctions :
 ```javascript
-// Remplacer Access-Control-Allow-Origin: * par :
-const allowedOrigins = [
+const ALLOWED_ORIGINS = [
   'https://mistralpans.fr',
   'https://www.mistralpans.fr'
 ];
-const origin = event.headers.origin || event.headers.Origin;
-const corsOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-
-const headers = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': corsOrigin,
-  'Access-Control-Allow-Headers': 'Content-Type'
-};
+// + localhost en dev
 ```
 
 ---
 
-### #2 CRITIQUE — Swikly webhook sans verification de signature
+### #2 ~~CRITIQUE~~ RESOLU — Swikly webhook verification de signature
 
-**Fichier :** `swikly-webhook.js:63-65`
+**Fichier :** `swikly-webhook.js`
 
-**Probleme :** Le code lit le header `x-swikly-signature` mais ne le verifie jamais (`TODO` dans le code). N'importe qui peut envoyer un POST a l'endpoint et declencher :
-- Des mises a jour en base de donnees (cautions, locations)
-- Des envois d'emails de confirmation
-- Des changements de statut de location vers "active"
-
-**Impact :** Un attaquant connaissant l'URL du webhook pourrait activer des locations sans caution reelle.
-
-**Correction :** Implementer la verification HMAC selon la documentation Swikly, ou a minima, faire un GET de verification aupres de l'API Swikly (meme approche que PayPlug).
+**Resolution :** Verification HMAC SHA-256 implementee avec `crypto.timingSafeEqual()` pour prevenir les attaques par timing. Le webhook rejette les requetes sans signature valide (HTTP 401).
 
 ---
 
-### #3 HAUTE — XSS dans showPaymentSuccess()
+### #3 ~~HAUTE~~ RESOLU — XSS dans showPaymentSuccess()
 
-**Fichier :** `commander.js:498`
+**Fichier :** `commander.js`
 
-**Probleme :** La fonction utilise `container.innerHTML` avec des variables interpolees :
+**Resolution :** Toutes les variables sont desormais echappees via `escapeHtml()` avant injection dans `innerHTML` :
 ```javascript
-container.innerHTML = `
-  <p><strong>Référence :</strong> ${reference || 'N/A'}</p>
-  <p><strong>Instrument :</strong> ${pendingOrder.product?.productName || '...'}</p>
-`;
+var safeRef = escapeHtml(reference || 'N/A');
+var safeProduct = escapeHtml(pendingOrder?.product?.productName || '...');
 ```
-
-Les variables `reference` (depuis `urlParams.get('ref')`) et `productName` (depuis `localStorage`) ne sont pas echappees. Un attaquant peut :
-- Crafter une URL avec `?status=success&ref=<script>alert(1)</script>`
-- Manipuler `localStorage` pour injecter du HTML malveillant
-
-**Correction :** Utiliser `textContent` ou une fonction d'echappement HTML.
 
 ---
 
@@ -738,13 +727,11 @@ Les variables `reference` (depuis `urlParams.get('ref')`) et `productName` (depu
 
 ---
 
-### #5 HAUTE — Pas d'idempotence sur le webhook PayPlug
+### #5 ~~HAUTE~~ RESOLU — Idempotence webhook PayPlug
 
 **Fichier :** `payplug-webhook.js`
 
-**Probleme :** Si PayPlug envoie la meme notification deux fois (retry reseau), le paiement est enregistre deux fois dans Supabase et deux emails de confirmation sont envoyes.
-
-**Correction :** Verifier si `payplug_id` existe deja dans la table `paiements` avant d'inserer. Utiliser un `upsert` avec `payplug_id` comme cle unique.
+**Resolution :** Upsert Supabase avec `on_conflict=payplug_id` pour la table `paiements` et `on_conflict=reference` pour la table `commandes`. Les doublons sont automatiquement fusionnes.
 
 ---
 
@@ -778,26 +765,17 @@ Un attaquant pourrait envoyer un payload forge avec un `rental_id` arbitraire po
 
 ---
 
-### #8 MOYENNE — Token de session non cryptographique
+### #8 ~~MOYENNE~~ OBSOLETE — Token de session non cryptographique
 
-**Fichier :** `admin-core.js`
-
-**Probleme :** Le token de session est genere avec `Math.random().toString(36)` qui n'est pas cryptographiquement sur.
-
-**Correction :** Utiliser `crypto.getRandomValues()` :
-```javascript
-const array = new Uint8Array(32);
-crypto.getRandomValues(array);
-const token = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
-```
+**Resolution :** L'authentification admin a ete entierement migree vers Supabase Auth. Les tokens de session sont desormais des JWT generes cote serveur par Supabase. `Math.random()` n'est plus utilise a des fins de securite (uniquement pour des IDs d'interface non-critiques).
 
 ---
 
 ### #9 ~~MOYENNE~~ OBSOLETE — Hash admin par defaut dans le code source
 
-**Fichiers :** ~~`php/upload.php`, `php/delete.php`~~ — **supprimes**
+**Resolution :** Les uploads passent desormais par Supabase Storage avec authentification JWT.
 
-**Resolution :** Les endpoints PHP d'upload/delete ont ete entierement remplaces par Supabase Storage. L'authentification passe desormais par Supabase Auth (JWT). Ce point de securite n'est plus applicable.
+> **Note :** Les fichiers `php/upload.php` et `php/delete.php` existent encore dans le repo et doivent etre supprimes (voir checklist pre-production).
 
 ---
 
@@ -873,8 +851,8 @@ L'operateur spread peut ecraser les champs `rental_reference` et `instrument_nam
 | Supabase Storage : auth RLS | Les uploads passent par Supabase Auth avec policies admin-only |
 | Anti-spam : honeypot | Pas de reCAPTCHA (RGPD-friendly), champ invisible |
 | PayPlug : cle secrete cote serveur | La cle `PAYPLUG_SECRET_KEY` n'est jamais exposee au client |
-| Admin : SHA-256 avec sel | Hash de mot de passe via `SubtleCrypto` avec sel |
-| Admin : expiration de session | Session de 24h avec verification a chaque acces |
+| Admin : Supabase Auth | Authentification JWT geree cote serveur |
+| Email : rate limiting | 5 emails/min par IP dans `send-email.js` |
 | Integrated Payment : mode test configurable | `testMode: false` avec commentaire pour basculer |
 | Integrated Payment : fallback hosted | Si le SDK ne charge pas, retour transparent au mode heberge |
 
@@ -882,24 +860,30 @@ L'operateur spread peut ecraser les champs `rental_reference` et `instrument_nam
 
 ### Checklist de correction (par priorite)
 
+**Resolu :**
+
+- [x] #1 CORS whitelist sur toutes les Netlify Functions
+- [x] #2 Verification HMAC signature Swikly (SHA-256 + timingSafeEqual)
+- [x] #3 XSS corrigee dans `showPaymentSuccess()` (escapeHtml)
+- [x] #5 Idempotence webhook PayPlug (upsert on_conflict)
+- [x] #8 Auth migree vers Supabase JWT (Math.random obsolete)
+- [x] #9 Uploads migres vers Supabase Storage (PHP obsolete)
+- [x] #14 Auth via Supabase Auth (localStorage credentials obsolete)
+
 **Avant mise en production :**
 
-- [ ] #1 Restreindre CORS sur toutes les Netlify Functions (whitelist de domaines)
-- [ ] #2 Implementer la verification de signature Swikly (ou GET de verification)
-- [ ] #3 Corriger le XSS dans `showPaymentSuccess()` (echapper les variables)
-- [ ] #4 Ajouter un rate limiting ou token CSRF sur la creation de paiement
-- [ ] #5 Ajouter l'idempotence sur le webhook PayPlug (upsert sur `payplug_id`)
-- [ ] #6 Valider les donnees Swikly webhook avant mise a jour en base
-- [x] #9 ~~Supprimer le hash admin par defaut dans le code PHP~~ — OBSOLETE (PHP supprime, uploads via Supabase Storage)
+- [ ] #4 Ajouter rate limiting sur creation de paiement et depot
+- [ ] #6 Valider le schema des donnees webhook avant ecriture en base
+- [ ] #10 Masquer les messages d'erreur internes dans les reponses
+- [ ] #11 Filtrer les cles metadata Swikly avant stockage
+- [ ] Supprimer les fichiers PHP residuels
 
 **Ameliorations recommandees :**
 
-- [ ] #7 Rate limiting sur la connexion admin
-- [ ] #8 Token de session cryptographique
-- [ ] #10 Masquer les messages d'erreur internes
-- [ ] #11 Filtrer le spread de metadata Swikly
-- [ ] #12 Ajouter un header Content-Security-Policy
+- [ ] #7 Rate limiting connexion admin (Supabase gere cote serveur, evaluer si suffisant)
+- [ ] #12 CSP meta tag sur commander.html (deja dans netlify.toml pour la production)
+- [ ] #15 Evaluer le risque du fallback simpleHash
 
 ---
 
-*Documentation mise a jour le 6 fevrier 2026 (v3.3)*
+*Documentation mise a jour le 8 fevrier 2026 (v3.3)*
