@@ -114,6 +114,29 @@ async function validateStockPrice(amountCents, instrumentId, paymentType) {
   }
 }
 
+// ============================================================================
+// RATE LIMITING (in-memory, best-effort pour serverless)
+// ============================================================================
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 5; // 5 paiements par minute par IP
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(ip, { windowStart: now, count: 1 });
+    return true;
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    return false;
+  }
+  return true;
+}
+
 /**
  * Retourne l'origine CORS autorisée
  */
@@ -160,6 +183,20 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Origin': allowedOrigin
   };
 
+  // Rate limiting
+  const clientIp = event.headers['x-forwarded-for']?.split(',')[0]?.trim()
+    || event.headers['client-ip']
+    || 'unknown';
+
+  if (!checkRateLimit(clientIp)) {
+    console.warn(`Rate limit dépassé pour ${clientIp}`);
+    return {
+      statusCode: 429,
+      headers,
+      body: JSON.stringify({ error: 'Trop de requêtes, veuillez réessayer dans une minute' })
+    };
+  }
+
   // Récupérer les clés API
   const PAYPLUG_SECRET_KEY = process.env.PAYPLUG_SECRET_KEY;
 
@@ -197,7 +234,7 @@ exports.handler = async (event, context) => {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: priceCheck.reason })
+          body: JSON.stringify({ error: 'Montant invalide pour cet instrument' })
         };
       }
     }
@@ -373,8 +410,7 @@ exports.handler = async (event, context) => {
         statusCode: response.status,
         headers,
         body: JSON.stringify({
-          error: 'Erreur création paiement',
-          details: result.message || 'Erreur inconnue'
+          error: 'Erreur création paiement'
         })
       };
     }

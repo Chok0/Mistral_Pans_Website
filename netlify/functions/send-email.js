@@ -954,7 +954,7 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: 'Erreur lors de l\'envoi', details: result.message })
+        body: JSON.stringify({ error: 'Erreur lors de l\'envoi' })
       };
     }
 
