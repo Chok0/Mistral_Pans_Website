@@ -297,20 +297,39 @@ async function updateDatabase(status, data, metadata) {
   }
 
   try {
+    // Validation des données avant écriture
+    if (!data.id || typeof data.id !== 'string') {
+      console.warn('Webhook Swikly: data.id manquant ou invalide');
+      return;
+    }
+    if (data.amount !== undefined && (typeof data.amount !== 'number' || data.amount < 0)) {
+      console.warn('Webhook Swikly: montant invalide');
+      return;
+    }
+
+    // Filtrer les metadata — ne garder que les clés attendues
+    const safeMetadata = {
+      rental_reference: metadata.rental_reference || null,
+      instrument_name: metadata.instrument_name || null,
+      rental_duration_months: metadata.rental_duration_months || null,
+      client_id: metadata.client_id || null,
+      instrument_id: metadata.instrument_id || null,
+      location_id: metadata.location_id || null
+    };
+
     // Enregistrer/mettre à jour la caution
     const depositRecord = {
       swikly_id: data.id,
-      reference: metadata.rental_reference,
+      reference: safeMetadata.rental_reference,
       amount: data.amount,
       status: status,
-      customer_email: data.customer?.email,
+      customer_email: data.customer?.email || null,
       customer_name: `${data.customer?.first_name || ''} ${data.customer?.last_name || ''}`.trim(),
-      instrument_name: metadata.instrument_name,
-      rental_duration: metadata.rental_duration_months,
+      instrument_name: safeMetadata.instrument_name,
+      rental_duration: safeMetadata.rental_duration_months,
       captured_amount: data.captured_amount || 0,
       updated_at: new Date().toISOString(),
-      metadata: metadata,
-      raw_response: data
+      metadata: safeMetadata
     };
 
     // Upsert (insert ou update)

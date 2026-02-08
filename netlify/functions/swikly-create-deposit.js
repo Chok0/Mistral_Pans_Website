@@ -32,6 +32,29 @@ function generateRentalReference() {
   return `LOC${year}${month}-${random}`;
 }
 
+// ============================================================================
+// RATE LIMITING (in-memory, best-effort pour serverless)
+// ============================================================================
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 3; // 3 cautions par minute par IP
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(ip, { windowStart: now, count: 1 });
+    return true;
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    return false;
+  }
+  return true;
+}
+
 /**
  * Retourne l'origine CORS autorisée
  */
@@ -76,6 +99,20 @@ exports.handler = async (event, context) => {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': allowedOrigin
   };
+
+  // Rate limiting
+  const clientIp = event.headers['x-forwarded-for']?.split(',')[0]?.trim()
+    || event.headers['client-ip']
+    || 'unknown';
+
+  if (!checkRateLimit(clientIp)) {
+    console.warn(`Rate limit dépassé pour ${clientIp}`);
+    return {
+      statusCode: 429,
+      headers,
+      body: JSON.stringify({ error: 'Trop de requêtes, veuillez réessayer dans une minute' })
+    };
+  }
 
   // Récupérer les clés API Swikly
   const SWIKLY_API_KEY = process.env.SWIKLY_API_KEY;
@@ -152,11 +189,11 @@ exports.handler = async (event, context) => {
       webhook_url: `${process.env.URL || 'https://mistralpans.fr'}/.netlify/functions/swikly-webhook`,
       metadata: {
         rental_reference: reference,
-        instrument_name: instrumentName,
+        instrument_name: sanitize(instrumentName, 100),
         rental_duration_months: rentalDuration || 3,
-        client_id: metadata?.clientId || null,
-        instrument_id: metadata?.instrumentId || null,
-        location_id: metadata?.locationId || null
+        client_id: metadata?.clientId ? sanitize(String(metadata.clientId), 50) : null,
+        instrument_id: metadata?.instrumentId ? sanitize(String(metadata.instrumentId), 50) : null,
+        location_id: metadata?.locationId ? sanitize(String(metadata.locationId), 50) : null
       }
     };
 
@@ -180,8 +217,7 @@ exports.handler = async (event, context) => {
         statusCode: response.status,
         headers,
         body: JSON.stringify({
-          error: 'Erreur création caution',
-          details: result.message || result.error || 'Erreur inconnue'
+          error: 'Erreur création caution'
         })
       };
     }

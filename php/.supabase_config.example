@@ -1,6 +1,0 @@
-# Configuration Supabase pour la validation JWT (PHP)
-# Copiez ce fichier vers .supabase_config et renseignez vos valeurs
-# NE PAS committer .supabase_config dans git
-
-url=https://YOUR_PROJECT.supabase.co
-anon_key=YOUR_ANON_KEY_HERE
