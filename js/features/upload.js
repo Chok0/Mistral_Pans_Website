@@ -1,6 +1,6 @@
 /* ==========================================================================
    MISTRAL PANS - Module Upload Images
-   Solution hybride : IndexedDB en local, PHP en production
+   Solution hybride : IndexedDB en local, Supabase Storage en production
    ========================================================================== */
 
 (function(window) {
@@ -9,74 +9,69 @@
   // ============================================================================
   // CONFIGURATION
   // ============================================================================
-  
+
   const CONFIG = {
     // Images
-    MAX_IMAGE_SIZE: 10 * 1024 * 1024, // 10 Mo (augmenté)
+    MAX_IMAGE_SIZE: 10 * 1024 * 1024, // 10 Mo
     ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-    
+
     // Profils de compression
     PROFILES: {
-      // Pour les images hero/bannières (haute qualité)
       hero: {
         maxWidth: 1920,
         quality: 0.88,
         thumbWidth: 600
       },
-      // Pour les images standard (galerie, articles)
       standard: {
         maxWidth: 1400,
         quality: 0.82,
         thumbWidth: 400
       },
-      // Pour les miniatures/vignettes
       thumbnail: {
         maxWidth: 800,
         quality: 0.75,
         thumbWidth: 300
       },
-      // Pour les avatars/photos de profil
       avatar: {
         maxWidth: 400,
         quality: 0.80,
         thumbWidth: 150
       }
     },
-    
-    // Profil par défaut
+
+    // Profil par defaut
     DEFAULT_PROFILE: 'standard',
-    
-    // Legacy (pour rétrocompatibilité)
+
+    // Legacy (retrocompatibilite)
     MAX_WIDTH: 1400,
     THUMB_WIDTH: 400,
     WEBP_QUALITY: 0.82,
     JPEG_QUALITY: 0.88,
-    
-    // Vidéos
+
+    // Videos (local uniquement — production via YouTube)
     MAX_VIDEO_SIZE: 100 * 1024 * 1024, // 100 Mo
     ALLOWED_VIDEO_TYPES: ['video/mp4', 'video/webm'],
-    
-    // URLs PHP
-    PHP_UPLOAD_URL: 'php/upload.php',
-    PHP_DELETE_URL: 'php/delete.php',
-    
+
+    // Supabase Storage
+    STORAGE_BUCKET: 'galerie',
+
     // IndexedDB
     IDB_NAME: 'MistralGallery',
     IDB_VERSION: 2,
     IDB_STORE: 'images',
     IDB_VIDEO_STORE: 'videos',
-    
-    // Format de sortie préféré
+
+    // Format de sortie prefere
     OUTPUT_FORMAT: 'webp' // 'webp' ou 'jpeg'
   };
-  
-  // Tous les types acceptÃ©s
+
+  // Tous les types acceptes
   const ALL_ALLOWED_TYPES = [...CONFIG.ALLOWED_IMAGE_TYPES, ...CONFIG.ALLOWED_VIDEO_TYPES];
 
   // ============================================================================
-  // DÃ‰TECTION ENVIRONNEMENT
+  // DETECTION ENVIRONNEMENT
   // ============================================================================
-  
+
   function isLocalhost() {
     const host = window.location.hostname;
     return host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.');
@@ -85,7 +80,7 @@
   // ============================================================================
   // COMPRESSION D'IMAGE (Canvas API)
   // ============================================================================
-  
+
   /**
    * Charge une image depuis un fichier
    */
@@ -111,35 +106,34 @@
   function resizeImage(img, maxWidth) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     let width = img.width;
     let height = img.height;
-    
+
     if (width > maxWidth) {
       height = Math.round(height * (maxWidth / width));
       width = maxWidth;
     }
-    
+
     canvas.width = width;
     canvas.height = height;
-    
+
     // Fond blanc pour les PNG avec transparence
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
-    
-    // Dessiner l'image redimensionnÃ©e
+
     ctx.drawImage(img, 0, 0, width, height);
-    
+
     return canvas;
   }
 
   /**
-   * Détecte si le navigateur supporte WebP
+   * Detecte si le navigateur supporte WebP
    */
   let webpSupported = null;
   function supportsWebP() {
     if (webpSupported !== null) return webpSupported;
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = 1;
     canvas.height = 1;
@@ -149,7 +143,7 @@
   }
 
   /**
-   * Obtient le format et la qualité optimaux
+   * Obtient le format et la qualite optimaux
    */
   function getOptimalFormat() {
     if (CONFIG.OUTPUT_FORMAT === 'webp' && supportsWebP()) {
@@ -159,85 +153,76 @@
   }
 
   /**
-   * Convertit un canvas en Blob (WebP si supporté, sinon JPEG)
+   * Convertit un canvas en Blob (WebP si supporte, sinon JPEG)
    */
   function canvasToBlob(canvas, quality = null) {
     const format = getOptimalFormat();
     const q = quality || format.quality;
-    
+
     return new Promise((resolve) => {
       canvas.toBlob(resolve, format.mimeType, q);
     });
   }
 
   /**
-   * Convertit un canvas en Data URL (WebP si supporté, sinon JPEG)
+   * Convertit un canvas en Data URL (WebP si supporte, sinon JPEG)
    */
   function canvasToDataURL(canvas, quality = null) {
     const format = getOptimalFormat();
     const q = quality || format.quality;
-    
+
     return canvas.toDataURL(format.mimeType, q);
   }
 
   /**
-   * Compresse une image avec options avancées
+   * Compresse une image avec options avancees
    * @param {File} file - Fichier image
-   * @param {Object|string} options - Options de compression ou nom du profil ('hero', 'standard', 'thumbnail', 'avatar')
-   * @returns {Promise<Object>} - Images compressées
+   * @param {Object|string} options - Options ou nom de profil ('hero', 'standard', 'thumbnail', 'avatar')
+   * @returns {Promise<Object>} - Images compressees
    */
   async function compressImageAdvanced(file, options = {}) {
-    // Si options est une string, c'est un nom de profil
     if (typeof options === 'string') {
       options = { profile: options };
     }
-    
-    // Récupérer le profil
+
     const profileName = options.profile || CONFIG.DEFAULT_PROFILE;
     const profile = CONFIG.PROFILES[profileName] || CONFIG.PROFILES.standard;
-    
+
     const {
       maxWidth = profile.maxWidth,
       thumbWidth = profile.thumbWidth,
       quality = profile.quality,
       forceWebP = true
     } = options;
-    
-    // Vérifier le type
+
     if (!CONFIG.ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      throw new Error('Format image non supporté. Utilisez JPG, PNG, WebP ou GIF.');
+      throw new Error('Format image non supporte. Utilisez JPG, PNG, WebP ou GIF.');
     }
-    
-    // Vérifier la taille
+
     if (file.size > CONFIG.MAX_IMAGE_SIZE) {
       throw new Error('Image trop volumineuse (max 10 Mo).');
     }
-    
-    // Charger l'image
+
     const img = await loadImage(file);
-    
-    // Déterminer le format de sortie
+
     const format = getOptimalFormat();
     const q = quality;
-    
-    console.log(`[Upload] Compression (${profileName}): ${file.name} (${(file.size/1024).toFixed(1)}KB) → ${format.ext} @ ${Math.round(q*100)}% (max ${maxWidth}px)`);
-    
-    // Créer l'image principale
+
+    console.log(`[Upload] Compression (${profileName}): ${file.name} (${(file.size/1024).toFixed(1)}KB) -> ${format.ext} @ ${Math.round(q*100)}% (max ${maxWidth}px)`);
+
     const mainCanvas = resizeImage(img, maxWidth);
     const mainBlob = await canvasToBlob(mainCanvas, q);
     const mainDataURL = canvasToDataURL(mainCanvas, q);
-    
-    // Créer la miniature
+
     const thumbCanvas = resizeImage(img, thumbWidth);
     const thumbBlob = await canvasToBlob(thumbCanvas, q);
     const thumbDataURL = canvasToDataURL(thumbCanvas, q);
-    
-    // Libérer la mémoire
+
     URL.revokeObjectURL(img.src);
-    
+
     const compressionRatio = ((1 - mainBlob.size / file.size) * 100).toFixed(1);
-    console.log(`[Upload] Résultat: ${(mainBlob.size/1024).toFixed(1)}KB (${compressionRatio}% de réduction)`);
-    
+    console.log(`[Upload] Resultat: ${(mainBlob.size/1024).toFixed(1)}KB (${compressionRatio}% de reduction)`);
+
     return {
       main: {
         blob: mainBlob,
@@ -260,9 +245,9 @@
       compressionRatio: parseFloat(compressionRatio)
     };
   }
-  
+
   /**
-   * Compresse une image (wrapper pour rétrocompatibilité)
+   * Compresse une image (wrapper retrocompatibilite)
    */
   async function compressImage(file) {
     return compressImageAdvanced(file);
@@ -270,33 +255,31 @@
 
 
   /**
-   * GÃ©nÃ¨re une miniature Ã  partir d'une vidÃ©o
+   * Genere une miniature a partir d'une video
    */
   async function generateVideoThumbnail(file) {
     return new Promise((resolve, reject) => {
       const video = document.createElement('video');
       video.preload = 'metadata';
       video.muted = true;
-      
+
       video.onloadedmetadata = () => {
-        // Aller Ã  1 seconde ou au milieu si vidÃ©o courte
         video.currentTime = Math.min(1, video.duration / 2);
       };
-      
+
       video.onseeked = () => {
-        // CrÃ©er le canvas avec les dimensions de la vidÃ©o
         const canvas = document.createElement('canvas');
         const scale = CONFIG.THUMB_WIDTH / video.videoWidth;
         canvas.width = CONFIG.THUMB_WIDTH;
         canvas.height = video.videoHeight * scale;
-        
+
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
+
         const thumbnailDataURL = canvas.toDataURL('image/jpeg', 0.8);
-        
+
         URL.revokeObjectURL(video.src);
-        
+
         resolve({
           dataURL: thumbnailDataURL,
           width: canvas.width,
@@ -304,33 +287,30 @@
           duration: video.duration
         });
       };
-      
+
       video.onerror = () => {
         URL.revokeObjectURL(video.src);
-        reject(new Error('Impossible de lire la vidÃ©o'));
+        reject(new Error('Impossible de lire la video'));
       };
-      
+
       video.src = URL.createObjectURL(file);
     });
   }
 
   /**
-   * PrÃ©pare une vidÃ©o pour l'upload
+   * Prepare une video pour l'upload
    */
   async function prepareVideo(file) {
-    // VÃ©rifier le type
     if (!CONFIG.ALLOWED_VIDEO_TYPES.includes(file.type)) {
-      throw new Error('Format vidÃ©o non supportÃ©. Utilisez MP4 ou WebM.');
+      throw new Error('Format video non supporte. Utilisez MP4 ou WebM.');
     }
-    
-    // VÃ©rifier la taille
+
     if (file.size > CONFIG.MAX_VIDEO_SIZE) {
-      throw new Error('VidÃ©o trop volumineuse (max 100 Mo).');
+      throw new Error('Video trop volumineuse (max 100 Mo).');
     }
-    
-    // GÃ©nÃ©rer la miniature
+
     const thumbnail = await generateVideoThumbnail(file);
-    
+
     return {
       file: file,
       thumbnail: thumbnail,
@@ -339,7 +319,7 @@
   }
 
   /**
-   * DÃ©tecte le type de fichier
+   * Detecte le type de fichier
    */
   function getFileType(file) {
     if (CONFIG.ALLOWED_IMAGE_TYPES.includes(file.type)) return 'image';
@@ -350,28 +330,25 @@
   // ============================================================================
   // INDEXEDDB (STOCKAGE LOCAL)
   // ============================================================================
-  
+
   let dbInstance = null;
 
-  /**
-   * Ouvre la connexion IndexedDB
-   */
   function openDatabase() {
     return new Promise((resolve, reject) => {
       if (dbInstance) {
         resolve(dbInstance);
         return;
       }
-      
+
       const request = indexedDB.open(CONFIG.IDB_NAME, CONFIG.IDB_VERSION);
-      
+
       request.onerror = () => reject(new Error('Erreur IndexedDB'));
-      
+
       request.onsuccess = () => {
         dbInstance = request.result;
         resolve(dbInstance);
       };
-      
+
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
         if (!db.objectStoreNames.contains(CONFIG.IDB_STORE)) {
@@ -384,39 +361,33 @@
     });
   }
 
-  /**
-   * Sauvegarde une image en IndexedDB
-   */
   async function saveToIndexedDB(id, mainDataURL, thumbDataURL) {
     const db = await openDatabase();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([CONFIG.IDB_STORE], 'readwrite');
       const store = transaction.objectStore(CONFIG.IDB_STORE);
-      
+
       const data = {
         id: id,
         main: mainDataURL,
         thumb: thumbDataURL,
         createdAt: new Date().toISOString()
       };
-      
+
       const request = store.put(data);
       request.onsuccess = () => resolve(data);
       request.onerror = () => reject(new Error('Erreur sauvegarde IndexedDB'));
     });
   }
 
-  /**
-   * Sauvegarde une vidÃ©o en IndexedDB (stocke le blob)
-   */
   async function saveVideoToIndexedDB(id, videoBlob, thumbDataURL, duration) {
     const db = await openDatabase();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([CONFIG.IDB_VIDEO_STORE], 'readwrite');
       const store = transaction.objectStore(CONFIG.IDB_VIDEO_STORE);
-      
+
       const data = {
         id: id,
         video: videoBlob,
@@ -424,39 +395,33 @@
         duration: duration,
         createdAt: new Date().toISOString()
       };
-      
+
       const request = store.put(data);
       request.onsuccess = () => resolve(data);
-      request.onerror = () => reject(new Error('Erreur sauvegarde vidÃ©o IndexedDB'));
+      request.onerror = () => reject(new Error('Erreur sauvegarde video IndexedDB'));
     });
   }
 
-  /**
-   * RÃ©cupÃ¨re une image depuis IndexedDB
-   */
   async function getFromIndexedDB(id) {
     const db = await openDatabase();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([CONFIG.IDB_STORE], 'readonly');
       const store = transaction.objectStore(CONFIG.IDB_STORE);
-      
+
       const request = store.get(id);
       request.onsuccess = () => resolve(request.result || null);
       request.onerror = () => reject(new Error('Erreur lecture IndexedDB'));
     });
   }
 
-  /**
-   * Supprime une image d'IndexedDB
-   */
   async function deleteFromIndexedDB(id) {
     const db = await openDatabase();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([CONFIG.IDB_STORE], 'readwrite');
       const store = transaction.objectStore(CONFIG.IDB_STORE);
-      
+
       const request = store.delete(id);
       request.onsuccess = () => resolve(true);
       request.onerror = () => reject(new Error('Erreur suppression IndexedDB'));
@@ -464,86 +429,163 @@
   }
 
   // ============================================================================
-  // UPLOAD SERVEUR (PHP)
+  // UPLOAD SUPABASE STORAGE
   // ============================================================================
-  
+
   /**
-   * Recupere le JWT Supabase pour authentifier les requetes serveur
+   * Recupere le client Supabase initialise
    */
-  function getAdminToken() {
-    if (window.MistralAuth && window.MistralAuth.getAccessTokenSync) {
-      return window.MistralAuth.getAccessTokenSync() || '';
+  function getSupabaseClient() {
+    if (window.MistralDB && window.MistralDB.getClient) {
+      return window.MistralDB.getClient();
     }
-    return '';
+    return null;
   }
 
   /**
-   * Upload vers le serveur PHP
+   * Genere un chemin unique pour le Storage
+   * Format: handpan-2026-02-07T18-30-00-abc12345.webp
    */
-  async function uploadToServer(file) {
-    const formData = new FormData();
-    formData.append('image', file);
-    
-    const response = await fetch(CONFIG.PHP_UPLOAD_URL, {
-      method: 'POST',
-      headers: {
-        'X-Admin-Token': getAdminToken()
-      },
-      body: formData
-    });
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.error || 'Erreur upload serveur');
-    }
-    
-    return result.data;
+  function generateStoragePath(prefix, ext) {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const random = Math.random().toString(36).substr(2, 8);
+    return `${prefix}-${timestamp}-${random}.${ext}`;
   }
 
   /**
-   * Supprime une image sur le serveur
+   * Upload un blob vers Supabase Storage
+   * @param {Blob} blob - Le fichier a uploader
+   * @param {string} filePath - Chemin dans le bucket
+   * @param {string} contentType - MIME type
+   * @returns {Promise<{ path: string, publicUrl: string }>}
    */
-  async function deleteFromServer(filename) {
-    const response = await fetch(CONFIG.PHP_DELETE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Admin-Token': getAdminToken()
-      },
-      body: JSON.stringify({ filename })
-    });
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.error || 'Erreur suppression serveur');
+  async function uploadToStorage(blob, filePath, contentType) {
+    const client = getSupabaseClient();
+    if (!client) {
+      throw new Error('Supabase non disponible. Verifiez votre connexion admin.');
     }
-    
+
+    const { data, error } = await client.storage
+      .from(CONFIG.STORAGE_BUCKET)
+      .upload(filePath, blob, {
+        contentType: contentType,
+        cacheControl: '31536000', // 1 an
+        upsert: false
+      });
+
+    if (error) {
+      console.error('[Upload] Erreur Supabase Storage:', error);
+      throw new Error('Erreur upload: ' + error.message);
+    }
+
+    // Recuperer l'URL publique
+    const { data: urlData } = client.storage
+      .from(CONFIG.STORAGE_BUCKET)
+      .getPublicUrl(data.path);
+
+    console.log('[Upload] Supabase Storage OK:', data.path);
+
+    return {
+      path: data.path,
+      publicUrl: urlData.publicUrl
+    };
+  }
+
+  /**
+   * Upload image principale + miniature vers Supabase Storage
+   *
+   * @param {Blob} mainBlob - Image compressee principale
+   * @param {Blob} thumbBlob - Miniature compressee
+   * @returns {Promise<{ src: string, thumbnail: string, storagePath: string }>}
+   */
+  async function uploadToServer(mainBlob, thumbBlob) {
+    const format = getOptimalFormat();
+    const mainPath = generateStoragePath('handpan', format.ext);
+    const thumbPath = 'thumbs/' + mainPath;
+
+    // Upload image principale
+    const mainResult = await uploadToStorage(mainBlob, mainPath, format.mimeType);
+
+    // Upload miniature (fallback sur image principale si echec)
+    let thumbUrl = mainResult.publicUrl;
+    try {
+      const thumbResult = await uploadToStorage(thumbBlob, thumbPath, format.mimeType);
+      thumbUrl = thumbResult.publicUrl;
+    } catch (e) {
+      console.warn('[Upload] Miniature non uploadee, fallback sur image principale:', e.message);
+    }
+
+    return {
+      src: mainResult.publicUrl,
+      thumbnail: thumbUrl,
+      storagePath: mainResult.path
+    };
+  }
+
+  /**
+   * Supprime un fichier de Supabase Storage
+   * Accepte un path relatif ou une URL publique complete
+   *
+   * @param {string} srcOrPath - URL publique ou chemin relatif dans le bucket
+   */
+  async function deleteFromServer(srcOrPath) {
+    const client = getSupabaseClient();
+    if (!client) {
+      throw new Error('Supabase non disponible');
+    }
+
+    // Extraire le path relatif depuis l'URL publique si necessaire
+    // URL type: https://xxx.supabase.co/storage/v1/object/public/galerie/handpan-2026-...webp
+    let storagePath = srcOrPath;
+    const bucketMarker = '/object/public/' + CONFIG.STORAGE_BUCKET + '/';
+    if (srcOrPath.includes(bucketMarker)) {
+      storagePath = srcOrPath.split(bucketMarker).pop();
+    }
+
+    // Supprimer l'image principale
+    const { error } = await client.storage
+      .from(CONFIG.STORAGE_BUCKET)
+      .remove([storagePath]);
+
+    if (error) {
+      console.error('[Upload] Erreur suppression:', error);
+      throw new Error('Erreur suppression: ' + error.message);
+    }
+
+    // Essayer aussi de supprimer la miniature (thumbs/...)
+    try {
+      await client.storage
+        .from(CONFIG.STORAGE_BUCKET)
+        .remove(['thumbs/' + storagePath]);
+    } catch (e) {
+      // Pas grave si la miniature n'existe pas
+    }
+
+    console.log('[Upload] Supprime de Supabase Storage:', storagePath);
     return true;
   }
 
   // ============================================================================
   // API PUBLIQUE (HYBRIDE)
   // ============================================================================
-  
+
   /**
-   * Upload une image (auto-dÃ©tecte local/production)
+   * Upload une image (auto-detecte local/production)
    */
   async function uploadImage(file, onProgress = null) {
-    // Compresser cÃ´tÃ© client d'abord (pour preview et IndexedDB)
+    // Compresser cote client d'abord
     if (onProgress) onProgress(10, 'Compression...');
     const compressed = await compressImage(file);
-    
+
     if (isLocalhost()) {
       // MODE LOCAL : IndexedDB
       if (onProgress) onProgress(50, 'Sauvegarde locale...');
-      
+
       const id = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       await saveToIndexedDB(id, compressed.main.dataURL, compressed.thumb.dataURL);
-      
-      if (onProgress) onProgress(100, 'TerminÃ©');
-      
+
+      if (onProgress) onProgress(100, 'Termine');
+
       return {
         id: id,
         type: 'image',
@@ -554,50 +596,46 @@
         isLocal: true
       };
     } else {
-      // MODE PRODUCTION : Upload PHP
-      if (onProgress) onProgress(30, 'Envoi au serveur...');
-      
-      // CrÃ©er un nouveau fichier compressÃ© pour l'upload
-      const compressedFile = new File([compressed.main.blob], 'image.jpg', { type: 'image/jpeg' });
-      
-      const result = await uploadToServer(compressedFile);
-      
-      if (onProgress) onProgress(100, 'TerminÃ©');
-      
+      // MODE PRODUCTION : Supabase Storage
+      if (onProgress) onProgress(30, 'Envoi vers Supabase...');
+
+      const result = await uploadToServer(compressed.main.blob, compressed.thumb.blob);
+
+      if (onProgress) onProgress(100, 'Termine');
+
       return {
-        id: null, // L'ID sera gÃ©nÃ©rÃ© par Gallery.add()
+        id: null, // L'ID sera genere par Galerie.create()
         type: 'image',
         src: result.src,
         thumbnail: result.thumbnail,
-        width: result.width,
-        height: result.height,
-        isLocal: false
+        width: compressed.main.width,
+        height: compressed.main.height,
+        isLocal: false,
+        storagePath: result.storagePath
       };
     }
   }
 
   /**
-   * Upload une vidÃ©o (auto-dÃ©tecte local/production)
+   * Upload une video (local uniquement — en production, utiliser YouTube)
    */
   async function uploadVideo(file, onProgress = null) {
-    if (onProgress) onProgress(10, 'PrÃ©paration vidÃ©o...');
+    if (onProgress) onProgress(10, 'Preparation video...');
     const prepared = await prepareVideo(file);
-    
+
     if (isLocalhost()) {
       // MODE LOCAL : IndexedDB
       if (onProgress) onProgress(50, 'Sauvegarde locale...');
-      
+
       const id = 'local_video_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      
-      // Convertir le fichier en blob pour stockage
+
       const videoBlob = new Blob([file], { type: file.type });
       await saveVideoToIndexedDB(id, videoBlob, prepared.thumbnail.dataURL, prepared.thumbnail.duration);
-      
-      // CrÃ©er une URL blob temporaire pour la lecture
+
       const videoURL = URL.createObjectURL(videoBlob);
-      
-      if (onProgress) onProgress(100, 'TerminÃ©');
-      
+
+      if (onProgress) onProgress(100, 'Termine');
+
       return {
         id: id,
         type: 'video',
@@ -608,69 +646,28 @@
         localBlob: videoBlob
       };
     } else {
-      // MODE PRODUCTION : Upload PHP
-      if (onProgress) onProgress(30, 'Envoi au serveur...');
-      
-      const result = await uploadVideoToServer(file, prepared.thumbnail, onProgress);
-      
-      if (onProgress) onProgress(100, 'TerminÃ©');
-      
-      return {
-        id: null,
-        type: 'video',
-        src: result.src,
-        thumbnail: result.thumbnail,
-        duration: prepared.thumbnail.duration,
-        isLocal: false
-      };
+      // MODE PRODUCTION : Les videos passent par YouTube
+      throw new Error('Upload video non disponible en production. Utilisez YouTube et ajoutez le lien dans la galerie.');
     }
   }
 
   /**
-   * Upload un mÃ©dia (dÃ©tecte automatiquement image ou vidÃ©o)
+   * Upload un media (detecte automatiquement image ou video)
    */
   async function uploadMedia(file, onProgress = null) {
     const fileType = getFileType(file);
-    
+
     if (fileType === 'image') {
       return uploadImage(file, onProgress);
     } else if (fileType === 'video') {
       return uploadVideo(file, onProgress);
     } else {
-      throw new Error('Format de fichier non supportÃ©');
+      throw new Error('Format de fichier non supporte');
     }
   }
 
   /**
-   * Upload vidÃ©o vers le serveur PHP
-   */
-  async function uploadVideoToServer(file, thumbnail, onProgress) {
-    const formData = new FormData();
-    formData.append('video', file);
-    
-    // Convertir la miniature en blob
-    const thumbBlob = await fetch(thumbnail.dataURL).then(r => r.blob());
-    formData.append('thumbnail', thumbBlob, 'thumbnail.jpg');
-    
-    const response = await fetch(CONFIG.PHP_UPLOAD_URL + '?type=video', {
-      method: 'POST',
-      headers: {
-        'X-Admin-Token': getAdminToken()
-      },
-      body: formData
-    });
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.error || 'Erreur upload vidÃ©o');
-    }
-    
-    return result.data;
-  }
-
-  /**
-   * Supprime une image
+   * Supprime une image (IndexedDB ou Supabase Storage)
    */
   async function deleteImage(mediaItem) {
     if (mediaItem.isLocal || (mediaItem.src && mediaItem.src.startsWith('data:'))) {
@@ -679,56 +676,52 @@
         await deleteFromIndexedDB(mediaItem.id);
       }
     } else if (mediaItem.src) {
-      // Suppression serveur
-      const filename = mediaItem.src.split('/').pop();
-      await deleteFromServer(filename);
+      // Suppression Supabase Storage (accepte storagePath ou URL publique)
+      await deleteFromServer(mediaItem.storagePath || mediaItem.src);
     }
     return true;
   }
 
   /**
-   * RÃ©cupÃ¨re l'URL d'une image (rÃ©sout les DataURL locales)
+   * Recupere l'URL d'une image (resout les DataURL locales)
    */
   async function getImageURL(mediaItem) {
     if (mediaItem.src && mediaItem.src.startsWith('data:')) {
       return mediaItem.src;
     }
-    
+
     if (mediaItem.isLocal && mediaItem.id) {
       const stored = await getFromIndexedDB(mediaItem.id);
       if (stored) {
         return stored.main;
       }
     }
-    
+
     return mediaItem.src;
   }
 
   /**
-   * RÃ©cupÃ¨re l'URL de la miniature
+   * Recupere l'URL de la miniature
    */
   async function getThumbnailURL(mediaItem) {
     if (mediaItem.thumbnail && mediaItem.thumbnail.startsWith('data:')) {
       return mediaItem.thumbnail;
     }
-    
+
     if (mediaItem.isLocal && mediaItem.id) {
       const stored = await getFromIndexedDB(mediaItem.id);
       if (stored) {
         return stored.thumb;
       }
     }
-    
+
     return mediaItem.thumbnail || mediaItem.src;
   }
 
   // ============================================================================
-  // COMPOSANT UI : INPUT FILE AMÃ‰LIORÃ‰
+  // COMPOSANT UI : INPUT FILE AMELIORE
   // ============================================================================
-  
-  /**
-   * CrÃ©e un composant d'upload avec preview (images et vidÃ©os)
-   */
+
   function createUploadInput(options = {}) {
     const {
       id = 'media-upload',
@@ -739,15 +732,14 @@
       onError = null
     } = options;
 
-    // DÃ©terminer les formats acceptÃ©s
     let acceptAttr = accept;
     let helpText = 'JPG, PNG, WebP, MP4, WebM';
-    let maxSizeText = '5 Mo images / 100 Mo vidÃ©os';
-    
+    let maxSizeText = '10 Mo images / 100 Mo videos';
+
     if (acceptType === 'image') {
       acceptAttr = 'image/jpeg,image/png,image/webp';
       helpText = 'JPG, PNG ou WebP';
-      maxSizeText = 'max 5 Mo';
+      maxSizeText = 'max 10 Mo';
     } else if (acceptType === 'video') {
       acceptAttr = 'video/mp4,video/webm';
       helpText = 'MP4 ou WebM';
@@ -767,15 +759,15 @@
           </svg>
         </div>
         <div class="upload-input__text">
-          <strong>Cliquer pour sÃ©lectionner</strong>
+          <strong>Cliquer pour selectionner</strong>
           <span>${helpText} (${maxSizeText})</span>
         </div>
       </label>
       <div class="upload-input__preview" style="display:none;">
         <img alt="Preview" class="upload-input__preview-img" style="display:none;">
         <video class="upload-input__preview-video" style="display:none;" muted></video>
-        <div class="upload-input__preview-play" style="display:none;">â–¶</div>
-        <button type="button" class="upload-input__remove" title="Supprimer">Ã—</button>
+        <div class="upload-input__preview-play" style="display:none;">&#9654;</div>
+        <button type="button" class="upload-input__remove" title="Supprimer">&times;</button>
       </div>
       <div class="upload-input__progress" style="display:none;">
         <div class="upload-input__progress-bar"></div>
@@ -802,35 +794,33 @@
       if (!file) return;
 
       const fileType = getFileType(file);
-      
-      // VÃ©rifications
+
       if (!fileType) {
-        if (onError) onError('Format non supportÃ©');
+        if (onError) onError('Format non supporte');
         return;
       }
-      
+
       if (fileType === 'image' && file.size > CONFIG.MAX_IMAGE_SIZE) {
-        if (onError) onError('Image trop volumineuse (max 5 Mo)');
+        if (onError) onError('Image trop volumineuse (max 10 Mo)');
         return;
       }
-      
+
       if (fileType === 'video' && file.size > CONFIG.MAX_VIDEO_SIZE) {
-        if (onError) onError('VidÃ©o trop volumineuse (max 100 Mo)');
+        if (onError) onError('Video trop volumineuse (max 100 Mo)');
         return;
       }
 
       selectedFile = file;
       selectedType = fileType;
 
-      // Afficher la preview
       label.style.display = 'none';
       preview.style.display = 'block';
-      
+
       if (fileType === 'image') {
         previewImg.style.display = 'block';
         previewVideo.style.display = 'none';
         previewPlay.style.display = 'none';
-        
+
         const reader = new FileReader();
         reader.onload = (ev) => {
           previewImg.src = ev.target.result;
@@ -840,10 +830,9 @@
         previewImg.style.display = 'none';
         previewVideo.style.display = 'block';
         previewPlay.style.display = 'flex';
-        
+
         previewVideo.src = URL.createObjectURL(file);
         previewVideo.onloadedmetadata = () => {
-          // Capturer une frame pour la preview
           previewVideo.currentTime = Math.min(1, previewVideo.duration / 2);
         };
       }
@@ -869,13 +858,12 @@
       previewVideo.src = '';
     }
 
-    // MÃ©thodes exposÃ©es
     wrapper.getFile = () => selectedFile;
     wrapper.getType = () => selectedType;
-    
+
     wrapper.upload = async () => {
       if (!selectedFile) {
-        throw new Error('Aucun fichier sÃ©lectionnÃ©');
+        throw new Error('Aucun fichier selectionne');
       }
 
       label.style.display = 'none';
@@ -889,10 +877,9 @@
         });
 
         if (onUpload) onUpload(result);
-        
-        // Reset
+
         reset();
-        
+
         return result;
       } catch (error) {
         progressWrap.style.display = 'none';
@@ -910,7 +897,7 @@
   // ============================================================================
   // STYLES
   // ============================================================================
-  
+
   function injectStyles() {
     if (document.getElementById('upload-input-styles')) return;
 
@@ -920,7 +907,7 @@
       .upload-input {
         position: relative;
       }
-      
+
       .upload-input__file {
         position: absolute;
         width: 0;
@@ -928,7 +915,7 @@
         opacity: 0;
         pointer-events: none;
       }
-      
+
       .upload-input__label {
         display: flex;
         flex-direction: column;
@@ -943,39 +930,39 @@
         transition: all 0.2s;
         text-align: center;
       }
-      
+
       .upload-input__label:hover {
         border-color: var(--admin-accent, #0D7377);
         background: var(--admin-surface-hover, #242220);
       }
-      
+
       .upload-input__icon {
         color: var(--admin-text-muted, #a8a5a0);
       }
-      
+
       .upload-input__text {
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
       }
-      
+
       .upload-input__text strong {
         color: var(--admin-text, #f5f3ef);
         font-size: 0.9375rem;
       }
-      
+
       .upload-input__text span {
         color: var(--admin-text-muted, #a8a5a0);
         font-size: 0.8125rem;
       }
-      
+
       .upload-input__preview {
         position: relative;
         border-radius: var(--admin-radius-md, 8px);
         overflow: hidden;
         background: var(--admin-bg, #0f0e0d);
       }
-      
+
       .upload-input__preview img,
       .upload-input__preview video {
         display: block;
@@ -983,7 +970,7 @@
         max-height: 200px;
         object-fit: contain;
       }
-      
+
       .upload-input__preview-play {
         position: absolute;
         top: 50%;
@@ -1000,7 +987,7 @@
         font-size: 1.25rem;
         pointer-events: none;
       }
-      
+
       .upload-input__remove {
         position: absolute;
         top: 0.5rem;
@@ -1016,11 +1003,11 @@
         cursor: pointer;
         transition: background 0.2s;
       }
-      
+
       .upload-input__remove:hover {
         background: var(--admin-error, #e74c3c);
       }
-      
+
       .upload-input__progress {
         display: flex;
         align-items: center;
@@ -1029,7 +1016,7 @@
         background: var(--admin-surface, #1a1815);
         border-radius: var(--admin-radius-md, 8px);
       }
-      
+
       .upload-input__progress-bar {
         flex: 1;
         height: 6px;
@@ -1038,7 +1025,7 @@
         overflow: hidden;
         position: relative;
       }
-      
+
       .upload-input__progress-bar::after {
         content: '';
         position: absolute;
@@ -1049,7 +1036,7 @@
         background: var(--admin-accent, #0D7377);
         transition: width 0.3s;
       }
-      
+
       .upload-input__progress-text {
         color: var(--admin-text-muted, #a8a5a0);
         font-size: 0.8125rem;
@@ -1070,35 +1057,35 @@
   // ============================================================================
   // EXPORT
   // ============================================================================
-  
+
   window.MistralUpload = {
     // Configuration
     CONFIG,
-    
-    // Détection
+
+    // Detection
     isLocalhost,
     getFileType,
     supportsWebP,
-    
-    // Compression / Préparation
+
+    // Compression / Preparation
     compressImage,
     compressImageAdvanced,
     prepareVideo,
     generateVideoThumbnail,
-    
+
     // Upload/Delete
     uploadImage,
     uploadVideo,
     uploadMedia,
     deleteImage,
-    
+
     // URLs
     getImageURL,
     getThumbnailURL,
-    
+
     // UI
     createUploadInput,
-    
+
     // IndexedDB (pour debug)
     _idb: {
       open: openDatabase,

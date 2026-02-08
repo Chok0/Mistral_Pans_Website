@@ -121,10 +121,6 @@ npx serve .
 |   +-- pages/               # Logique specifique par page
 |       +-- commander.js     # Formulaire commande + paiement
 |
-|-- php/
-|   |-- upload.php           # Upload fichiers
-|   +-- delete.php           # Suppression fichiers
-|
 |-- ressources/
 |   |-- images/              # Photos, logos, assets
 |   +-- audio/               # Samples FLAC (56 notes)
@@ -157,7 +153,7 @@ npx serve .
 ### Backend
 - **Database :** Supabase PostgreSQL avec RLS
 - **Email :** Brevo SMTP via Netlify Functions
-- **Hosting :** OVH Mutualise (support PHP)
+- **Hosting :** Netlify (site) + OVH (domaine)
 - **Serverless :** Netlify Functions
 
 ### Anti-Spam
@@ -387,8 +383,7 @@ Dans Supabase > **Authentication > Users** > "Add User" :
 - [x] Externaliser les identifiants Supabase (`window.MISTRAL_CONFIG`)
 - [x] Corriger injection email header
 - [x] Corriger vulnerabilites XSS (sanitizeHtml, escapeHtml)
-- [x] Restreindre CORS sur endpoints PHP
-- [x] Securiser tokens upload/delete
+- [x] Migrer uploads de PHP vers Supabase Storage
 - [x] Banniere consentement cookies
 - [x] Google Fonts conditionnel
 - [x] Refactoriser admin-ui.js en 7 modules
@@ -546,13 +541,12 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 
 ### Hebergement
 - OVH Mutualise (domaine + hebergement)
-- Site statique avec scripts PHP pour uploads
+- Site statique avec uploads via Supabase Storage
 - SSL/TLS inclus
 
 ### Checklist pre-production
 
 - [ ] Changer mot de passe admin par defaut
-- [ ] Creer le fichier `php/.admin_hash` (voir ci-dessous)
 - [ ] Configurer cles Payplug (PAYPLUG_SECRET_KEY)
 - [ ] Verifier encodage UTF-8
 - [ ] Optimiser images (WebP)
@@ -561,39 +555,8 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 - [x] Creer pages legales (mentions, CGV)
 - [x] Configurer banniere consentement cookies
 - [x] Externaliser identifiants Supabase
-- [x] Securiser endpoints PHP (CORS, tokens)
+- [x] Migrer uploads vers Supabase Storage (suppression PHP)
 - [x] Anti-spam honeypot (tous formulaires)
-- [x] Supprimer le hash admin par defaut dans le code PHP
-
-### Configuration du hash admin (`php/.admin_hash`)
-
-Les endpoints PHP (`upload.php`, `delete.php`) verifient un token admin pour autoriser les operations. Sans ce fichier, **toutes les requetes admin sont refusees**.
-
-**Etape 1 — Generer un hash securise :**
-
-```bash
-# Option A : hash SHA-256 du mot de passe admin (recommande)
-echo -n "votre-mot-de-passe" | sha256sum | cut -d' ' -f1 > php/.admin_hash
-
-# Option B : token aleatoire
-openssl rand -hex 32 > php/.admin_hash
-```
-
-**Etape 2 — Securiser les permissions :**
-
-```bash
-chmod 600 php/.admin_hash
-```
-
-**Alternative — Variable d'environnement :**
-
-Si le fichier n'est pas utilisable (hebergement restreint), definir la variable :
-
-```bash
-export MISTRAL_ADMIN_HASH="votre-hash-ici"
-```
-
-> **Note :** Le fichier `php/.admin_hash` est dans `.gitignore` et ne sera jamais commite.
 
 ### Services externes
 
@@ -684,7 +647,7 @@ export MISTRAL_ADMIN_HASH="votre-hash-ici"
 | 6 | **HAUTE** | Swikly webhook | Donnees non verifiees utilisees pour mettre a jour Supabase | A corriger |
 | 7 | **MOYENNE** | Admin auth | Pas de rate limiting sur les tentatives de connexion | A corriger |
 | 8 | **MOYENNE** | Admin auth | Token de session genere avec `Math.random()` (non cryptographique) | A corriger |
-| 9 | **MOYENNE** | PHP endpoints | Hash admin par defaut en dur dans le code source (`-6de5765f`) | A corriger |
+| 9 | ~~MOYENNE~~ | ~~PHP endpoints~~ | ~~Hash admin par defaut~~ — **OBSOLETE** : endpoints PHP supprimes, uploads via Supabase Storage | Resolu |
 | 10 | **MOYENNE** | Netlify Functions | Messages d'erreur internes exposes au client (`error.message`) | A corriger |
 | 11 | **MOYENNE** | Swikly create | Spread `...metadata` non filtre dans le payload | A corriger |
 | 12 | **FAIBLE** | commander.html | Pas de Content-Security-Policy (CSP) header | Recommande |
@@ -703,7 +666,7 @@ export MISTRAL_ADMIN_HASH="votre-hash-ici"
 - Envoyer des emails via Brevo en usurpant le formulaire de contact
 - Declencher des cautions Swikly avec des donnees forgees
 
-**Comparaison :** Les fichiers PHP (`upload.php`, `delete.php`) utilisent correctement une whitelist de domaines.
+**Note :** Les anciens fichiers PHP d'upload ont ete remplaces par Supabase Storage (authentification via Supabase Auth).
 
 **Correction recommandee :**
 ```javascript
@@ -830,13 +793,11 @@ const token = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
 
 ---
 
-### #9 ~~MOYENNE~~ CORRIGE — Hash admin par defaut dans le code source
+### #9 ~~MOYENNE~~ OBSOLETE — Hash admin par defaut dans le code source
 
-**Fichiers :** `php/upload.php`, `php/delete.php`
+**Fichiers :** ~~`php/upload.php`, `php/delete.php`~~ — **supprimes**
 
-**Probleme :** Le hash par defaut `-6de5765f` etait en dur dans le code source public.
-
-**Correction appliquee :** Le fallback par defaut a ete supprime. Si `.admin_hash` et la variable d'environnement `MISTRAL_ADMIN_HASH` sont absents, `getAdminHash()` retourne `null` → acces refuse. Voir la section [Configuration du hash admin](#configuration-du-hash-admin-phpadmin_hash) pour la mise en place.
+**Resolution :** Les endpoints PHP d'upload/delete ont ete entierement remplaces par Supabase Storage. L'authentification passe desormais par Supabase Auth (JWT). Ce point de securite n'est plus applicable.
 
 ---
 
@@ -909,10 +870,7 @@ L'operateur spread peut ecraser les champs `rental_reference` et `instrument_nam
 | Webhook PayPlug : GET de verification | Le webhook ne fait pas confiance au payload, il GET les details aupres de l'API PayPlug |
 | Sanitization des inputs PayPlug | `sanitize()`, `cleanObject()`, validation email, limites de longueur |
 | Email : echappement HTML | `escapeHtml()` et `sanitizeEmailHeader()` dans `send-email.js` |
-| PHP : CORS whitelist | Les endpoints PHP ont une whitelist de domaines autorisees |
-| PHP : MIME type reel | `finfo_file()` pour verifier le type MIME (pas l'extension) |
-| PHP : traversee de repertoire | `basename()` sur le nom de fichier dans `delete.php` |
-| PHP : timing-safe comparison | `hash_equals()` pour la verification de token |
+| Supabase Storage : auth RLS | Les uploads passent par Supabase Auth avec policies admin-only |
 | Anti-spam : honeypot | Pas de reCAPTCHA (RGPD-friendly), champ invisible |
 | PayPlug : cle secrete cote serveur | La cle `PAYPLUG_SECRET_KEY` n'est jamais exposee au client |
 | Admin : SHA-256 avec sel | Hash de mot de passe via `SubtleCrypto` avec sel |
@@ -932,7 +890,7 @@ L'operateur spread peut ecraser les champs `rental_reference` et `instrument_nam
 - [ ] #4 Ajouter un rate limiting ou token CSRF sur la creation de paiement
 - [ ] #5 Ajouter l'idempotence sur le webhook PayPlug (upsert sur `payplug_id`)
 - [ ] #6 Valider les donnees Swikly webhook avant mise a jour en base
-- [x] #9 Supprimer le hash admin par defaut dans le code PHP
+- [x] #9 ~~Supprimer le hash admin par defaut dans le code PHP~~ — OBSOLETE (PHP supprime, uploads via Supabase Storage)
 
 **Ameliorations recommandees :**
 
