@@ -555,7 +555,7 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 
 ### Checklist pre-production
 
-- [ ] Supprimer les fichiers PHP residuels (`php/upload.php`, `php/delete.php`)
+- [x] Supprimer les fichiers PHP residuels (`php/upload.php`, `php/delete.php`)
 - [ ] Regenerer cle LIVE PayPlug (exposee en clair) et mettre a jour Netlify
 - [ ] Rate limiting sur `payplug-create-payment.js` et `swikly-create-deposit.js`
 - [ ] Masquer `error.message` internes dans les reponses Netlify Functions
@@ -773,9 +773,7 @@ Un attaquant pourrait envoyer un payload forge avec un `rental_id` arbitraire po
 
 ### #9 ~~MOYENNE~~ OBSOLETE — Hash admin par defaut dans le code source
 
-**Resolution :** Les uploads passent desormais par Supabase Storage avec authentification JWT.
-
-> **Note :** Les fichiers `php/upload.php` et `php/delete.php` existent encore dans le repo et doivent etre supprimes (voir checklist pre-production).
+**Resolution :** Les uploads passent desormais par Supabase Storage avec authentification JWT. Les fichiers PHP ont ete supprimes du repo.
 
 ---
 
@@ -876,7 +874,7 @@ L'operateur spread peut ecraser les champs `rental_reference` et `instrument_nam
 - [ ] #6 Valider le schema des donnees webhook avant ecriture en base
 - [ ] #10 Masquer les messages d'erreur internes dans les reponses
 - [ ] #11 Filtrer les cles metadata Swikly avant stockage
-- [ ] Supprimer les fichiers PHP residuels
+- [x] Supprimer les fichiers PHP residuels
 
 **Ameliorations recommandees :**
 
