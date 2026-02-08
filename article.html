@@ -221,13 +221,10 @@
       return;
     }
 
-    // Récupérer les articles depuis localStorage
+    // Recuperer les articles depuis MistralSync (in-memory)
     let articles = [];
-    try {
-      const stored = localStorage.getItem('mistral_blog_articles');
-      articles = stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      console.error('Erreur lecture articles:', e);
+    if (window.MistralSync && MistralSync.hasKey('mistral_blog_articles')) {
+      articles = MistralSync.getData('mistral_blog_articles');
     }
 
     // Chercher l'article par slug
@@ -314,7 +311,10 @@
     `;
   }
 
-  // Charger l'article au chargement de la page
+  // Charger l'article quand les donnees sont pretes
+  window.addEventListener('mistral-sync-complete', loadArticle);
+
+  // Aussi tenter au chargement (au cas ou MistralSync est deja pret)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadArticle);
   } else {

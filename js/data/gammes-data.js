@@ -1,12 +1,12 @@
 /* ==========================================================================
-   MISTRAL PANS - Module Gammes Centralisé
-   Version 1.0
+   MISTRAL PANS - Module Gammes Centralise
+   Version 2.0 - In-memory (pas de localStorage)
 
-   Source unique pour les données des gammes (scales).
-   Utilisé par: configurateur, admin, boutique, formulaires
+   Source unique pour les donnees des gammes (scales).
+   Utilise par: configurateur, admin, boutique, formulaires
 
-   Note: les fonctions de théorie musicale (notation, cercle des quintes)
-   restent dans scales-data.js. Ce module gère les métadonnées admin.
+   Note: les fonctions de theorie musicale (notation, cercle des quintes)
+   restent dans scales-data.js. Ce module gere les metadonnees admin.
    ========================================================================== */
 
 (function() {
@@ -16,10 +16,8 @@
   // CONFIGURATION
   // ============================================================================
 
-  const STORAGE_KEY = 'mistral_gammes';
-
   const CATEGORIES = {
-    debutant: { label: 'Débutant', ordre: 1 },
+    debutant: { label: 'Debutant', ordre: 1 },
     mineur: { label: 'Mineur', ordre: 2 },
     majeur: { label: 'Majeur', ordre: 3 },
     modal: { label: 'Modal', ordre: 4 },
@@ -28,16 +26,14 @@
     autre: { label: 'Autre', ordre: 7 }
   };
 
-  // Gammes par défaut — fusionnées depuis scales-data.js + admin.html
-  // Les patterns restent dans scales-data.js (SCALES_DATA)
   const DEFAULT_GAMMES = [
     {
       id: 'gamme-kurd',
       code: 'kurd',
       nom: 'Kurd',
       categorie: 'debutant',
-      description: 'La gamme la plus populaire. Douce, méditative, accessible à tous.',
-      mood: 'Mélancolique, introspectif',
+      description: 'La gamme la plus populaire. Douce, meditative, accessible a tous.',
+      mood: 'Melancolique, introspectif',
       mode: 'aeolian',
       baseRoot: 'D',
       baseOctave: 3,
@@ -51,7 +47,7 @@
       code: 'amara',
       nom: 'Amara',
       categorie: 'debutant',
-      description: 'Variante du Celtic, plus douce. Idéale pour débuter.',
+      description: 'Variante du Celtic, plus douce. Ideale pour debuter.',
       mood: 'Doux, apaisant',
       mode: 'dorian',
       baseRoot: 'D',
@@ -66,7 +62,7 @@
       code: 'hijaz',
       nom: 'Hijaz',
       categorie: 'oriental',
-      description: 'Sonorités orientales. Mystérieuse et envoûtante.',
+      description: 'Sonorites orientales. Mysterieuse et envoutante.',
       mood: 'Oriental, mystique',
       mode: 'phrygian_dominant',
       baseRoot: 'D',
@@ -111,8 +107,8 @@
       code: 'equinox',
       nom: 'Equinox',
       categorie: 'modal',
-      description: 'Gamme grave et profonde. Sonorités riches.',
-      mood: 'Profond, méditatif',
+      description: 'Gamme grave et profonde. Sonorites riches.',
+      mood: 'Profond, meditatif',
       mode: 'phrygian',
       baseRoot: 'F',
       baseOctave: 3,
@@ -126,7 +122,7 @@
       code: 'celtic',
       nom: 'Celtic Minor',
       categorie: 'mineur',
-      description: 'Sonorités celtiques et médiévales. Très mélodique.',
+      description: 'Sonorites celtiques et medievales. Tres melodique.',
       mood: 'Mystique, nostalgique',
       mode: 'dorian',
       baseRoot: 'D',
@@ -141,7 +137,7 @@
       code: 'pygmy',
       nom: 'Pygmy',
       categorie: 'pentatonique',
-      description: 'Gamme pentatonique africaine. Joyeuse et entraînante.',
+      description: 'Gamme pentatonique africaine. Joyeuse et entrainante.',
       mood: 'Joyeux, tribal',
       mode: 'aeolian',
       baseRoot: 'D',
@@ -156,7 +152,7 @@
       code: 'integral',
       nom: 'Integral',
       categorie: 'majeur',
-      description: 'Gamme majeure complète. Polyvalente et lumineuse.',
+      description: 'Gamme majeure complete. Polyvalente et lumineuse.',
       mood: 'Lumineux, complet',
       mode: 'ionian',
       baseRoot: 'D',
@@ -186,7 +182,7 @@
       code: 'mystic',
       nom: 'Mystic',
       categorie: 'modal',
-      description: 'Gamme mystique et envoûtante.',
+      description: 'Gamme mystique et envoutante.',
       mood: 'Mystique, contemplatif',
       mode: 'mixolydian',
       baseRoot: 'C',
@@ -202,7 +198,7 @@
       nom: 'Akebono',
       categorie: 'pentatonique',
       description: 'Gamme japonaise traditionnelle. Zen et contemplative.',
-      mood: 'Zen, méditatif',
+      mood: 'Zen, meditatif',
       mode: 'phrygian',
       baseRoot: 'D',
       baseOctave: 3,
@@ -214,6 +210,15 @@
   ];
 
   // ============================================================================
+  // IN-MEMORY STORE
+  // ============================================================================
+
+  let gammes = [...DEFAULT_GAMMES];
+
+  // Migration: nettoyer l'ancienne cle localStorage
+  try { localStorage.removeItem('mistral_gammes'); } catch (e) {}
+
+  // ============================================================================
   // FONCTIONS UTILITAIRES
   // ============================================================================
 
@@ -222,27 +227,11 @@
   }
 
   // ============================================================================
-  // GESTION DU STOCKAGE
+  // LECTURE
   // ============================================================================
 
-  function initGammes() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_GAMMES));
-      console.log('[Gammes] Données initialisées avec les valeurs par défaut');
-    }
-  }
-
   function getAll() {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
-      }
-    } catch (e) {
-      console.error('[Gammes] Erreur lecture:', e);
-    }
-    return [...DEFAULT_GAMMES];
+    return [...gammes].sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
   }
 
   function getDisponibles() {
@@ -259,12 +248,10 @@
 
   function getByCode(code) {
     if (!code) return null;
-    const gammes = getAll();
     return gammes.find(g => g.code.toLowerCase() === code.toLowerCase()) || null;
   }
 
   function getById(id) {
-    const gammes = getAll();
     return gammes.find(g => g.id === id) || null;
   }
 
@@ -279,33 +266,21 @@
     }
   }
 
-  /**
-   * Vérifie si une gamme a des patterns de configurateur
-   * Cherche d'abord dans scales-data.js, puis dans custom_layouts
-   */
   function hasConfiguratorPatterns(code) {
-    // Vérifier dans scales-data.js
     if (typeof MistralScales !== 'undefined' && MistralScales.SCALES_DATA[code]) {
       return MistralScales.SCALES_DATA[code].patterns !== null;
     }
-    // Vérifier dans custom_layouts
     const gamme = getByCode(code);
     return gamme && gamme.custom_layouts && Object.keys(gamme.custom_layouts).length > 0;
   }
 
-  /**
-   * Récupère le pattern de layout pour un nombre de notes donné
-   * Priorité: custom_layouts > scales-data.js patterns
-   */
   function getPattern(code, noteCount) {
     const gamme = getByCode(code);
 
-    // Vérifier d'abord les custom layouts
     if (gamme && gamme.custom_layouts && gamme.custom_layouts[noteCount]) {
       return gamme.custom_layouts[noteCount];
     }
 
-    // Sinon, chercher dans scales-data.js
     if (typeof MistralScales !== 'undefined' && MistralScales.SCALES_DATA[code]) {
       const scaleData = MistralScales.SCALES_DATA[code];
       return scaleData.patterns ? scaleData.patterns[noteCount] : null;
@@ -314,27 +289,21 @@
     return null;
   }
 
-  /**
-   * Génère les options HTML pour un select
-   */
   function toSelectOptions(selected = '', configurateurOnly = false) {
-    const gammes = configurateurOnly ? getForConfigurateur() : getDisponibles();
-    return gammes.map(g => {
+    const list = configurateurOnly ? getForConfigurateur() : getDisponibles();
+    return list.map(g => {
       const isSelected = g.code.toLowerCase() === selected.toLowerCase() ? ' selected' : '';
       const catLabel = CATEGORIES[g.categorie] ? ` (${CATEGORIES[g.categorie].label})` : '';
       return `<option value="${g.code}"${isSelected}>${g.nom}${catLabel}</option>`;
     }).join('');
   }
 
-  /**
-   * Retourne les gammes groupées par catégorie (pour le searchable select)
-   */
   function getGroupedByCategorie() {
-    const gammes = getDisponibles();
+    const list = getDisponibles();
     const grouped = {};
 
     for (const cat of Object.keys(CATEGORIES)) {
-      const items = gammes.filter(g => g.categorie === cat);
+      const items = list.filter(g => g.categorie === cat);
       if (items.length > 0) {
         grouped[cat] = {
           label: CATEGORIES[cat].label,
@@ -346,11 +315,10 @@
   }
 
   // ============================================================================
-  // FONCTIONS ADMIN (CRUD)
+  // ADMIN (CRUD) - In-memory
   // ============================================================================
 
   function save(gamme) {
-    const gammes = getAll();
     const now = new Date().toISOString();
 
     if (gamme.id) {
@@ -366,26 +334,20 @@
       gammes.push(gamme);
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(gammes));
     dispatchUpdate();
     return gamme;
   }
 
   function remove(id) {
-    const gammes = getAll();
-    const filtered = gammes.filter(g => g.id !== id);
-    if (filtered.length !== gammes.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    const len = gammes.length;
+    gammes = gammes.filter(g => g.id !== id);
+    if (gammes.length !== len) {
       dispatchUpdate();
       return true;
     }
     return false;
   }
 
-  /**
-   * Sauvegarde un custom layout pour une gamme (cas spécial)
-   * Ex: D Kurd 12 avec bass E+F au lieu de F+G
-   */
   function saveCustomLayout(code, noteCount, pattern) {
     const gamme = getByCode(code);
     if (!gamme) return false;
@@ -404,7 +366,6 @@
   }
 
   function reorder(orderedIds) {
-    const gammes = getAll();
     orderedIds.forEach((id, index) => {
       const gamme = gammes.find(g => g.id === id);
       if (gamme) {
@@ -412,17 +373,16 @@
         gamme.updated_at = new Date().toISOString();
       }
     });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(gammes));
     dispatchUpdate();
   }
 
   function reset() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_GAMMES));
+    gammes = [...DEFAULT_GAMMES];
     dispatchUpdate();
   }
 
   // ============================================================================
-  // ÉVÉNEMENTS
+  // EVENEMENTS
   // ============================================================================
 
   function dispatchUpdate() {
@@ -430,12 +390,6 @@
       detail: { gammes: getAll() }
     }));
   }
-
-  // ============================================================================
-  // INITIALISATION
-  // ============================================================================
-
-  initGammes();
 
   // ============================================================================
   // EXPORTS
@@ -464,11 +418,10 @@
     reset,
 
     // Constantes
-    STORAGE_KEY,
     CATEGORIES,
     DEFAULT_GAMMES
   };
 
-  console.log('[Gammes] Module initialisé');
+  console.log('[Gammes] Module initialise (in-memory)');
 
 })();

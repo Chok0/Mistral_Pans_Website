@@ -884,8 +884,12 @@
       FAB.destroy();
     });
 
-    window.addEventListener('storage', (e) => {
-      if (e.key && e.key.includes('mistral_gallery')) {
+    // Ecouter les changements de donnees via MistralSync
+    window.addEventListener('mistral-sync-complete', () => {
+      renderGallery();
+    });
+    window.addEventListener('mistral-data-change', (e) => {
+      if (e.detail && e.detail.key === 'mistral_gallery') {
         renderGallery();
       }
     });

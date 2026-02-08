@@ -225,9 +225,15 @@
 
   const Storage = {
     /**
-     * Recupere des donnees depuis localStorage
+     * Recupere des donnees (MistralSync pour les cles gerees, localStorage sinon)
      */
     get(key, defaultValue = []) {
+      // Cles gerees par MistralSync -> lecture depuis memoire
+      if (window.MistralSync && MistralSync.hasKey(key)) {
+        const data = MistralSync.getData(key);
+        return data.length > 0 ? data : defaultValue;
+      }
+      // Cles locales (consent, etc.) -> localStorage
       try {
         const stored = localStorage.getItem(key);
         return stored ? JSON.parse(stored) : defaultValue;
@@ -237,12 +243,18 @@
     },
 
     /**
-     * Sauvegarde des donnees dans localStorage
+     * Sauvegarde des donnees (MistralSync pour les cles gerees, localStorage sinon)
      */
     set(key, value) {
+      // Cles gerees par MistralSync -> ecriture memoire + Supabase
+      if (window.MistralSync && MistralSync.hasKey(key)) {
+        const result = MistralSync.setData(key, value);
+        window.dispatchEvent(new CustomEvent('storageUpdate', { detail: { key, value } }));
+        return result;
+      }
+      // Cles locales (consent, etc.) -> localStorage
       try {
         localStorage.setItem(key, JSON.stringify(value));
-        // Dispatch un evenement pour synchronisation entre onglets
         window.dispatchEvent(new CustomEvent('storageUpdate', { detail: { key, value } }));
         return true;
       } catch (e) {
@@ -797,11 +809,15 @@
     // Clean up orphaned mistral_flash_annonces (old system replaced by mistral_gestion_instruments)
     cleanupOldAnnonces() {
       const oldKey = CONFIG.STORAGE_KEYS.annonces; // 'mistral_flash_annonces'
-      const oldData = localStorage.getItem(oldKey);
-      if (oldData) {
-        console.log('[MistralAdmin] Nettoyage des anciennes annonces orphelines...');
-        localStorage.removeItem(oldKey);
-        return true;
+      try {
+        const oldData = localStorage.getItem(oldKey);
+        if (oldData) {
+          console.log('[MistralAdmin] Nettoyage des anciennes annonces orphelines...');
+          localStorage.removeItem(oldKey);
+          return true;
+        }
+      } catch (e) {
+        // Ignorer
       }
       return false;
     },
@@ -851,13 +867,13 @@
 
     // Supprimer tous les professeurs (pour reset)
     clearAll() {
-      localStorage.removeItem(this.KEY);
+      Storage.set(this.KEY, []);
       return [];
     },
 
     // Supprimer toutes les demandes en attente
     clearAllPending() {
-      localStorage.removeItem(this.PENDING_KEY);
+      Storage.set(this.PENDING_KEY, []);
       return [];
     },
 

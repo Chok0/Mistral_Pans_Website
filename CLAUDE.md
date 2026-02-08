@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mistral Pans Website
 
-> **Last Updated:** February 2026 (v3.3)
+> **Last Updated:** February 2026 (v3.4)
 > **Project:** Mistral Pans - Premium Handpan Artisan Website
 > **Stack:** Vanilla JS + HTML/CSS + Supabase + Netlify Functions
 
@@ -138,7 +138,7 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 | `admin-core.js` | `js/admin/` | `Auth.isLoggedIn()`, `FAB.create()`, CRUD helpers |
 | `handpan-player.js` | `js/features/` | `HandpanPlayer` class, Web Audio API |
 | `feasibility-module.js` | `js/features/` | `checkFeasibility()`, surface calculations |
-| `supabase-sync.js` | `js/services/` | `syncFromSupabase()`, real-time updates |
+| `supabase-sync.js` | `js/services/` | `MistralSync.getData()`, `MistralSync.setData()`, in-memory store |
 
 ---
 
@@ -383,20 +383,41 @@ const { data, error } = await supabase
 The site uses `fetch()` for partials. **Will not work with `file://` protocol.**
 
 ### Dynamic Script Loading
-`js/core/main.js` dynamically loads `js/core/config.js`, `js/services/supabase-client.js`, and `js/services/supabase-sync.js` at runtime. Keep these paths in sync if reorganizing.
+`js/core/main.js` dynamically loads `js/core/config.js`, `js/services/supabase-client.js`, and `js/services/supabase-sync.js` at runtime. Keep these paths in sync if reorganizing. The sync module fetches data from Supabase into an in-memory store (no localStorage) and dispatches `mistral-sync-complete` when ready.
 
 ### Cloudflare Consideration
 If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security settings.
 
-### localStorage Keys
+### Data Architecture
+
+**In-memory data (via MistralSync):** Business data is fetched from Supabase at page load and stored in a JavaScript `Map` in memory. No localStorage is used for this data.
+
+| Key (in-memory) | Supabase Table | Purpose |
+|-----|---------|---------|
+| `mistral_gestion_clients` | `clients` | Customer records |
+| `mistral_gestion_instruments` | `instruments` | Instrument inventory |
+| `mistral_gestion_locations` | `locations` | Rental records |
+| `mistral_gestion_commandes` | `commandes` | Customer orders |
+| `mistral_gestion_factures` | `factures` | Invoices |
+| `mistral_teachers` | `professeurs` | Validated teachers |
+| `mistral_gallery` | `galerie` | Gallery media |
+| `mistral_blog_articles` | `articles` | Blog articles |
+
+**localStorage keys (client-side preferences only):**
+
 | Key | Purpose |
 |-----|---------|
-| `mistral_flash_annonces` | Stock announcements (legacy, auto-cleaned) |
-| `mistral_teachers` | Validated teachers |
-| `mistral_pending_teachers` | Pending teacher requests |
-| `mistral_gallery` | Gallery media |
-| `mistral_blog_articles` | Blog articles |
+| `mistral_cookie_consent` | RGPD cookie consent preferences |
 | `mistral_leaflet_consent` | Map RGPD consent |
+| `mistral_stats_anonymous` | Anonymous page view aggregates |
+| `mistral_gestion_config` | Admin business configuration |
+
+**In-memory only (no persistence):**
+
+| Module | Purpose |
+|--------|---------|
+| `MistralMateriaux` | Material specifications (hardcoded defaults) |
+| `MistralGammes` | Scale configurations (hardcoded defaults) |
 
 ### Admin Authentication
 - Authentication is handled via **Supabase Auth** (email + password)
@@ -432,12 +453,14 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 ### Admin FAB not showing
 - Check `MistralAdmin.Auth.isLoggedIn()` returns true
 - Verify `js/admin/admin-core.js` is loaded
-- Check localStorage for valid session
+- Verify Supabase auth session is active (no localStorage session)
 
 ### Supabase sync issues
 - Verify Supabase URL and anon key in `js/core/config.js`
 - Check browser network tab for failed requests
 - Verify RLS policies allow the operation
+- Data is in-memory only (not localStorage) -- check `MistralSync.getData(key)` in console
+- Check `MistralSync.isReady()` and `MistralSync.getLastSync()` for sync status
 
 ### Audio not playing
 - Check file exists in `ressources/audio/`

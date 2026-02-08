@@ -208,33 +208,29 @@
   }
 
   // ============================================================================
-  // STOCKAGE localStorage
+  // STOCKAGE (via MistralSync in-memory store)
   // ============================================================================
-  
+
   /**
-   * Récupère les données depuis localStorage
+   * Récupère les données depuis le store in-memory (MistralSync)
    */
   function getData(key) {
-    try {
-      const data = localStorage.getItem(CONFIG.STORAGE_KEYS[key]);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      console.error(`Erreur lecture ${key}:`, e);
-      return [];
+    const localKey = CONFIG.STORAGE_KEYS[key];
+    if (window.MistralSync && MistralSync.hasKey(localKey)) {
+      return MistralSync.getData(localKey);
     }
+    return [];
   }
 
   /**
-   * Sauvegarde les données dans localStorage
+   * Sauvegarde les données via MistralSync (memoire + Supabase)
    */
   function setData(key, data) {
-    try {
-      localStorage.setItem(CONFIG.STORAGE_KEYS[key], JSON.stringify(data));
-      return true;
-    } catch (e) {
-      console.error(`Erreur écriture ${key}:`, e);
-      return false;
+    const localKey = CONFIG.STORAGE_KEYS[key];
+    if (window.MistralSync && MistralSync.hasKey(localKey)) {
+      return MistralSync.setData(localKey, data);
     }
+    return false;
   }
 
   /**
@@ -1095,7 +1091,7 @@
     importAll(jsonData) {
       try {
         const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-        
+
         if (data.data) {
           if (data.data.clients) setData('clients', data.data.clients);
           if (data.data.instruments) setData('instruments', data.data.instruments);
@@ -1103,10 +1099,14 @@
           if (data.data.commandes) setData('commandes', data.data.commandes);
           if (data.data.factures) setData('factures', data.data.factures);
           if (data.data.config) {
-            localStorage.setItem(CONFIG.STORAGE_KEYS.config, JSON.stringify(data.data.config));
+            try {
+              localStorage.setItem(CONFIG.STORAGE_KEYS.config, JSON.stringify(data.data.config));
+            } catch (e) {
+              console.error('Erreur import config:', e);
+            }
           }
         }
-        
+
         return { success: true };
       } catch (e) {
         console.error('Erreur import:', e);
@@ -1134,8 +1134,14 @@
      * Réinitialise toutes les données
      */
     resetAll() {
-      Object.values(CONFIG.STORAGE_KEYS).forEach(key => {
-        localStorage.removeItem(key);
+      // Vider les cles gerees par MistralSync
+      Object.entries(CONFIG.STORAGE_KEYS).forEach(([name, key]) => {
+        if (name === 'config') {
+          // Config reste dans localStorage
+          try { localStorage.removeItem(key); } catch (e) {}
+        } else if (window.MistralSync && MistralSync.hasKey(key)) {
+          MistralSync.setData(key, []);
+        }
       });
     }
   };
