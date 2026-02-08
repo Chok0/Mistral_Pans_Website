@@ -412,7 +412,7 @@
     if (confirmed) {
       // Supprimer l'annonce associée si elle existe
       if (typeof GestionBoutique !== 'undefined') {
-        GestionBoutique.depublierInstrument(id);
+        GestionBoutique.retirer(id);
       }
       
       // Supprimer l'instrument

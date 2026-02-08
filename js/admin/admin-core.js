@@ -633,11 +633,15 @@
      * Supprime une modale
      */
     destroy(modalOrId) {
-      this.close(modalOrId);
       const modal = typeof modalOrId === 'string'
         ? document.getElementById(modalOrId)
         : modalOrId;
 
+      if (modal) {
+        modal._onClose = null;
+        modal._onOpen = null;
+      }
+      this.close(modalOrId);
       if (modal) {
         modal.remove();
       }
