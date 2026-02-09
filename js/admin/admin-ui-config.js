@@ -28,6 +28,13 @@
       if ($('#config-caution')) $('#config-caution').value = config.montantCaution || 1150;
       if ($('#config-frais')) $('#config-frais').value = config.fraisDossierTransport || 100;
       if ($('#config-fidelite')) $('#config-fidelite').value = config.creditFidelitePourcent || 50;
+
+      // Tarification configurateur
+      if ($('#config-prix-note')) $('#config-prix-note').value = config.prixParNote || 115;
+      if ($('#config-bonus-octave2')) $('#config-bonus-octave2').value = config.bonusOctave2 || 50;
+      if ($('#config-bonus-bottoms')) $('#config-bonus-bottoms').value = config.bonusBottoms || 25;
+      if ($('#config-malus-warning')) $('#config-malus-warning').value = config.malusDifficulteWarning || 5;
+      if ($('#config-malus-difficile')) $('#config-malus-difficile').value = config.malusDifficulteDifficile || 10;
     }
   }
 
@@ -46,6 +53,13 @@
       MistralGestion.setConfigValue('montantCaution', parseFloat($('#config-caution')?.value) || 1150);
       MistralGestion.setConfigValue('fraisDossierTransport', parseFloat($('#config-frais')?.value) || 100);
       MistralGestion.setConfigValue('creditFidelitePourcent', parseFloat($('#config-fidelite')?.value) || 50);
+
+      // Tarification configurateur
+      MistralGestion.setConfigValue('prixParNote', parseFloat($('#config-prix-note')?.value) || 115);
+      MistralGestion.setConfigValue('bonusOctave2', parseFloat($('#config-bonus-octave2')?.value) || 50);
+      MistralGestion.setConfigValue('bonusBottoms', parseFloat($('#config-bonus-bottoms')?.value) || 25);
+      MistralGestion.setConfigValue('malusDifficulteWarning', parseFloat($('#config-malus-warning')?.value) || 5);
+      MistralGestion.setConfigValue('malusDifficulteDifficile', parseFloat($('#config-malus-difficile')?.value) || 10);
     }
     Toast.success('Configuration enregistrée');
   }
@@ -863,7 +877,7 @@
         ? '<span style="background: var(--admin-accent); color: white; font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px;">Configurateur</span>'
         : '';
       const malusDisplay = t.prix_malus > 0
-        ? `<span style="color: var(--color-warning, #F59E0B); font-size: 0.8rem;">+${t.prix_malus}%</span>`
+        ? `<span style="color: var(--color-warning, #F59E0B); font-size: 0.8rem;">+${Math.round(t.prix_malus)} €</span>`
         : '<span style="color: var(--admin-text-muted); font-size: 0.8rem;">Standard</span>';
 
       html += `

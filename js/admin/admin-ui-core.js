@@ -114,13 +114,30 @@
 
     // Hash URL
     const hash = window.location.hash.replace('#', '');
-    if (hash) {
+    if (hash && hash !== 'dashboard') {
       navigateTo(hash);
+    } else {
+      navigateTo('dashboard');
     }
   }
 
   function navigateTo(section) {
     currentSection = section;
+
+    const dashboard = document.getElementById('dashboard-section');
+
+    if (section === 'dashboard') {
+      // Affiche le dashboard, masque les sections
+      if (dashboard) dashboard.style.display = '';
+      $$('.gestion-section').forEach(s => s.classList.remove('active'));
+      $$('.gestion-nav__item[data-section]').forEach(btn => btn.classList.remove('active'));
+      history.replaceState(null, '', window.location.pathname);
+      refreshSection('dashboard');
+      return;
+    }
+
+    // Masque le dashboard
+    if (dashboard) dashboard.style.display = 'none';
 
     // Active l'onglet
     $$('.gestion-nav__item[data-section]').forEach(btn => {
@@ -189,6 +206,9 @@
     if (typeof VendorCheck !== 'undefined' && document.getElementById('vendor-check-container')) {
       VendorCheck.render('vendor-check-container');
     }
+
+    // Analytics (intégré au dashboard)
+    if (window.AdminUI.renderAnalytics) window.AdminUI.renderAnalytics();
   }
 
   function updateStat(id, value) {
@@ -305,10 +325,7 @@
         if (window.AdminUI.initArticleUpload) window.AdminUI.initArticleUpload();
         if (window.AdminUI.initArticleEditor) window.AdminUI.initArticleEditor();
         break;
-      case 'analytics':
-        if (window.AdminUI.renderAnalytics) window.AdminUI.renderAnalytics();
-        break;
-      case 'configuration':
+      case 'config':
         if (window.AdminUI.renderConfiguration) window.AdminUI.renderConfiguration();
         if (window.AdminUI.renderMateriaux) window.AdminUI.renderMateriaux();
         if (window.AdminUI.renderGammes) window.AdminUI.renderGammes();
