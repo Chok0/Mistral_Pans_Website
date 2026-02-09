@@ -128,7 +128,7 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 | `blog.html` | Blog | Article grid |
 | `article.html` | Article template | Dynamic content loading |
 | `suivi.html` | Order tracking | Reference + email lookup |
-| `admin.html` | Admin dashboard | Tabs: Stock, Teachers, Gallery, Blog, Messages, Stats |
+| `admin.html` | Admin dashboard | Groups: Gestion (Commandes, Instruments, Clients, Locations, Factures), Contenu (Vitrine, Galerie, Blog, Professeurs), Outils (Comptabilité, Config) |
 
 ### Core JavaScript Files
 
@@ -255,11 +255,8 @@ if (window.MistralAdmin && MistralAdmin.Auth.isLoggedIn()) {
   // Show admin UI
 }
 
-// FAB injection on admin pages
-MistralAdmin.injectFAB({
-  actions: [...],
-  advancedLink: '/admin.html#section'
-});
+// FAB auto-injects on all pages except admin.html when logged in.
+// Only 2 actions: admin panel link + logout. No page-specific FAB code needed.
 ```
 
 ---
@@ -291,27 +288,31 @@ MistralAdmin.injectFAB({
 
 ## Pricing System
 
-### Base Pricing
-- **Standard note:** 115 EUR
-- **Octave 2 note:** +50 EUR per note
-- **Bottoms (bass notes):** +25 EUR flat
+All pricing values are **configurable via Admin > Config > Tarification configurateur**. Defaults below.
 
-### Size Malus
-| Size | Malus |
-|------|-------|
-| 53 cm | 0% |
-| 50 cm | +2.5% |
-| 45 cm | +5% |
+### Base Pricing (configurable)
+- **Standard note:** 115 EUR (`prixParNote`)
+- **Octave 2 note:** +50 EUR per note (`bonusOctave2`)
+- **Bottoms (bass notes):** +25 EUR flat (`bonusBottoms`)
 
-### Difficulty Malus (Feasibility)
+### Size Malus (flat EUR, configurable per taille)
+| Size | Malus | Reason |
+|------|-------|--------|
+| 53 cm | 0 EUR | Standard shell |
+| 50 cm | +100 EUR | Shell modification (~2h work) |
+| 45 cm | +100 EUR | Shell modification (~2h work) |
+
+### Difficulty Malus (percentage, configurable)
 | Status | Surface % | Malus |
 |--------|-----------|-------|
 | OK | <= 45% | 0% |
-| Warning | 45-50% | +5% |
-| Difficult | 50-59% | +10% |
+| Warning | 45-50% | +5% (`malusDifficulteWarning`) |
+| Difficult | 50-59% | +10% (`malusDifficulteDifficile`) |
 | Impossible | > 59% | N/A (blocked) |
 
 **Rounding:** All prices rounded down to nearest 5 EUR.
+
+**Code:** `boutique.js` reads pricing from `MistralGestion.getConfig()` via `getPricingConfig()` with fallback to `PRICING_DEFAULTS`.
 
 ---
 

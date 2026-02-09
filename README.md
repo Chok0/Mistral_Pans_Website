@@ -2,36 +2,31 @@
 
 Site web premium pour Mistral Pans, fabricant artisanal de handpans en Ile-de-France.
 
+> **Version :** 3.5 — Fevrier 2026
+> **Stack :** Vanilla JS (ES6+) + HTML/CSS + Supabase + Netlify Functions
+> **Pas de build system** — serveur statique avec chargement dynamique des composants
+
 ---
 
 ## Table des matieres
 
-1. [Vision du projet](#vision-du-projet)
-2. [Quick Start](#quick-start)
+1. [Quick Start](#quick-start)
+2. [Architecture generale](#architecture-generale)
 3. [Structure du projet](#structure-du-projet)
 4. [Stack technique](#stack-technique)
 5. [Design System](#design-system)
-6. [Pages et fonctionnalites](#pages-et-fonctionnalites)
-7. [Systeme de tarification](#systeme-de-tarification)
-8. [Systeme de faisabilite](#systeme-de-faisabilite)
-9. [Systeme audio](#systeme-audio)
-10. [Systeme d'administration](#systeme-dadministration)
-11. [Base de donnees Supabase](#base-de-donnees-supabase)
-12. [Configuration Supabase](#configuration-supabase)
-13. [Roadmap](#roadmap)
-14. [Scale Batch System (spec)](#scale-batch-system)
-15. [Deploiement](#deploiement)
-16. [Historique des versions](#historique-des-versions)
-
----
-
-## Vision du projet
-
-Un site vitrine haut de gamme qui reflete la qualite artisanale des instruments, avec :
-- Une experience utilisateur fluide sur desktop et mobile
-- Un configurateur intelligent avec verification de faisabilite
-- Un systeme d'administration integre pour gerer le contenu sans toucher au code
-- Une approche RGPD-friendly (minimum de dependances externes, donnees en Europe)
+6. [Pages du site](#pages-du-site)
+7. [Systeme de donnees](#systeme-de-donnees)
+8. [Systeme d'administration](#systeme-dadministration)
+9. [Systeme de tarification](#systeme-de-tarification)
+10. [Systeme de faisabilite](#systeme-de-faisabilite)
+11. [Systeme audio](#systeme-audio)
+12. [Base de donnees Supabase](#base-de-donnees-supabase)
+13. [Configuration initiale](#configuration-initiale)
+14. [Deploiement](#deploiement)
+15. [Securite](#securite)
+16. [Roadmap](#roadmap)
+17. [Historique des versions](#historique-des-versions)
 
 ---
 
@@ -39,21 +34,66 @@ Un site vitrine haut de gamme qui reflete la qualite artisanale des instruments,
 
 **Important** : Le site utilise `fetch()` pour charger les partials. Il **ne fonctionnera pas** en ouvrant directement les fichiers HTML (`file://`).
 
-### Option 1 : Python (recommande)
 ```bash
-cd /chemin/vers/le/projet
+# Option 1 : Python (recommande)
 python -m http.server 8000
+
+# Option 2 : Node.js
+npx serve .
+
+# Option 3 : VS Code + extension Live Server
+# Clic droit sur index.html > "Open with Live Server"
 ```
+
 Puis ouvrir http://localhost:8000
 
-### Option 2 : VS Code + Live Server
-1. Installer l'extension "Live Server"
-2. Clic droit sur `index.html` > "Open with Live Server"
+### Prerequis
 
-### Option 3 : Node.js
-```bash
-npx serve .
+- Un navigateur moderne (Chrome, Firefox, Safari, Edge)
+- Python 3.x ou Node.js (pour le serveur local)
+- Un projet Supabase (voir [Configuration initiale](#configuration-initiale))
+- `js/core/config.js` avec les cles Supabase (copier depuis `config.example.js`)
+
+---
+
+## Architecture generale
+
+### Principes
+
+Le site est **statique-first, progressivement enrichi** :
+
+1. **Pas de build system** — les fichiers sont servis directement, pas de webpack/vite/rollup
+2. **Vanilla JS (ES6+)** — pas de React/Vue/Angular, tout est en JavaScript natif
+3. **Modules IIFE** — chaque fichier JS s'encapsule dans `(function(window) { ... })(window)` et exporte sur `window.NomDuModule`
+4. **Partials dynamiques** — header, footer et modal contact sont charges via `fetch()` au chargement de chaque page
+5. **Supabase backend** — PostgreSQL + Auth + Storage, pas de serveur custom
+6. **RGPD-first** — minimum de dependances externes, consentement explicite pour cartes et fonts
+
+### Flux de donnees
+
 ```
+Navigateur
+  |
+  |-- fetch() --> partials/ (header.html, footer.html, contact-modal.html)
+  |-- fetch() --> Supabase (donnees metier via supabase-sync.js)
+  |                   |
+  |                   v
+  |              MistralSync (Map en memoire = source de verite cote client)
+  |
+  |-- Netlify Functions --> Brevo (emails)
+  |                     --> PayPlug (paiements)
+  |                     --> Swikly (cautions)
+```
+
+### Chargement des scripts
+
+`js/core/main.js` est le point d'entree de toutes les pages. Il :
+1. Charge les partials (header, footer, contact modal)
+2. Definit la page active via `data-page` sur `<body>`
+3. Charge dynamiquement `config.js`, `supabase-client.js`, `supabase-sync.js`
+4. Dispatch l'evenement `mistral-sync-complete` quand les donnees Supabase sont pretes
+
+**Important** : Si tu reorganises les fichiers JS, mets a jour les chemins dans `main.js`.
 
 ---
 
@@ -62,83 +102,92 @@ npx serve .
 ```
 /
 |-- *.html                    # Pages principales (racine)
-|-- partials/                 # Composants reutilisables (charges dynamiquement)
+|-- partials/                 # Composants reutilisables (charges via fetch)
 |   |-- header.html          # Navigation principale
 |   |-- footer.html          # Pied de page complet
-|   |-- footer-minimal.html  # Pied de page simplifie
-|   +-- contact-modal.html   # Modal de contact
+|   |-- footer-minimal.html  # Pied de page simplifie (commander.html)
+|   +-- contact-modal.html   # Modal de contact reutilisable
 |
 |-- css/
-|   |-- style.css            # Styles globaux
-|   |-- boutique.css         # Configurateur + stock
-|   |-- admin.css            # Styles admin (FAB, modals, dashboard, gestion)
-|   +-- teacher-form.css     # Formulaire professeur
+|   |-- style.css            # Design system global (couleurs, typo, layout)
+|   |-- boutique.css         # Configurateur + stock (scope: data-page="boutique")
+|   |-- admin.css            # Styles admin (dashboard, nav, modals, tables, FAB)
+|   +-- teacher-form.css     # Formulaire inscription professeur
 |
 |-- js/
 |   |-- core/                # Bootstrap, navigation, configuration
-|   |   |-- main.js          # Chargement partials, navigation
-|   |   |-- config.js        # Cles Supabase (gitignore)
-|   |   |-- config.example.js # Template de configuration
+|   |   |-- main.js          # Point d'entree : partials, nav, chargement Supabase
+|   |   |-- config.js        # Cles Supabase (GITIGNORE — ne jamais commiter)
+|   |   |-- config.example.js # Template a copier vers config.js
 |   |   +-- cookie-consent.js # Banniere RGPD cookies
 |   |
-|   |-- admin/               # Systeme d'administration
-|   |   |-- admin-core.js    # Auth, FAB, CRUD, sanitization
-|   |   |-- admin-ui-core.js # Navigation, dashboard, todos
-|   |   |-- admin-ui-gestion.js  # Clients, instruments, locations
-|   |   |-- admin-ui-boutique.js # Stock boutique, accessoires
-|   |   |-- admin-ui-content.js  # Professeurs, galerie, blog
-|   |   |-- admin-ui-config.js   # Configuration, export/import
-|   |   |-- admin-ui-modals.js   # Modals CRUD
-|   |   |-- admin-ui-compta.js   # Comptabilite, URSSAF
-|   |   |-- gestion.js       # Logique metier (clients, instruments, etc.)
-|   |   |-- gestion-pdf.js   # Generation de factures PDF
-|   |   |-- gestion-boutique.js  # Gestion stock
-|   |   |-- apprendre-admin.js   # Admin professeurs (page)
-|   |   |-- boutique-admin.js    # Admin boutique (page)
-|   |   |-- galerie-admin.js     # Admin galerie (page)
-|   |   +-- blog-admin.js        # Admin blog (page)
+|   |-- admin/               # Systeme d'administration (admin.html)
+|   |   |-- admin-core.js    # Auth, FAB, Modal, Toast, Confirm, Storage, CRUD helpers
+|   |   |-- admin-ui-core.js # Navigation admin, dashboard, todos, helpers partages
+|   |   |-- admin-ui-gestion.js  # Rendu : clients, instruments, locations, commandes, factures
+|   |   |-- admin-ui-boutique.js # Rendu : stock vitrine, accessoires
+|   |   |-- admin-ui-content.js  # Rendu : professeurs, galerie, blog, analytics
+|   |   |-- admin-ui-config.js   # Rendu : config, materiaux, gammes, tailles, emails auto
+|   |   |-- admin-ui-modals.js   # Tous les modals CRUD (client, instrument, facture, etc.)
+|   |   |-- admin-ui-compta.js   # Comptabilite, rapports URSSAF
+|   |   |-- gestion.js       # Logique metier (CRUD clients, instruments, commandes, etc.)
+|   |   |-- gestion-pdf.js   # Generation de factures PDF (jsPDF)
+|   |   |-- gestion-boutique.js  # Gestion stock en ligne
+|   |   |-- apprendre-admin.js   # Admin professeurs (sur apprendre.html)
+|   |   |-- boutique-admin.js    # Admin boutique (sur boutique.html)
+|   |   |-- galerie-admin.js     # Admin galerie (sur galerie.html)
+|   |   +-- blog-admin.js        # Admin blog (sur blog.html)
 |   |
 |   |-- services/            # Integrations externes
-|   |   |-- supabase-client.js   # Client Supabase
-|   |   |-- supabase-auth.js     # Authentification Supabase
-|   |   |-- supabase-sync.js     # Synchronisation temps reel
-|   |   |-- email-client.js      # Client email (Brevo)
-|   |   |-- payplug-client.js    # Paiement Payplug
-|   |   +-- swikly-client.js     # Cautions Swikly
+|   |   |-- supabase-client.js   # Initialisation client Supabase
+|   |   |-- supabase-auth.js     # MistralAuth : login, logout, session Supabase
+|   |   |-- supabase-sync.js     # MistralSync : sync Supabase <-> Map en memoire
+|   |   |-- email-client.js      # Client email (Brevo via Netlify Functions)
+|   |   |-- payplug-client.js    # Client paiement PayPlug
+|   |   +-- swikly-client.js     # Client caution Swikly
 |   |
-|   |-- data/                # Donnees statiques
-|   |   |-- scales-data.js   # Gammes musicales + theorie
-|   |   |-- gammes-data.js   # Gammes du configurateur (12 gammes)
-|   |   |-- tailles-data.js  # Tailles et dimensions
-|   |   +-- materiaux-data.js # Materiaux et proprietes
+|   |-- data/                # Donnees statiques / modules de configuration
+|   |   |-- scales-data.js   # Theorie musicale (modes, intervalles, notes)
+|   |   |-- gammes-data.js   # Gammes du configurateur (in-memory, CRUD admin)
+|   |   |-- tailles-data.js  # Tailles et faisabilite (localStorage, CRUD admin)
+|   |   +-- materiaux-data.js # Materiaux et proprietes (in-memory, CRUD admin)
 |   |
-|   |-- features/            # Modules metier
-|   |   |-- handpan-player.js    # Player SVG + Web Audio
-|   |   |-- feasibility-module.js # Validation configurations
-|   |   |-- upload.js            # Upload fichiers
-|   |   |-- teacher-form.js      # Formulaire inscription prof
-|   |   |-- honeypot.js          # Anti-spam honeypot
-|   |   +-- mistral-stats.js     # Analytics anonymes
+|   |-- features/            # Modules metier reutilisables
+|   |   |-- handpan-player.js    # Player SVG interactif + Web Audio API
+|   |   |-- feasibility-module.js # Calcul de faisabilite des configurations
+|   |   |-- upload.js            # Upload fichiers vers Supabase Storage
+|   |   |-- teacher-form.js      # Formulaire inscription professeur
+|   |   |-- honeypot.js          # Anti-spam : champ invisible (pas de reCAPTCHA)
+|   |   +-- mistral-stats.js     # Analytics anonymes (localStorage, pas de tracking)
 |   |
-|   +-- pages/               # Logique specifique par page
-|       |-- boutique.js      # Logique configurateur + stock
-|       +-- commander.js     # Formulaire commande + paiement
+|   |-- pages/               # Logique specifique par page
+|   |   |-- boutique.js      # Configurateur + stock + calcul prix
+|   |   +-- commander.js     # Formulaire commande + integration PayPlug
+|   |
+|   +-- vendor/              # Librairies tierces auto-hebergees
+|       |-- supabase/        # Supabase JS SDK v2.95.3
+|       |-- leaflet/         # Leaflet v1.9.4 (cartes)
+|       |-- chart/           # Chart.js v4.5.1 (graphiques admin)
+|       |-- quill/           # Quill.js v1.3.7 (editeur WYSIWYG blog)
+|       +-- versions.json    # Versions installees (utilise par update-vendor.sh)
 |
 |-- ressources/
-|   |-- images/              # Photos, logos, assets
-|   +-- audio/               # Samples FLAC (56 notes)
+|   |-- images/              # Photos produit, logos, assets visuels
+|   +-- audio/               # Samples FLAC (56 notes, E2 a F5)
 |
-|-- netlify/functions/
-|   |-- send-email.js        # Email Brevo SMTP
-|   |-- payplug-create-payment.js  # Creation paiement
-|   |-- payplug-webhook.js   # Webhook paiement
-|   |-- swikly-create-deposit.js   # Creation caution
+|-- netlify/functions/       # Fonctions serverless (Netlify)
+|   |-- send-email.js        # Envoi email via Brevo SMTP
+|   |-- payplug-create-payment.js  # Creation paiement PayPlug
+|   |-- payplug-webhook.js   # Webhook paiement (notification asynchrone)
+|   |-- swikly-create-deposit.js   # Creation caution Swikly
 |   |-- swikly-webhook.js    # Webhook caution
-|   +-- order-status.js      # Suivi commande client
+|   +-- order-status.js      # API suivi commande (reference + email)
 |
-|-- netlify.toml              # Configuration Netlify (headers, redirects)
-|-- CLAUDE.md                 # Guide pour assistants IA
-|-- PROJECT-REVIEW.md         # Audit de code complet
+|-- scripts/
+|   +-- update-vendor.sh     # Verification et MAJ des librairies vendor
+|
+|-- netlify.toml              # Config Netlify (build, headers securite, CSP, cache)
+|-- CLAUDE.md                 # Guide pour assistants IA (instructions codebase)
 +-- README.md                 # Ce fichier
 ```
 
@@ -147,23 +196,51 @@ npx serve .
 ## Stack technique
 
 ### Frontend
-- **Core :** Vanilla JavaScript (ES6+), HTML5, CSS3
-- **Styling :** CSS custom properties, mobile-first responsive
-- **Typographies :** Fraunces (titres), Inter (corps), JetBrains Mono (code)
 
-### Bibliotheques externes (CDN)
-- **Supabase JS SDK 2.x** - Base de donnees / Auth
-- **Leaflet 1.9.4** - Cartes interactives
-- **Quill.js** - Editeur WYSIWYG (blog)
+| Technologie | Usage |
+|-------------|-------|
+| Vanilla JS (ES6+) | Toute la logique client |
+| HTML5 | Pages semantiques, `data-*` attributes |
+| CSS3 | Custom properties, mobile-first, BEM-like |
+| Fraunces | Typographie titres (display serif) |
+| Inter | Typographie corps (sans-serif) |
+| JetBrains Mono | Typographie code (monospace) |
 
-### Backend
-- **Database :** Supabase PostgreSQL avec RLS
-- **Email :** Brevo SMTP via Netlify Functions
-- **Hosting :** Netlify (site) + OVH (domaine)
-- **Serverless :** Netlify Functions
+### Librairies (auto-hebergees dans `js/vendor/`)
+
+| Librairie | Version | Usage |
+|-----------|---------|-------|
+| Supabase JS SDK | 2.95.3 | Base de donnees, authentification |
+| Leaflet | 1.9.4 | Cartes interactives (page Apprendre) |
+| Chart.js | 4.5.1 | Graphiques analytics (dashboard admin) |
+| Quill.js | 1.3.7 | Editeur WYSIWYG (blog admin) |
+
+> **Mise a jour** : Lancer `./scripts/update-vendor.sh` pour verifier les mises a jour.
+> Lancer `./scripts/update-vendor.sh --install` pour installer.
+> Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
+
+### Seule dependance CDN externe
+
+| Librairie | Raison |
+|-----------|--------|
+| PayPlug SDK (`cdn.payplug.com`) | Obligation PCI-DSS : le SDK de paiement doit etre servi par le prestataire |
+
+### Backend / Services
+
+| Service | Usage | RGPD |
+|---------|-------|------|
+| Supabase | Database PostgreSQL, Auth, Storage | Hebergement EU disponible |
+| Netlify | Hosting statique + Functions serverless | CDN global |
+| OVH | Domaine `mistralpans.fr` | Francais |
+| Brevo | Envoi email SMTP | Conforme RGPD |
+| PayPlug | Paiements en ligne | Fournisseur francais |
+| Swikly | Cautions locations | Conforme RGPD |
+| Nominatim | Geocodage adresses (professeurs) | Pas de tracking |
+| CartoDB Positron | Tuiles carte (Leaflet) | Consentement requis |
 
 ### Anti-Spam
-- **Honeypot** - Champ invisible (pas de reCAPTCHA, RGPD-friendly)
+
+Le site utilise un systeme **honeypot** (champ de formulaire invisible) au lieu de reCAPTCHA. Avantage : zero dependance externe, conforme RGPD, aucun cookie tiers.
 
 ---
 
@@ -171,179 +248,354 @@ npx serve .
 
 ### Couleurs principales
 
-| Variable | Valeur | Usage |
-|----------|--------|-------|
+| Variable CSS | Valeur | Usage |
+|-------------|--------|-------|
 | `--color-accent` | `#0D7377` | Accent principal (teal) |
-| `--color-bg` | `#FDFBF7` | Fond clair |
+| `--color-bg` | `#FDFBF7` | Fond clair (creme chaud) |
 | `--color-bg-dark` | `#1A1815` | Fond sombre |
-| `--color-text` | `#2C2825` | Texte principal |
-| `--color-success` | `#4A7C59` | Validation |
-| `--color-warning` | `#F59E0B` | Avertissement |
-| `--color-error` | `#EF4444` | Erreur |
+| `--color-text` | `#2C2825` | Texte principal (brun fonce) |
+| `--color-success` | `#4A7C59` | Validation (vert sauge) |
+| `--color-warning` | `#F59E0B` | Avertissement (ambre) |
+| `--color-error` | `#EF4444` | Erreur (rouge) |
+
+> **Boutique** : La page boutique surcharge `--color-bg` a `#FAFAFA` (gris clair) via `body[data-page="boutique"]`.
 
 ### Breakpoints responsive
 
 | Taille | Cible | Description |
 |--------|-------|-------------|
-| `> 1024px` | Desktop | Affichage complet, multi-colonnes |
+| `> 1024px` | Desktop | Layout multi-colonnes complet |
 | `768px - 1024px` | Tablette | Layout adapte |
-| `500px - 768px` | Mobile large | Navigation hamburger |
+| `500px - 768px` | Mobile large | Colonne unique, nav hamburger |
 | `< 500px` | Mobile | Affichage minimal, tout empile |
 
----
+### Conventions CSS
 
-## Pages et fonctionnalites
-
-| Page | Fichier | Description |
-|------|---------|-------------|
-| Accueil | `index.html` | Hero, cartes triangles, partenaires |
-| Boutique | `boutique.html` | Configurateur + Stock (swipe mobile) |
-| Commander | `commander.html` | Formulaire commande, options paiement |
-| Location | `location.html` | Service location, FAQ accordeon |
-| Apprendre | `apprendre.html` | Carte Leaflet, professeurs IDF |
-| Galerie | `galerie.html` | Mosaique responsive, lightbox |
-| Blog | `blog.html` | Articles |
-| Article | `article.html` | Template article dynamique |
-| Suivi | `suivi.html` | Suivi de commande client (ref + email) |
-| Admin | `admin.html` | Dashboard centralise |
-| CGV | `cgv.html` | Conditions generales de vente |
-| Mentions legales | `mentions-legales.html` | Obligations legales |
+- **Mobile-first** : les styles de base ciblent le mobile, les media queries ajoutent pour le desktop
+- **BEM-like** : `.composant__element--modificateur` (ex: `.admin-btn--primary`)
+- **Prefix admin** : toutes les classes admin commencent par `admin-` ou sont dans un scope admin
+- **Custom properties** : utiliser les variables CSS pour les couleurs, jamais de valeurs hardcodees
 
 ---
 
-## Systeme de tarification
+## Pages du site
 
-### Prix de base
+| Page | Fichier | Description | JS specifique |
+|------|---------|-------------|---------------|
+| Accueil | `index.html` | Hero, presentation, partenaires | — |
+| Boutique | `boutique.html` | Configurateur SVG + stock en ligne | `js/pages/boutique.js` |
+| Commander | `commander.html` | Formulaire commande + paiement PayPlug | `js/pages/commander.js` |
+| Location | `location.html` | Service location, FAQ, caution Swikly | — |
+| Apprendre | `apprendre.html` | Carte Leaflet + annuaire professeurs IDF | `js/features/teacher-form.js` |
+| Galerie | `galerie.html` | Mosaique responsive + lightbox | — |
+| Blog | `blog.html` | Liste des articles | — |
+| Article | `article.html` | Template article dynamique (charge via slug) | — |
+| Suivi | `suivi.html` | Suivi commande client (reference + email) | — |
+| Admin | `admin.html` | Panneau d'administration complet | `js/admin/*` |
+| CGV | `cgv.html` | Conditions generales de vente | — |
+| Mentions | `mentions-legales.html` | Mentions legales | — |
 
-| Element | Prix |
-|---------|------|
-| Note standard | 115 EUR |
-| Note en octave 2 | +50 EUR par note |
-| Instrument avec bottoms | +25 EUR (forfait) |
+### Template de page standard
 
-### Malus par taille
+Chaque page suit ce pattern :
 
-| Taille | Malus |
-|--------|-------|
-| 53 cm | 0% |
-| 50 cm | +2.5% |
-| 45 cm | +5% |
+```html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Titre | Mistral Pans</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="nom-page">
+  <div id="site-header"></div>
 
-### Malus par difficulte
+  <main id="main-content">
+    <!-- Contenu de la page -->
+  </main>
 
-| Status | Malus |
-|--------|-------|
-| OK | 0% |
-| Warning | +5% |
-| Difficult | +10% |
+  <div id="site-footer"></div>
+  <div id="contact-modal-container"></div>
 
-**Arrondi :** Tous les prix sont arrondis a la tranche de 5 EUR inferieure.
+  <script src="js/core/cookie-consent.js"></script>
+  <script src="js/core/main.js"></script>
+  <script src="js/features/mistral-stats.js"></script>
+</body>
+</html>
+```
+
+**Points cles :**
+- `data-page="nom-page"` sur `<body>` permet de styler la page et d'activer le lien nav
+- `<div id="site-header">` et `<div id="site-footer">` sont remplis dynamiquement par `main.js`
+- Pour un footer minimal (ex: page de paiement) : `<body data-footer="minimal">`
 
 ---
 
-## Systeme de faisabilite
+## Systeme de donnees
 
-Le module `js/features/feasibility-module.js` verifie automatiquement si une configuration est realisable.
+### Architecture : MistralSync (in-memory)
 
-### Seuils de faisabilite
+**IMPORTANT** : Les donnees metier ne sont PAS dans `localStorage`. Elles sont dans une `Map` JavaScript en memoire, geree par `MistralSync` (`js/services/supabase-sync.js`).
 
-| Status | % Surface | Effet UI | Effet prix |
-|--------|-----------|----------|------------|
-| OK | <= 45% | Normal | 0% |
-| Warning | 45-50% | Hint "Config avancee" | +5% |
-| Difficult | 50-59% | Bouton verification | +10% |
-| Impossible | > 59% | Chip grisee, bloque | N/A |
+Le flux est :
+1. Au chargement, `supabase-sync.js` fetch les donnees depuis Supabase
+2. Les donnees sont stockees dans une `Map` en memoire
+3. Les modifications passent par `MistralSync.setData()` qui met a jour la Map ET push vers Supabase
+4. L'evenement `mistral-sync-complete` est dispatch quand le premier fetch est termine
+5. L'evenement `mistral-data-change` est dispatch a chaque modification
 
-### Notes interdites par taille
+### Donnees MistralSync (Map en memoire + Supabase)
 
-| Taille | Note interdite |
-|--------|----------------|
-| 53 cm | A#4 |
-| 50 cm | B4 |
-| 45 cm | C#5 |
+| Cle en memoire | Table Supabase | Type | Contenu |
+|----------------|---------------|------|---------|
+| `mistral_gestion_clients` | `clients` | Array | Fiches clients |
+| `mistral_gestion_instruments` | `instruments` | Array | Inventaire instruments |
+| `mistral_gestion_locations` | `locations` | Array | Contrats de location |
+| `mistral_gestion_commandes` | `commandes` | Array | Commandes clients |
+| `mistral_gestion_factures` | `factures` | Array | Factures (soft-delete, pas de suppression) |
+| `mistral_teachers` | `professeurs` (statut='active') | Array | Professeurs valides |
+| `mistral_pending_teachers` | `professeurs` (statut='pending') | Array | Demandes en attente |
+| `mistral_gallery` | `galerie` | Array | Medias galerie |
+| `mistral_blog_articles` | `articles` | Array | Articles blog |
+| `mistral_accessoires` | `accessoires` | Array | Accessoires boutique |
+| `mistral_gestion_config` | `configuration` (namespace='gestion') | Object | Config metier (tarifs, compteur factures) |
+| `mistral_compta_config` | `configuration` (namespace='compta') | Object | Config comptabilite |
+| `mistral_email_automations` | `configuration` (namespace='email_automations') | Object | Config emails automatiques |
 
----
+### Donnees localStorage (preferences client uniquement)
 
-## Systeme audio
+| Cle | Usage |
+|-----|-------|
+| `mistral_cookie_consent` | Preferences consentement cookies RGPD |
+| `mistral_leaflet_consent` | Consentement carte Leaflet |
+| `mistral_stats_anonymous` | Compteurs de pages vues anonymes |
+| `mistral_tailles` | Configuration des tailles (a migrer vers MistralSync) |
 
-- **Format :** FLAC
-- **Dossier :** `ressources/audio/`
-- **Nommage :** `[Note][s][Octave].flac` (s pour diese)
-  - Exemple : C#4 > `Cs4.flac`, Bb3 > `As3.flac`
+### Donnees in-memory uniquement (pas de persistence)
 
-**Plage disponible :** E2 a F5 (56 samples)
+| Module | Contenu |
+|--------|---------|
+| `MistralMateriaux` | Specifications materiaux (NS, ES, SS) — defaults hardcodes |
+| `MistralGammes` | Configurations des gammes musicales — defaults hardcodes |
+
+### Suppression de donnees
+
+Les suppressions appellent `MistralSync.deleteFromSupabase()` pour supprimer aussi cote serveur. **Exception** : les factures ne sont jamais supprimees (loi francaise, retention 10 ans). On utilise `Factures.annuler()` qui fait un soft-delete (statut = 'annulee').
 
 ---
 
 ## Systeme d'administration
 
-### Architecture modulaire (v3.1)
-
-| Module | Dossier | Responsabilite |
-|--------|---------|----------------|
-| `admin-core.js` | `js/admin/` | Auth, FAB, Modal, Toast, Storage, sanitization |
-| `admin-ui-core.js` | `js/admin/` | Navigation, dashboard, todos |
-| `admin-ui-gestion.js` | `js/admin/` | Clients, instruments, locations, commandes, factures |
-| `admin-ui-boutique.js` | `js/admin/` | Stock boutique, accessoires |
-| `admin-ui-content.js` | `js/admin/` | Professeurs, galerie, blog, analytics |
-| `admin-ui-config.js` | `js/admin/` | Configuration, export/import, materiaux |
-| `admin-ui-modals.js` | `js/admin/` | Tous les modals CRUD |
-| `admin-ui-compta.js` | `js/admin/` | Comptabilite, URSSAF |
-| `[page]-admin.js` | `js/admin/` | Integrations specifiques par page |
-
 ### Acces
-- **URL :** `/admin.html`
-- **Authentification :** Supabase Auth (email + mot de passe)
-- **Gestion des comptes :** Supabase Dashboard > Authentication > Users
 
-### Stockage localStorage
+- **URL** : `/admin.html`
+- **Auth** : Supabase Auth (email + mot de passe)
+- **Gestion comptes** : Supabase Dashboard > Authentication > Users
 
-| Cle | Usage |
-|-----|-------|
-| `mistral_flash_annonces` | Annonces boutique |
-| `mistral_teachers` | Professeurs valides |
-| `mistral_pending_teachers` | Demandes en attente |
-| `mistral_gallery` | Medias galerie |
-| `mistral_blog_articles` | Articles blog |
-| `mistral_leaflet_consent` | Consentement carte RGPD |
+### Navigation (v3.5)
+
+Le panneau admin est organise en 3 groupes thematiques avec le **dashboard comme vue par defaut** :
+
+```
+[Tableau de bord]  ← vue par defaut, se masque quand on clique un onglet
+
+GESTION    Commandes●  Instruments  Clients  Locations●  Factures
+CONTENU    Vitrine  Galerie  Blog  Professeurs●
+OUTILS     Comptabilite  Config
+```
+
+- **Tableau de bord** : stats business, actions en attente, todo list, analytics du site, librairies vendor
+- **Commandes** : commandes clients, suivi statut et paiement
+- **Instruments** : inventaire complet, statuts (disponible/en fabrication/vendu/loue)
+- **Clients** : fiches clients, credit fidelite
+- **Locations** : contrats de location actifs et termines
+- **Factures** : facturation, generation PDF (soft-delete uniquement)
+- **Vitrine** : instruments publies en ligne + accessoires + annonces flash
+- **Galerie** : medias (photos/videos), classement, featured
+- **Blog** : articles, editeur WYSIWYG Quill.js
+- **Professeurs** : demandes en attente + professeurs valides
+- **Comptabilite** : rapports URSSAF mensuels, CA BIC/BNC
+- **Config** : infos entreprise, tarifs location, tarification configurateur, materiaux, gammes, tailles, emails automatiques, export/import
+
+> **Note** : "Vitrine" dans l'admin = gestion du stock en ligne. C'est le meme contenu que la page publique `boutique.html`, mais le nom "Vitrine" evite la confusion.
+
+### Modules admin
+
+| Module | Fichier | Role |
+|--------|---------|------|
+| `MistralAdmin` | `admin-core.js` | Auth, FAB, Modal, Toast, Confirm, Storage, Teachers/Gallery/Blog CRUD |
+| `AdminUI` | `admin-ui-core.js` | Navigation, dashboard, todos, helpers partages (`AdminUIHelpers`) |
+| `AdminUI.*` | `admin-ui-gestion.js` | Rendu tables : clients, instruments, locations, commandes, factures |
+| `AdminUI.*` | `admin-ui-boutique.js` | Rendu stock en ligne, accessoires |
+| `AdminUI.*` | `admin-ui-content.js` | Rendu professeurs, galerie, blog, analytics |
+| `AdminUI.*` | `admin-ui-config.js` | Rendu config, materiaux, gammes, tailles, emails automatiques |
+| `AdminUI.*` | `admin-ui-modals.js` | Tous les modals CRUD (formulaires edition/creation) |
+| `AdminUI.*` | `admin-ui-compta.js` | Comptabilite, rapports URSSAF |
+| `MistralGestion` | `gestion.js` | Logique metier : CRUD, validation, transitions de statut |
+
+### Helpers partages (AdminUIHelpers)
+
+Tous les modules admin-ui-*.js importent leurs helpers depuis `window.AdminUIHelpers` (exporte par `admin-ui-core.js`) :
+
+```javascript
+const { $, $$, escapeHtml, formatPrice, formatDate, isValidEmail, Toast, Confirm, Modal, Storage } = window.AdminUIHelpers;
+```
+
+**Ne jamais dupliquer ces helpers** dans les modules. Toujours les importer via destructuring.
+
+### FAB (Floating Action Button)
+
+Le FAB apparait sur **toutes les pages sauf admin.html** quand l'utilisateur est connecte. Il propose 2 actions : lien vers le panneau admin + deconnexion. Le FAB est gere centralement par `admin-core.js` et se cree/detruit automatiquement sur les evenements `mistral-auth-change`.
+
+### Validation des donnees
+
+Les fonctions `create()` dans `gestion.js` valident les donnees avant insertion :
+- `validateClient()` : nom requis, format email
+- `validateInstrument()` : reference + gamme requises, prix positif
+- `validateLocation()` : client_id + instrument_id requis
+- `validateCommande()` : client_id requis, montant positif
+- `validateFacture()` : client_id requis, au moins une ligne
+
+Les erreurs de validation remontent via `Toast.error()` dans les modals.
+
+---
+
+## Systeme de tarification
+
+### Fonctionnement
+
+Le prix d'un instrument est calcule dynamiquement dans `js/pages/boutique.js` en fonction de la configuration choisie. **Tous les parametres sont configurables depuis l'admin** (Config > Tarification configurateur).
+
+### Prix de base (configurables)
+
+| Parametre | Defaut | Cle config |
+|-----------|--------|------------|
+| Prix par note | 115 EUR | `prixParNote` |
+| Bonus note octave 2 | +50 EUR/note | `bonusOctave2` |
+| Bonus bottoms | +25 EUR forfait | `bonusBottoms` |
+
+### Malus taille (montant fixe en EUR, configurable par taille)
+
+| Taille | Malus defaut | Raison |
+|--------|-------------|--------|
+| 53 cm | 0 EUR | Standard |
+| 50 cm | +100 EUR | Modification du shell (2h de travail) |
+| 45 cm | +100 EUR | Modification du shell (2h de travail) |
+
+> Le malus taille est editable dans Config > Tailles > bouton modifier sur chaque taille.
+
+### Malus difficulte (pourcentage, configurable)
+
+| Statut faisabilite | Malus defaut | Cle config |
+|-------------------|-------------|------------|
+| OK | 0% | — |
+| Warning | +5% | `malusDifficulteWarning` |
+| Difficile | +10% | `malusDifficulteDifficile` |
+| Impossible | Bloque | — |
+
+### Formule de calcul
+
+```
+prix = (nb_notes × prixParNote)
+     + (nb_notes_octave2 × bonusOctave2)
+     + (hasBottoms ? bonusBottoms : 0)
+     + malusTaille(size)                        ← montant fixe EUR
+prix = prix × (1 + malusDifficulte(status)/100) ← pourcentage
+prix = arrondi_inferieur_tranche_5(prix)
+```
+
+### Ou modifier les tarifs
+
+- **Admin > Config > Tarification configurateur** : prix par note, bonus octave 2, bonus bottoms, malus difficulte
+- **Admin > Config > Tailles** : malus taille en EUR par taille (bouton modifier)
+- **Code** : `js/pages/boutique.js` fonction `calculatePrice()`, defaults dans `PRICING_DEFAULTS`
+
+---
+
+## Systeme de faisabilite
+
+Le module `js/features/feasibility-module.js` verifie si une configuration de notes est physiquement realisable sur un shell de taille donnee.
+
+### Seuils (configures dans `tailles-data.js` par taille)
+
+| Statut | % Surface occupee | Effet UI | Effet prix |
+|--------|-------------------|----------|------------|
+| OK | <= 45% | Normal | 0% |
+| Warning | 45-50% | Indication "configuration avancee" | +5% (configurable) |
+| Difficile | 50-59% | Bouton de verification | +10% (configurable) |
+| Impossible | > 59% | Note grisee, selection bloquee | N/A |
+
+### Notes interdites par taille
+
+| Taille | Note interdite | Raison |
+|--------|----------------|--------|
+| 53 cm | A#4 | Conflit avec la cavite du shell |
+| 50 cm | B4 | Conflit avec la cavite du shell |
+| 45 cm | C#5 | Conflit avec la cavite du shell |
+
+### Donnees de faisabilite
+
+Chaque taille dans `tailles-data.js` contient un objet `feasibility` avec :
+- `shell` : surface totale du shell (mm²)
+- `comfortPct`, `warningPct`, `maxPct` : seuils en %
+- `forbiddenNotes` : notes physiquement impossibles
+- `noteSize`, `bottomSize` : surface par note/bottom
+
+---
+
+## Systeme audio
+
+Le configurateur joue les notes en temps reel via Web Audio API.
+
+- **Format** : FLAC
+- **Dossier** : `ressources/audio/`
+- **Nommage** : `[Note][s][Octave].flac` (s = diese/sharp)
+  - Exemples : `Cs4.flac` = C#4, `As3.flac` = A#3/Bb3, `D3.flac` = D3
+- **Plage** : E2 a F5 (56 samples)
+- **Module** : `js/features/handpan-player.js` (classe `HandpanPlayer`)
+
+Pour ajouter un sample : convertir en FLAC, nommer selon la convention, placer dans `ressources/audio/`.
 
 ---
 
 ## Base de donnees Supabase
 
-### Tables principales (10 tables)
+### Tables principales
 
-| Table | Usage | Sync localStorage |
-|-------|-------|-------------------|
-| `clients` | Clients (nom, email, telephone, adresse) | Oui |
-| `instruments` | Inventaire (reference, gamme, tonalite, taille, prix) | Oui |
-| `locations` | Locations (client, instrument, dates, caution) | Oui |
-| `commandes` | Commandes (specifications JSON, montant, statut) | Oui |
-| `factures` | Factures (numero auto, lignes JSON) | Oui |
-| `professeurs` | Professeurs (nom, location, lat/lng, photo) | Oui |
-| `galerie` | Medias (type, src, thumbnail, ordre) | Oui |
-| `articles` | Blog (slug, title, content HTML, tags) | Oui |
-| `accessoires` | Accessoires (nom, prix, quantite_stock) | Non |
-| `configuration` | Parametres (key/value pairs) | Non |
+| Table | Champs cles | RLS lecture publique |
+|-------|-------------|---------------------|
+| `clients` | nom, email, telephone, adresse, credit_fidelite | Non |
+| `instruments` | reference, gamme, tonalite, taille, prix_vente, statut | Oui (statut='en_ligne') |
+| `locations` | client_id, instrument_id, date_debut, loyer, caution, statut | Non |
+| `commandes` | client_id, specifications (JSON), montant, statut, statut_paiement | Non |
+| `factures` | numero (auto), client_id, lignes (JSON), montant_ttc, statut | Non |
+| `professeurs` | nom, email, lat, lng, photo, types_cours, statut | Oui (statut='active') |
+| `galerie` | type, src, thumbnail, ordre, featured | Oui |
+| `articles` | slug, title, content (HTML), status, tags | Oui (status='published') |
+| `accessoires` | nom, categorie, prix, stock, visible_configurateur, tailles_compatibles | Oui (statut='actif') |
+| `configuration` | key, value (JSON), namespace | Non |
 
-### Securite RLS
-- **Lecture publique :** Professeurs actifs, articles publies, instruments en ligne
-- **Insertion publique :** Candidatures professeurs (statut pending)
-- **CRUD authentifie :** Operations admin completes
+### Securite RLS (Row-Level Security)
+
+- **Lecture publique** : professeurs actifs, articles publies, instruments en ligne, galerie, accessoires actifs
+- **Insertion publique** : candidatures professeurs (statut='pending' force)
+- **CRUD authentifie** : toutes les operations admin necessitent un JWT Supabase valide
+- **Storage** : bucket `galerie` — ecriture admin-only, lecture publique
 
 ---
 
-## Configuration Supabase
+## Configuration initiale
 
 ### 1. Creer un projet Supabase
 
-1. Allez sur [supabase.com](https://supabase.com) et creez un compte
-2. Cliquez sur "New Project" (region EU recommandee pour RGPD)
-3. Notez le mot de passe de la base de donnees
+1. Aller sur [supabase.com](https://supabase.com), creer un compte
+2. "New Project" (region EU recommandee pour RGPD)
+3. Noter le mot de passe de la base
 
 ### 2. Recuperer les identifiants API
 
-Dans **Settings > API**, copiez :
+Dans **Settings > API** :
 - **Project URL** : `https://xxxxx.supabase.co`
 - **anon public key** : `eyJhbGciOiJIUzI1NiIs...`
 
@@ -363,7 +615,7 @@ window.MISTRAL_CONFIG = {
 };
 ```
 
-> **Important** : Ne commitez JAMAIS `js/core/config.js` (il est dans .gitignore)
+> **IMPORTANT** : Ne jamais commiter `config.js` — il est dans `.gitignore`.
 
 ### 4. Creer un utilisateur admin
 
@@ -372,280 +624,197 @@ Dans Supabase > **Authentication > Users** > "Add User" :
 - Password : (mot de passe fort)
 - Cochez "Auto Confirm User"
 
-### 5. Depannage
+### 5. Variables d'environnement (Netlify)
 
-| Erreur | Solution |
-|--------|----------|
-| "supabaseUrl is required" | `js/core/config.js` n'existe pas ou n'est pas charge |
-| "Invalid login credentials" | Verifier l'utilisateur dans Supabase > Authentication |
-| "Service d'authentification non disponible" | Verifier l'ordre des scripts dans admin.html |
-| Erreurs CORS | Ajouter votre domaine dans Supabase > Settings > API |
-
----
-
-## Roadmap
-
-### Phase 1 : Securite - COMPLETE
-
-- [x] Externaliser les identifiants Supabase (`window.MISTRAL_CONFIG`)
-- [x] Corriger injection email header
-- [x] Corriger vulnerabilites XSS (sanitizeHtml, escapeHtml)
-- [x] Migrer uploads de PHP vers Supabase Storage
-- [x] Banniere consentement cookies
-- [x] Google Fonts conditionnel
-- [x] Refactoriser admin-ui.js en 7 modules
-
-### Phase 2 : Paiement et Email - EN COURS
-
-- [x] Configurer Brevo et templates email
-- [x] Creer module Payplug (client + webhook)
-- [x] Creer module Swikly (client + webhook)
-- [x] Integration formulaire paiement dans commander.html
-- [x] Paiement acompte (30%), solde, 3x sans frais
-- [x] Protection anti-spam honeypot (tous formulaires)
-- [x] Page de suivi commande (suivi.html + order-status.js)
-- [ ] Auto-generation de facture sur paiement confirme
-- [ ] Tests sandbox Payplug/Swikly
-- [ ] Passage en production
-
-### Phase 3 : A faire
-
-- [ ] Audit complet CRUD admin panel
-- [ ] Faire de Supabase la source de verite (pattern localStorage-first)
-- [ ] Audit securite RLS (politiques granulaires)
-- [ ] Scale Batch System (voir section dediee)
-- [ ] Optimisations performance (lazy loading, code splitting)
-- [ ] Echelle z-index unifiee
-- [ ] Indicateurs `:focus-visible` complets
-
-### Mettre a jour les librairies tierces
-
-Les librairies JavaScript (Supabase, Leaflet, Chart.js, Quill) sont servies
-depuis le site, pas depuis des CDN. Pour verifier les mises a jour :
-
-    ./scripts/update-vendor.sh
-
-Pour installer les mises a jour :
-
-    ./scripts/update-vendor.sh --install
-
-Le dashboard admin affiche aussi un indicateur quand des mises a jour sont disponibles.
-
-### Variables d'environnement requises (Netlify)
+Configurer dans Netlify > Site Settings > Environment Variables :
 
 ```env
-# Supabase
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_KEY=xxx          # Cle service (webhooks, functions serveur)
-
-# Brevo (email)
-BREVO_API_KEY=xxx
-
-# Payplug
-PAYPLUG_SECRET_KEY=xxx
-
-# Swikly
-SWIKLY_SECRET_KEY=xxx             # Pour verification HMAC webhook
+BREVO_API_KEY=xxx                 # Email Brevo SMTP
+PAYPLUG_SECRET_KEY=xxx            # Paiement PayPlug
+SWIKLY_SECRET_KEY=xxx             # Verification HMAC webhook Swikly
 ```
 
-> **Note :** La cle `SUPABASE_ANON_KEY` est configuree cote client dans `js/core/config.js` (gitignore). Les variables ci-dessus sont les secrets serveur configures dans Netlify.
+### 6. Depannage
 
----
-
-## Scale Batch System
-
-> Specification technique pour le systeme de gestion des gammes par batch (developpement futur).
-
-### Objectifs
-
-1. Organiser les gammes en batches pour le configurateur (12 gammes actuellement, extensible)
-2. Simplifier l'UX avec des selections curatees
-3. Permettre le controle admin sur les gammes visibles
-4. Preserver la logique de theorie musicale (dieses/bemols)
-
-### Cinq categories de batch
-
-| Batch | Nom | Description |
-|-------|-----|-------------|
-| `debutant` | Debutant | Gammes accessibles (toujours visible) |
-| `mineur` | Mineur | Gammes mineures (Kurd, Celtic...) |
-| `majeur` | Majeur | Gammes majeures (Sabye, Oxalis...) |
-| `modal` | Modal | Gammes modales (Dorian, Phrygian...) |
-| `ethnic` | Ethnique | Gammes du monde (Hijaz, Akebono...) |
-
-### Tables Supabase prevues
-
-**`gammes`** : nom, slug, pattern, mode, batch, nb_notes, notes_octave2, has_bottoms, note_variants (JSONB), ordre, visible, featured
-
-**`gammes_batches`** : id, nom, description, ordre, couleur, icone, visible
-
-### Pattern notation
-
-```
-[Ding]/[Note1]-[Note2]-[Note3]-...-[NoteN]_
-```
-Exemple Kurd 9 : `D/-A-Bb-C-D-E-F-G-A_`
-
-### Phases d'implementation
-
-1. **Database** : Creer tables + RLS + seed data
-2. **Migration** : Parser les gammes de `scales-data.js` et `gammes-data.js` vers Supabase
-3. **Admin** : Onglet "Gammes" dans admin (CRUD + batch manager)
-4. **Configurateur** : Chips de batch + filtrage dans boutique.html
-5. **Extended** : Note variants pour gammes >9 notes
-
----
-
-## Optimisation des images
-
-> Les images du dossier `ressources/images/` totalisent ~26 MB. Une optimisation peut reduire ce poids a ~5 MB (80% de gain).
-
-### Etat actuel
-
-| Fichier | Taille | Dimensions | Priorite |
-|---------|--------|-----------|----------|
-| DAmara ember.png | 7.1 MB | 3024x3024 | CRITIQUE |
-| AMARA.png | 5.9 MB | 2344x2328 | CRITIQUE |
-| 20240225_112013.jpg | 4.9 MB | 4032x3024 | HAUTE |
-| 20230801_1622372.jpg | 4.6 MB | 4032x3024 | HAUTE |
-| 20240315_162320.jpg | 3.4 MB | 3984x1920 | HAUTE |
-| Mistral_logov3_ball_black.png | 135 KB | 3119x3119 | MOYENNE |
-| Autres (PNG/SVG) | < 80 KB | OK | BASSE |
-
-### Actions recommandees
-
-**Photos JPG (3 fichiers, 13 MB) :**
-- Redimensionner a 2048px max (largeur)
-- Re-encoder en JPEG qualite 75-80
-- Supprimer metadonnees EXIF (contiennent potentiellement des coordonnees GPS)
-- Resultat estime : ~1 MB par fichier
-
-**Images produit PNG (2 fichiers, 13 MB) :**
-- Convertir en WebP (lossy qualite 75-80)
-- Reduire dimensions : 3024px -> 1500px, 2344px -> 1200px
-- Resultat estime : ~800 KB par fichier
-
-**Logo PNG (135 KB) :**
-- Reduire a ~500px
-- Convertir en WebP
-- Resultat estime : ~30 KB
-
-### Commandes d'optimisation
-
-```bash
-# Prerequis : installer ImageMagick et cwebp
-# sudo apt install imagemagick webp
-
-# Convertir PNG en WebP
-cwebp -q 80 "AMARA.png" -o "AMARA.webp"
-cwebp -q 80 "DAmara ember.png" -o "DAmara_ember.webp"
-
-# Redimensionner et compresser JPG
-convert "20240225_112013.jpg" -resize 2048x -quality 75 -strip "20240225_112013_opt.jpg"
-convert "20230801_1622372.jpg" -resize 2048x -quality 75 -strip "20230801_1622372_opt.jpg"
-convert "20240315_162320.jpg" -resize 2048x -quality 75 -strip "20240315_162320_opt.jpg"
-```
-
-### Fallback navigateur
-
-Pour les formats WebP, utiliser l'element `<picture>` :
-```html
-<picture>
-  <source srcset="ressources/images/AMARA.webp" type="image/webp">
-  <img src="ressources/images/AMARA.png" alt="Handpan Amara">
-</picture>
-```
+| Erreur | Cause probable | Solution |
+|--------|----------------|----------|
+| "supabaseUrl is required" | `config.js` absent ou non charge | Copier `config.example.js` vers `config.js` |
+| "Invalid login credentials" | Utilisateur admin incorrect | Verifier dans Supabase > Authentication |
+| "Service d'authentification non disponible" | Scripts charges dans le mauvais ordre | Verifier l'ordre dans admin.html |
+| Erreurs CORS | Domaine non autorise | Ajouter dans Supabase > Settings > API |
+| Partials ne chargent pas | Ouverture en `file://` | Utiliser un serveur HTTP local |
+| Config admin ne se charge pas | Bug historique corrige en v3.5 | Verifier que `refreshSection` a bien `case 'config':` |
 
 ---
 
 ## Deploiement
 
 ### Hebergement
-- **Site :** Netlify (site statique + Netlify Functions)
-- **Domaine :** OVH (`mistralpans.fr`)
-- **Stockage media :** Supabase Storage
-- **SSL/TLS :** Inclus (Netlify)
+
+- **Site** : Netlify (statique + Functions)
+- **Domaine** : OVH (`mistralpans.fr`)
+- **Stockage media** : Supabase Storage (bucket `galerie`)
+- **SSL** : Inclus Netlify
+
+### Configuration Netlify (`netlify.toml`)
+
+Le fichier configure :
+- Headers de securite (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
+- Cache statique (1 semaine pour ressources, 1 heure pour CSS/JS)
+- Redirects et rewrites
+- Build settings (publish: `.`, functions: `netlify/functions`)
 
 ### Checklist pre-production
 
-- [x] Supprimer les fichiers PHP residuels (`php/upload.php`, `php/delete.php`)
-- [ ] Regenerer cle LIVE PayPlug (exposee en clair) et mettre a jour Netlify
-- [x] Rate limiting sur `payplug-create-payment.js` et `swikly-create-deposit.js`
-- [x] Masquer `error.message` internes dans les reponses Netlify Functions
-- [x] Filtrer les cles metadata dans le webhook Swikly
-- [ ] Verifier encodage UTF-8 sur tout le contenu
-- [ ] Optimiser images (WebP, ~26 Mo -> ~5 Mo)
-- [ ] Tester flux complet sandbox PayPlug et Swikly
-- [ ] Tester sur vrais appareils mobiles
-- [ ] Passer cles PayPlug de test a live dans Netlify
-- [x] Creer pages legales (mentions, CGV)
-- [x] Configurer banniere consentement cookies
-- [x] Externaliser identifiants Supabase
-- [x] Migrer uploads vers Supabase Storage
-- [x] Anti-spam honeypot (tous formulaires)
-- [x] CORS whitelist sur Netlify Functions
+**Fait :**
+- [x] config.js dans .gitignore
+- [x] Auth admin via Supabase Auth (JWT)
+- [x] CORS whitelist sur toutes les Netlify Functions
 - [x] Verification HMAC webhook Swikly
+- [x] XSS corrigee (escapeHtml partout)
+- [x] Rate limiting sur creation paiement et email
 - [x] Idempotence webhook PayPlug (upsert)
-- [x] Echappement XSS dans commander.js
-- [x] Migration auth admin vers Supabase Auth
-- [x] Page suivi commande (suivi.html)
+- [x] Pages legales (CGV, mentions)
+- [x] Banniere consentement cookies
+- [x] Anti-spam honeypot
+- [x] Supabase Storage pour les uploads
 
-### Services externes
+**A faire :**
+- [ ] Tester flux complet sandbox PayPlug et Swikly
+- [ ] Passer cles PayPlug de test a live
+- [ ] Optimiser images (WebP, ~26 Mo -> ~5 Mo)
+- [ ] Ajouter un favicon
+- [ ] Tester sur vrais appareils mobiles
 
-| Service | Usage | RGPD |
-|---------|-------|------|
-| Supabase | Database, Auth | Hebergement EU disponible |
-| Brevo | Email | Conforme RGPD |
-| Nominatim | Geocodage | Pas de tracking |
-| CartoDB | Tuiles carte | Consentement requis (banniere) |
-| Google Fonts | Typographies | Chargement conditionnel |
-| Swikly | Cautions location | Conforme RGPD |
-| Payplug | Paiements | Fournisseur francais, conforme RGPD |
+---
+
+## Securite
+
+### Audit de securite (dernier : fevrier 2026)
+
+| # | Severite | Description | Statut |
+|---|----------|-------------|--------|
+| 1 | ~~CRITIQUE~~ | CORS whitelist sur Netlify Functions | Resolu |
+| 2 | ~~CRITIQUE~~ | Verification HMAC webhook Swikly | Resolu |
+| 3 | ~~HAUTE~~ | XSS dans showPaymentSuccess() | Resolu |
+| 4 | ~~HAUTE~~ | Rate limiting creation paiement/caution | Resolu |
+| 5 | ~~HAUTE~~ | Idempotence webhook PayPlug | Resolu |
+| 6 | ~~HAUTE~~ | Validation donnees webhook Swikly | Resolu |
+| 7 | MOYENNE | Rate limiting connexion admin | Supabase gere cote serveur |
+| 12 | FAIBLE | CSP meta sur commander.html | Defini dans netlify.toml (prod) |
+| 13 | FAIBLE | Securite partagee PayPlug Integrated Payment | Risque accepte |
+
+### Points positifs
+
+- Webhook PayPlug : re-fetch API cote serveur (ne fait pas confiance au payload)
+- Supabase RLS : acces public vs admin au niveau des lignes
+- Honeypot : zero cookie tiers, zero dependance externe
+- PayPlug cle secrete : jamais exposee au client
+- Metadata Swikly : whitelist de cles avant stockage
+
+---
+
+## Roadmap
+
+### Termine (v3.5)
+
+- [x] Migration auth vers Supabase Auth
+- [x] MistralSync : donnees in-memory + Supabase (plus de localStorage pour les donnees metier)
+- [x] Validation des donnees dans toutes les fonctions `create()`
+- [x] Bulk upsert Supabase (au lieu de item par item)
+- [x] Suppression sync vers Supabase (deleteFromSupabase)
+- [x] FAB centralise (2 actions, toutes pages sauf admin)
+- [x] Tarification configurable depuis l'admin
+- [x] Malus taille en montant fixe EUR (au lieu de pourcentage)
+- [x] Reorganisation navigation admin (groupes, labels, dashboard toggleable)
+- [x] Analytics integre au dashboard
+- [x] Bug fix : onglet Config qui ne se chargeait pas
+- [x] Librairies vendor auto-hebergees (plus de CDN sauf PayPlug)
+- [x] Systeme de gammes/materiaux/tailles dans l'admin
+
+### A faire
+
+**Priorite haute :**
+- [ ] Tester et passer PayPlug/Swikly en production
+- [ ] Auto-generation de facture sur paiement confirme
+- [ ] Optimiser images (26 Mo -> ~5 Mo avec WebP)
+- [ ] Ajouter un favicon
+
+**Priorite moyenne :**
+- [ ] Migrer `tailles-data.js` de localStorage vers MistralSync
+- [ ] Audit securite RLS (politiques granulaires par table)
+- [ ] Ameliorer indicateurs `:focus-visible` sur tout le site
+- [ ] Unifier l'echelle z-index (actuellement ad hoc)
+
+**Priorite basse :**
+- [ ] Hardcoded colors dans boutique.css et admin.css (devraient utiliser les custom properties)
+- [ ] Encoding UTF-8 dans certains commentaires CSS
+- [ ] Auth state listener Supabase jamais unsubscribed (`supabase-auth.js`)
+
+### Mettre a jour les librairies
+
+```bash
+# Verifier les mises a jour disponibles
+./scripts/update-vendor.sh
+
+# Installer les mises a jour
+./scripts/update-vendor.sh --install
+```
+
+Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 
 ---
 
 ## Historique des versions
 
+### v3.5 (9 Fevrier 2026)
+- **Admin** : Reorganisation complete de la navigation (groupes Gestion/Contenu/Outils, labels, dashboard toggleable)
+- **Admin** : Suppression onglet Analytics, integre au dashboard
+- **Admin** : Renommage "Boutique" → "Vitrine" dans l'admin
+- **Admin** : Fix bug onglet Config qui ne rendait pas (case 'configuration' → 'config')
+- **Tarification** : Prix configurables depuis l'admin (prix/note, bonus octave 2, bonus bottoms, malus difficulte)
+- **Tarification** : Malus taille change de pourcentage a montant fixe EUR (ex: +100 EUR pour 45/50 cm)
+- **Data** : Validation des donnees dans tous les `create()` (gestion.js)
+- **Data** : Bulk upsert Supabase (plus de boucle item par item)
+- **Data** : Suppression sync vers Supabase (deleteFromSupabase dans toutes les fonctions delete)
+- **Data** : `ajouterCredit()` protege contre NaN
+- **UI** : isValidEmail unifie dans AdminUIHelpers
+- **UI** : Modal memory leaks corriges (reset upload state on close)
+- **UI** : `Confirm.show()` supporte `isHtml` option
+- **UI** : Erreurs transition statut instrument affichees via Toast
+- **UI** : blog-admin.js ecoute `mistral-data-change` au lieu de `storage`
+- **FAB** : Refactore en raccourci global (admin + deconnexion), auto-injecte sur toutes les pages sauf admin
+
+### v3.4 (8 Fevrier 2026)
+- **Vendor** : Toutes les librairies JS auto-hebergees dans `js/vendor/` (plus de CDN sauf PayPlug)
+- **Scripts** : `update-vendor.sh` pour verification et MAJ des librairies
+- **Admin** : Widget vendor check dans le dashboard
+
 ### v3.3 (6 Fevrier 2026)
-- **Structure :** Reorganisation du dossier `js/` en sous-dossiers thematiques (core, admin, services, data, features, pages)
-- **Documentation :** Consolidation de 7 fichiers markdown en 2 (README.md + CLAUDE.md)
-- **Nettoyage :** Suppression image dupliquee
+- **Structure** : Reorganisation du dossier `js/` en sous-dossiers (core, admin, services, data, features, pages)
+- **Documentation** : Consolidation en 2 fichiers (README.md + CLAUDE.md)
 
 ### v3.2 (4 Fevrier 2026)
-- **Ventes :** Workflow de vente integre (instrument -> facture -> statut vendu)
-- **Factures :** Ajout automatique d'instrument avec `addFactureLigneFromInstrument()`
-- **Statuts :** Systeme de validation des transitions de statut instruments
-- **Synchronisation :** Les instruments lies sont automatiquement marques "vendu" au paiement
-- **Supabase :** Ajout sync des professeurs en attente
+- **Ventes** : Workflow de vente integre (instrument → facture → statut vendu)
+- **Factures** : Ajout automatique d'instrument avec `addFactureLigneFromInstrument()`
+- **Statuts** : Systeme de validation des transitions de statut instruments
+- **Supabase** : Sync des professeurs en attente
 
 ### v3.1 (4 Fevrier 2026)
-- **Securite :** Correction 7 vulnerabilites critiques (XSS, CORS, injection)
-- **RGPD :** Banniere consentement cookies, Google Fonts conditionnel
-- **Accessibilite :** Skip link, contraste couleurs, navigation clavier
-- **Architecture :** Refactorisation admin-ui.js en 7 modules
-- **Nettoyage :** Suppression fichiers deprecies et orphelins
-- **SEO :** Meta Open Graph/Twitter sur toutes les pages
+- **Securite** : Correction 7 vulnerabilites critiques (XSS, CORS, injection)
+- **RGPD** : Banniere consentement cookies, Google Fonts conditionnel
+- **Accessibilite** : Skip link, contraste, navigation clavier
+- **Architecture** : Refactorisation admin-ui.js en 7 modules
 
 ### v3.0 (3 Fevrier 2026)
 - Revue globale du projet (78 issues identifies)
-- Documentation mise a jour avec diagnostic
 
 ### v2.5 (Janvier 2025)
-- Systeme de faisabilite des configurations
-- Nouvelle tarification : 115 EUR/note + malus
+- Systeme de faisabilite
+- Tarification 115 EUR/note + malus
 - Navigation swipe mobile
-
-### v2.4 (Janvier 2025)
-- Suppression build Node.js
-- Chargement dynamique des partials
-
-### v2.3 (Janvier 2025)
-- FAB admin sur toutes les pages
-- Geocodage automatique (Nominatim)
-
-### v2.2 (Janvier 2025)
-- Systeme admin centralise
-- Editeur WYSIWYG Quill.js
 
 ### v2.0
 - Refonte design complete
@@ -656,228 +825,10 @@ Pour les formats WebP, utiliser l'element `<picture>` :
 
 ## Contact
 
-- **Site :** mistralpans.fr
-- **Email :** contact@mistralpans.fr
-- **Localisation :** Ile-de-France, France
+- **Site** : mistralpans.fr
+- **Email** : contact@mistralpans.fr
+- **Localisation** : Ile-de-France, France
 
 ---
 
-## Audit de securite
-
-> Audit complet de l'integration paiement (PayPlug, Swikly) et de la securite generale du projet.
-> Derniere revue : 8 fevrier 2026.
-
-### Tableau de synthese
-
-| # | Severite | Zone | Probleme | Statut |
-|---|----------|------|----------|--------|
-| 1 | ~~CRITIQUE~~ | Netlify Functions | CORS whitelist implementee (`ALLOWED_ORIGINS`) | **Resolu** |
-| 2 | ~~CRITIQUE~~ | Swikly webhook | Verification HMAC SHA-256 avec `timingSafeEqual()` | **Resolu** |
-| 3 | ~~HAUTE~~ | commander.js | XSS corrigee — `escapeHtml()` applique sur toutes les variables | **Resolu** |
-| 4 | ~~HAUTE~~ | Netlify Functions | Rate limiting in-memory implementee (5/min PayPlug, 3/min Swikly) | **Resolu** |
-| 5 | ~~HAUTE~~ | PayPlug webhook | Idempotence via `upsert` avec `on_conflict=payplug_id` | **Resolu** |
-| 6 | ~~HAUTE~~ | Swikly webhook | Validation schema + filtrage metadata avant ecriture en base | **Resolu** |
-| 7 | **MOYENNE** | Admin auth | Pas de rate limiting client (Supabase gere cote serveur) | A evaluer |
-| 8 | ~~MOYENNE~~ | ~~Admin auth~~ | ~~Token `Math.random()`~~ — **OBSOLETE** : auth migree vers Supabase JWT | Resolu |
-| 9 | ~~MOYENNE~~ | ~~PHP endpoints~~ | ~~Hash admin par defaut~~ — **OBSOLETE** : uploads via Supabase Storage | Resolu |
-| 10 | ~~MOYENNE~~ | Netlify Functions | Messages generiques retournes, details logges cote serveur | **Resolu** |
-| 11 | ~~MOYENNE~~ | Swikly create/webhook | Metadata filtrees — whitelist de cles explicites | **Resolu** |
-| 12 | **FAIBLE** | commander.html | CSP defini dans `netlify.toml` (actif en production, absent en local) | Partiel |
-| 13 | **FAIBLE** | Integrated Payment | Securite partagee avec PayPlug (integrite de la page requise) | Risque accepte |
-| 14 | ~~INFO~~ | ~~Admin auth~~ | ~~Credentials localStorage~~ — **OBSOLETE** : auth via Supabase Auth | Resolu |
-| 15 | **INFO** | Admin auth | Fallback `simpleHash()` faible (DJB hash) si SubtleCrypto absent | Architecture |
-
----
-
-### #1 ~~CRITIQUE~~ RESOLU — CORS sur Netlify Functions
-
-**Fichiers :** Toutes les Netlify Functions
-
-**Resolution :** Whitelist `ALLOWED_ORIGINS` implementee sur toutes les fonctions :
-```javascript
-const ALLOWED_ORIGINS = [
-  'https://mistralpans.fr',
-  'https://www.mistralpans.fr'
-];
-// + localhost en dev
-```
-
----
-
-### #2 ~~CRITIQUE~~ RESOLU — Swikly webhook verification de signature
-
-**Fichier :** `swikly-webhook.js`
-
-**Resolution :** Verification HMAC SHA-256 implementee avec `crypto.timingSafeEqual()` pour prevenir les attaques par timing. Le webhook rejette les requetes sans signature valide (HTTP 401).
-
----
-
-### #3 ~~HAUTE~~ RESOLU — XSS dans showPaymentSuccess()
-
-**Fichier :** `commander.js`
-
-**Resolution :** Toutes les variables sont desormais echappees via `escapeHtml()` avant injection dans `innerHTML` :
-```javascript
-var safeRef = escapeHtml(reference || 'N/A');
-var safeProduct = escapeHtml(pendingOrder?.product?.productName || '...');
-```
-
----
-
-### #4 ~~HAUTE~~ RESOLU — Rate limiting sur creation de paiement
-
-**Fichiers :** `payplug-create-payment.js`, `swikly-create-deposit.js`
-
-**Resolution :** Rate limiting in-memory par IP implemente :
-- PayPlug : 5 requetes/minute par IP
-- Swikly : 3 requetes/minute par IP
-- Retourne HTTP 429 si depassement
-- IP extraite via `x-forwarded-for` (Netlify proxy)
-
-> **Note :** En serverless, le rate limiting in-memory est best-effort (la Map est reinitalisee a chaque cold start). Pour un rate limiting strict, utiliser un store externe (Redis, Supabase).
-
----
-
-### #5 ~~HAUTE~~ RESOLU — Idempotence webhook PayPlug
-
-**Fichier :** `payplug-webhook.js`
-
-**Resolution :** Upsert Supabase avec `on_conflict=payplug_id` pour la table `paiements` et `on_conflict=reference` pour la table `commandes`. Les doublons sont automatiquement fusionnes.
-
----
-
-### #6 ~~HAUTE~~ RESOLU — Swikly webhook : validation des donnees
-
-**Fichier :** `swikly-webhook.js`
-
-**Resolution :**
-- Signature HMAC verifiee (#2) — seul Swikly peut envoyer des webhooks valides
-- Validation de schema avant ecriture : `data.id` (string requis), `data.amount` (nombre positif)
-- Metadata filtrees via whitelist explicite (`safeMetadata`) — suppression de `raw_response`
-- Seules les cles attendues sont stockees en base
-
----
-
-### #7 MOYENNE — Pas de rate limiting sur connexion admin
-
-**Fichier :** `admin-core.js` (fonction `Auth.login()`)
-
-**Probleme :** Aucune limite sur les tentatives de connexion. Un attaquant peut bruteforcer le mot de passe admin.
-
-**Correction :**
-- Compteur d'echecs avec verrouillage temporaire (ex: 5 tentatives → blocage 5 min)
-- Stocker le compteur dans `localStorage` ou `sessionStorage`
-
----
-
-### #8 ~~MOYENNE~~ OBSOLETE — Token de session non cryptographique
-
-**Resolution :** L'authentification admin a ete entierement migree vers Supabase Auth. Les tokens de session sont desormais des JWT generes cote serveur par Supabase. `Math.random()` n'est plus utilise a des fins de securite (uniquement pour des IDs d'interface non-critiques).
-
----
-
-### #9 ~~MOYENNE~~ OBSOLETE — Hash admin par defaut dans le code source
-
-**Resolution :** Les uploads passent desormais par Supabase Storage avec authentification JWT. Les fichiers PHP ont ete supprimes du repo.
-
----
-
-### #10 ~~MOYENNE~~ RESOLU — Messages d'erreur internes masques
-
-**Fichiers :** `payplug-create-payment.js`, `swikly-create-deposit.js`, `send-email.js`
-
-**Resolution :** Les reponses d'erreur retournent desormais des messages generiques (`"Erreur creation paiement"`, `"Erreur creation caution"`, `"Erreur lors de l'envoi"`). Les details techniques sont logges cote serveur uniquement via `console.error()`.
-
----
-
-### #11 ~~MOYENNE~~ RESOLU — Metadata filtrees (whitelist)
-
-**Fichiers :** `swikly-create-deposit.js`, `swikly-webhook.js`
-
-**Resolution :**
-- **Creation :** Les metadata sont construites avec des cles explicites uniquement (`rental_reference`, `instrument_name`, `rental_duration_months`, `client_id`, `instrument_id`, `location_id`). Les valeurs sont sanitizees. Pas de spread d'input utilisateur.
-- **Webhook :** `safeMetadata` construit via whitelist avant stockage en base. `raw_response` supprime du record.
-
----
-
-### #12 FAIBLE — Pas de Content-Security-Policy
-
-**Fichier :** `commander.html`
-
-**Probleme :** Aucun header CSP n'est defini. Le SDK PayPlug charge des iframes depuis `cdn.payplug.com`. Sans CSP, des scripts tiers injectes (via XSS ou extension malveillante) pourraient intercepter les interactions de paiement.
-
-**Recommandation :** Ajouter un meta tag ou header CSP :
-```html
-<meta http-equiv="Content-Security-Policy" content="
-  default-src 'self';
-  script-src 'self' https://cdn.payplug.com 'unsafe-inline';
-  frame-src https://*.payplug.com;
-  style-src 'self' 'unsafe-inline';
-  img-src 'self' https://*.payplug.com data:;
-  connect-src 'self' https://*.supabase.co https://api.brevo.com;
-">
-```
-
----
-
-### #13 FAIBLE — Securite partagee (Integrated Payment)
-
-**Probleme :** En mode Integrated Payment, PayPlug documente que la securite est "partagee" :
-- Les champs de carte sont des iframes PayPlug (card data isolee)
-- Mais l'integrite de la page hote est de la responsabilite du marchand
-- Si la page est compromise (XSS), un attaquant pourrait superposer de faux champs
-
-**Mitigation en place :** Fallback automatique vers le mode hosted si le SDK ne charge pas.
-
-**Recommandation :** Resoudre #3 (XSS) et #12 (CSP) pour reduire ce risque.
-
----
-
-### Ce qui est bien fait (points positifs)
-
-| Element | Detail |
-|---------|--------|
-| Webhook PayPlug : GET de verification | Le webhook ne fait pas confiance au payload, il GET les details aupres de l'API PayPlug |
-| Sanitization des inputs PayPlug | `sanitize()`, `cleanObject()`, validation email, limites de longueur |
-| Email : echappement HTML | `escapeHtml()` et `sanitizeEmailHeader()` dans `send-email.js` |
-| Supabase Storage : auth RLS | Les uploads passent par Supabase Auth avec policies admin-only |
-| Anti-spam : honeypot | Pas de reCAPTCHA (RGPD-friendly), champ invisible |
-| PayPlug : cle secrete cote serveur | La cle `PAYPLUG_SECRET_KEY` n'est jamais exposee au client |
-| Admin : Supabase Auth | Authentification JWT geree cote serveur |
-| Email : rate limiting | 5 emails/min par IP dans `send-email.js` |
-| Paiement : rate limiting | 5 paiements/min (PayPlug), 3 cautions/min (Swikly) par IP |
-| Metadata : whitelist | Seules les cles attendues sont stockees en base |
-| Integrated Payment : mode test configurable | `testMode: false` avec commentaire pour basculer |
-| Integrated Payment : fallback hosted | Si le SDK ne charge pas, retour transparent au mode heberge |
-
----
-
-### Checklist de correction (par priorite)
-
-**Resolu :**
-
-- [x] #1 CORS whitelist sur toutes les Netlify Functions
-- [x] #2 Verification HMAC signature Swikly (SHA-256 + timingSafeEqual)
-- [x] #3 XSS corrigee dans `showPaymentSuccess()` (escapeHtml)
-- [x] #5 Idempotence webhook PayPlug (upsert on_conflict)
-- [x] #8 Auth migree vers Supabase JWT (Math.random obsolete)
-- [x] #9 Uploads migres vers Supabase Storage (PHP obsolete)
-- [x] #14 Auth via Supabase Auth (localStorage credentials obsolete)
-
-**Avant mise en production :**
-
-- [x] #4 Rate limiting in-memory sur creation de paiement et depot
-- [x] #6 Validation schema + filtrage metadata dans webhook Swikly
-- [x] #10 Messages d'erreur generiques (details logges serveur)
-- [x] #11 Whitelist de cles metadata Swikly
-- [x] Supprimer les fichiers PHP residuels
-
-**Ameliorations recommandees :**
-
-- [ ] #7 Rate limiting connexion admin (Supabase gere cote serveur, evaluer si suffisant)
-- [ ] #12 CSP meta tag sur commander.html (deja dans netlify.toml pour la production)
-- [ ] #15 Evaluer le risque du fallback simpleHash
-
----
-
-*Documentation mise a jour le 8 fevrier 2026 (v3.3)*
+*Documentation mise a jour le 9 fevrier 2026 (v3.5)*
