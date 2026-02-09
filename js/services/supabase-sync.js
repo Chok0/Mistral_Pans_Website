@@ -35,14 +35,21 @@
       { local: 'mistral_gestion_locations', remote: 'locations', idField: 'id' },
       { local: 'mistral_gestion_commandes', remote: 'commandes', idField: 'id' },
       { local: 'mistral_gestion_factures', remote: 'factures', idField: 'id' },
-      { local: 'mistral_teachers', remote: 'professeurs', idField: 'id' },
+      { local: 'mistral_teachers', remote: 'professeurs', idField: 'id', fetchFilter: { column: 'statut', value: 'active' } },
+      { local: 'mistral_pending_teachers', remote: 'professeurs', idField: 'id', fetchFilter: { column: 'statut', value: 'pending' } },
       { local: 'mistral_gallery', remote: 'galerie', idField: 'id' },
-      { local: 'mistral_blog_articles', remote: 'articles', idField: 'id' }
+      { local: 'mistral_blog_articles', remote: 'articles', idField: 'id' },
+      { local: 'mistral_accessoires', remote: 'accessoires', idField: 'id' },
+      { local: 'mistral_gestion_config', remote: 'configuration', idField: 'id', isKeyValue: true },
+      { local: 'mistral_compta_config', remote: 'configuration', idField: 'id', isKeyValue: true, configNamespace: 'compta' },
+      { local: 'mistral_email_automations', remote: 'configuration', idField: 'id', isKeyValue: true, configNamespace: 'email_automations' }
     ],
 
     // Tables necessaires par page publique
+    // Note: une meme table Supabase peut etre mappee a plusieurs cles locales
+    // via des filtres differents (ex: professeurs -> teachers + pending_teachers)
     publicPageTables: {
-      'boutique':  ['instruments'],
+      'boutique':  ['instruments', 'accessoires'],
       'apprendre': ['professeurs'],
       'galerie':   ['galerie'],
       'blog':      ['articles'],
@@ -68,7 +75,7 @@
 
   // Initialiser le store vide pour chaque cle
   SYNC_CONFIG.tables.forEach(t => {
-    dataStore.set(t.local, []);
+    dataStore.set(t.local, t.isKeyValue ? {} : []);
   });
 
   // Set de cles gerees pour lookup rapide
@@ -153,6 +160,13 @@
         if (transformed.photo_url) {
           transformed.photo = transformed.photo_url;
         }
+        // statut -> status for local code compatibility
+        if (transformed.statut && !transformed.status) {
+          transformed.status = transformed.statut;
+        }
+        if (transformed.submitted_at) {
+          transformed.submittedAt = transformed.submitted_at;
+        }
         break;
 
       case 'articles':
@@ -161,6 +175,13 @@
         }
         if (transformed.published_at) {
           transformed.publishedAt = transformed.published_at;
+        }
+        break;
+
+      case 'accessoires':
+        // tailles_compatibles peut etre stocke comme JSON string ou array
+        if (typeof transformed.tailles_compatibles === 'string') {
+          try { transformed.tailles_compatibles = JSON.parse(transformed.tailles_compatibles); } catch { /* garder la valeur */ }
         }
         break;
     }
@@ -207,6 +228,15 @@
           transformed.photo_url = transformed.photo;
           delete transformed.photo;
         }
+        // Normalize status -> statut for Supabase column
+        if (transformed.status && !transformed.statut) {
+          transformed.statut = transformed.status;
+        }
+        delete transformed.status;
+        if (transformed.submittedAt) {
+          transformed.submitted_at = transformed.submittedAt;
+          delete transformed.submittedAt;
+        }
         break;
 
       case 'articles':
@@ -222,6 +252,13 @@
           transformed.meta_title = transformed.seo.metaTitle;
           transformed.meta_description = transformed.seo.metaDescription;
           delete transformed.seo;
+        }
+        break;
+
+      case 'accessoires':
+        // Ensure tailles_compatibles is stored as JSON array
+        if (Array.isArray(transformed.tailles_compatibles)) {
+          transformed.tailles_compatibles = JSON.stringify(transformed.tailles_compatibles);
         }
         break;
     }
@@ -241,14 +278,16 @@
   /**
    * Recupere les donnees depuis le store en memoire
    * @param {string} key - Cle locale (ex: 'mistral_gestion_instruments')
-   * @returns {Array} Donnees ou tableau vide
+   * @returns {Array|Object} Donnees (tableau pour les tables, objet pour les configs)
    */
   function getData(key) {
     if (!managedKeys.has(key)) {
       log(`Cle non geree: ${key}`, 'warning');
       return [];
     }
-    return dataStore.get(key) || [];
+    const tableConfig = getTableConfig(key);
+    const defaultValue = (tableConfig && tableConfig.isKeyValue) ? {} : [];
+    return dataStore.get(key) || defaultValue;
   }
 
   /**
@@ -303,27 +342,82 @@
     if (!client) return false;
 
     try {
-      const { data, error } = await client
+      // Tables key-value (configuration)
+      if (tableConfig.isKeyValue) {
+        return await fetchKeyValueTable(tableConfig, client);
+      }
+
+      let query = client
         .from(tableConfig.remote)
-        .select('*')
-        .order('updated_at', { ascending: false });
+        .select('*');
+
+      // Appliquer un filtre si defini (ex: statut = 'active' pour professeurs)
+      if (tableConfig.fetchFilter) {
+        query = query.eq(tableConfig.fetchFilter.column, tableConfig.fetchFilter.value);
+      }
+
+      query = query.order('updated_at', { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) {
-        log(`Erreur fetch ${tableConfig.remote}: ${error.message}`, 'error');
+        log(`Erreur fetch ${tableConfig.remote} (${tableConfig.local}): ${error.message}`, 'error');
         return false;
       }
 
       if (data) {
         const localData = data.map(item => transformFromSupabase(tableConfig.remote, item));
         dataStore.set(tableConfig.local, localData);
-        log(`Fetch ${tableConfig.remote}: ${data.length} enregistrements`, 'success');
+        log(`Fetch ${tableConfig.remote} -> ${tableConfig.local}: ${data.length} enregistrements`, 'success');
       } else {
         dataStore.set(tableConfig.local, []);
       }
 
       return true;
     } catch (e) {
-      log(`Exception fetch ${tableConfig.remote}: ${e.message}`, 'error');
+      log(`Exception fetch ${tableConfig.remote} (${tableConfig.local}): ${e.message}`, 'error');
+      return false;
+    }
+  }
+
+  /**
+   * Recupere une configuration key-value depuis la table configuration
+   * La table configuration a des colonnes: id, key, value (JSON), namespace
+   */
+  async function fetchKeyValueTable(tableConfig, client) {
+    try {
+      const namespace = tableConfig.configNamespace || 'gestion';
+
+      const { data, error } = await client
+        .from(tableConfig.remote)
+        .select('*')
+        .eq('namespace', namespace);
+
+      if (error) {
+        log(`Erreur fetch config ${namespace}: ${error.message}`, 'error');
+        return false;
+      }
+
+      if (data && data.length > 0) {
+        // Reconstituer l'objet config depuis les paires key/value
+        const configObj = {};
+        data.forEach(row => {
+          try {
+            configObj[row.key] = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+          } catch {
+            configObj[row.key] = row.value;
+          }
+        });
+        // Stocker comme objet unique (pas un tableau)
+        dataStore.set(tableConfig.local, configObj);
+        log(`Fetch config ${namespace}: ${data.length} cles`, 'success');
+      } else {
+        dataStore.set(tableConfig.local, {});
+      }
+
+      return true;
+    } catch (e) {
+      log(`Exception fetch config ${tableConfig.configNamespace || 'gestion'}: ${e.message}`, 'error');
       return false;
     }
   }
@@ -337,7 +431,15 @@
     const client = window.MistralDB.getClient();
     if (!client) return false;
 
+    // Tables key-value (configuration)
+    if (tableConfig.isKeyValue) {
+      return await pushKeyValueToSupabase(tableConfig, data, client);
+    }
+
     try {
+      // data doit etre un tableau pour les tables normales
+      if (!Array.isArray(data)) return false;
+
       for (const item of data) {
         if (!item.id) continue;
 
@@ -355,6 +457,40 @@
       return true;
     } catch (e) {
       log(`Exception push ${tableConfig.remote}: ${e.message}`, 'error');
+      return false;
+    }
+  }
+
+  /**
+   * Pousse une configuration key-value vers Supabase
+   */
+  async function pushKeyValueToSupabase(tableConfig, data, client) {
+    try {
+      const namespace = tableConfig.configNamespace || 'gestion';
+
+      // data est un objet {key: value, ...}
+      if (!data || typeof data !== 'object') return false;
+
+      for (const [key, value] of Object.entries(data)) {
+        const row = {
+          key: key,
+          value: JSON.stringify(value),
+          namespace: namespace,
+          updated_at: new Date().toISOString()
+        };
+
+        const { error } = await client
+          .from(tableConfig.remote)
+          .upsert(row, { onConflict: 'key,namespace' });
+
+        if (error) {
+          log(`Erreur push config ${namespace}.${key}: ${error.message}`, 'error');
+        }
+      }
+
+      return true;
+    } catch (e) {
+      log(`Exception push config ${tableConfig.configNamespace || 'gestion'}: ${e.message}`, 'error');
       return false;
     }
   }
@@ -440,12 +576,11 @@
       }
     });
 
-    // Nettoyer aussi l'ancien etat de sync
-    try {
-      localStorage.removeItem('mistral_sync_state');
-    } catch (e) {
-      // Ignorer
-    }
+    // Nettoyer aussi l'ancien etat de sync et les anciennes cles orphelines
+    const legacyKeys = ['mistral_sync_state', 'mistral_compta_config', 'mistral_email_automations'];
+    legacyKeys.forEach(key => {
+      try { localStorage.removeItem(key); } catch (e) { /* Ignorer */ }
+    });
 
     log('Anciennes cles localStorage nettoyees');
   }
@@ -493,6 +628,7 @@
     getData,
     setData,
     hasKey,
+    getTableConfig,
 
     // Suppression Supabase
     deleteFromSupabase,
