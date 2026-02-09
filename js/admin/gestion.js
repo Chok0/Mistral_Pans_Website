@@ -507,9 +507,11 @@
     ajouterCredit(id, montant) {
       const client = this.get(id);
       if (!client) return null;
-      
+
       const creditActuel = parseFloat(client.credit_fidelite) || 0;
-      const nouveauCredit = creditActuel + montant;
+      const montantParse = parsePrice(montant);
+      if (montantParse === 0 && montant !== 0) return null;
+      const nouveauCredit = creditActuel + montantParse;
       
       return this.update(id, {
         credit_fidelite: nouveauCredit

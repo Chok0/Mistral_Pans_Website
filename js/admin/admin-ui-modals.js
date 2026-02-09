@@ -11,7 +11,7 @@
     return;
   }
 
-  const { $, $$, escapeHtml, formatPrice, formatDate, Toast, Confirm, Modal, Storage } = window.AdminUIHelpers;
+  const { $, $$, escapeHtml, formatPrice, formatDate, isValidEmail, Toast, Confirm, Modal, Storage } = window.AdminUIHelpers;
 
   // État local pour les uploads
   let instrumentImages = [];
@@ -24,13 +24,6 @@
   let pendingInstrumentModalSource = null;
   let currentEditingTeacherId = null;
   let instrumentEnVente = false;
-
-  // Utilitaire de validation email
-  function isValidEmail(email) {
-    if (!email) return true; // Email optionnel
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
 
   function showModal(name) {
     const modal = $(`#modal-${name}`);
@@ -193,10 +186,16 @@
     if (modal) {
       modal.classList.remove('open');
       document.body.style.overflow = '';
-      
+
       // Reset ID caché
       const idField = $(`#${name}-id`);
       if (idField) idField.value = '';
+    }
+
+    // Liberer les etats upload pour eviter les fuites memoire
+    if (name === 'instrument') {
+      instrumentImages = [];
+      instrumentVideo = null;
     }
   }
   

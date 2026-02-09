@@ -505,6 +505,14 @@
     renderFactures
   });
 
+  // Écouter les erreurs de transition de statut instrument
+  window.addEventListener('mistral-status-error', (e) => {
+    const msg = e.detail && e.detail.message;
+    if (msg && Toast) {
+      Toast.error(msg);
+    }
+  });
+
   console.log('[admin-ui-gestion] Module chargé');
 
 })(window);

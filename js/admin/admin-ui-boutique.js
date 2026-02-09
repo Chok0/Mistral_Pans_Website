@@ -417,6 +417,7 @@
     
     Storage.set('mistral_accessoires', accessoires);
     AdminUI.closeModal('accessoire');
+    accessoireUploadedImage = null;
     renderBoutique();
   }
   

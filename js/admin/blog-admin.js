@@ -230,8 +230,8 @@
     initDefaultData();
     renderArticles();
 
-    window.addEventListener('storage', (e) => {
-      if (e.key && e.key.includes('mistral_blog')) {
+    window.addEventListener('mistral-data-change', (e) => {
+      if (e.detail && e.detail.key === 'mistral_blog_articles') {
         renderArticles();
       }
     });

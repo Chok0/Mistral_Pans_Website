@@ -64,9 +64,14 @@
     return new Date(dateStr).toLocaleDateString('fr-FR');
   }
 
+  function isValidEmail(email) {
+    if (!email) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
   // Export des helpers pour les modules
   window.AdminUIHelpers = {
-    $, $$, escapeHtml, formatPrice, formatDate,
+    $, $$, escapeHtml, formatPrice, formatDate, isValidEmail,
     Toast, Confirm, Modal, Storage, utils,
     CONFIG
   };

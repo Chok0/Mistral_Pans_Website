@@ -730,7 +730,8 @@
           message = 'Etes-vous sur ?',
           confirmText = 'Confirmer',
           cancelText = 'Annuler',
-          type = 'warning' // warning, danger, info
+          type = 'warning', // warning, danger, info
+          isHtml = false
         } = options;
 
         const modal = Modal.create({
@@ -738,7 +739,7 @@
           title,
           size: 'small',
           content: `
-            <p class="admin-confirm__message">${escapeHtml(message)}</p>
+            <div class="admin-confirm__message">${isHtml ? message : escapeHtml(message)}</div>
           `,
           footer: `
             <button class="admin-btn admin-btn--secondary" data-action="cancel">${escapeHtml(cancelText)}</button>
