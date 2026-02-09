@@ -41,35 +41,29 @@
   };
 
   // ============================================================================
-  // CLÉS DE STOCKAGE (synchronisées avec admin)
+  // CLES DE STOCKAGE (via MistralSync)
   // ============================================================================
-  
+
   const INSTRUMENTS_KEY = 'mistral_gestion_instruments';
   const ACCESSOIRES_KEY = 'mistral_accessoires';
 
   // ============================================================================
-  // FONCTIONS DE LECTURE DES DONNÉES
+  // FONCTIONS DE LECTURE DES DONNEES (via MistralSync)
   // ============================================================================
 
   function getInstrumentsEnLigne() {
-    try {
-      const stored = localStorage.getItem(INSTRUMENTS_KEY);
-      if (stored) {
-        const instruments = JSON.parse(stored);
-        return instruments.filter(i => i.statut === 'en_ligne');
-      }
-    } catch (e) {
-      console.error('[Boutique Admin] Erreur lecture instruments:', e);
-    }
-    return [];
+    const instruments = (window.MistralSync && MistralSync.hasKey(INSTRUMENTS_KEY))
+      ? MistralSync.getData(INSTRUMENTS_KEY)
+      : [];
+    return instruments.filter(i => i.statut === 'en_ligne');
   }
 
   function getAccessoiresActifs() {
+    // Accessoires: not managed by MistralSync, use localStorage fallback
     try {
       const stored = localStorage.getItem(ACCESSOIRES_KEY);
       if (stored) {
-        const accessoires = JSON.parse(stored);
-        return accessoires.filter(a => a.statut === 'actif');
+        return JSON.parse(stored).filter(a => a.statut === 'actif');
       }
     } catch (e) {
       console.error('[Boutique Admin] Erreur lecture accessoires:', e);
@@ -78,20 +72,15 @@
   }
 
   function updateInstrumentStatut(id, statut) {
-    try {
-      const stored = localStorage.getItem(INSTRUMENTS_KEY);
-      if (stored) {
-        const instruments = JSON.parse(stored);
-        const index = instruments.findIndex(i => i.id === id);
-        if (index !== -1) {
-          instruments[index].statut = statut;
-          instruments[index].updated_at = new Date().toISOString();
-          localStorage.setItem(INSTRUMENTS_KEY, JSON.stringify(instruments));
-          return true;
-        }
+    if (window.MistralSync && MistralSync.hasKey(INSTRUMENTS_KEY)) {
+      const instruments = MistralSync.getData(INSTRUMENTS_KEY);
+      const index = instruments.findIndex(i => i.id === id);
+      if (index !== -1) {
+        instruments[index].statut = statut;
+        instruments[index].updated_at = new Date().toISOString();
+        MistralSync.setData(INSTRUMENTS_KEY, instruments);
+        return true;
       }
-    } catch (e) {
-      console.error('[Boutique Admin] Erreur mise à jour instrument:', e);
     }
     return false;
   }
@@ -110,7 +99,7 @@
         }
       }
     } catch (e) {
-      console.error('[Boutique Admin] Erreur mise à jour accessoire:', e);
+      console.error('[Boutique Admin] Erreur mise a jour accessoire:', e);
     }
     return false;
   }
@@ -779,9 +768,13 @@
     setupAdminFAB();
     initAnnonceModalListeners();
 
-    window.addEventListener('storage', function(e) {
-      if (e.key === INSTRUMENTS_KEY || e.key === ACCESSOIRES_KEY) {
-        console.log('[Boutique Admin v2] Données modifiées, rafraîchissement...');
+    // Ecouter les changements de donnees via MistralSync
+    window.addEventListener('mistral-sync-complete', function() {
+      console.log('[Boutique Admin v2] Donnees synchronisees, rafraichissement...');
+      renderFlashCards();
+    });
+    window.addEventListener('mistral-data-change', function(e) {
+      if (e.detail && (e.detail.key === INSTRUMENTS_KEY || e.detail.key === ACCESSOIRES_KEY)) {
         renderFlashCards();
       }
     });

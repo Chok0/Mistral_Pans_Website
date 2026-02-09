@@ -1,10 +1,10 @@
 /* ==========================================================================
-   MISTRAL PANS - Intégration Gestion ↔ Boutique
-   Version 2.0 - Synchronisé via statut instrument
-   
-   Le système est maintenant simplifié:
-   - instrument.statut === 'en_ligne' → visible dans la boutique
-   - instrument.statut !== 'en_ligne' → pas visible
+   MISTRAL PANS - Integration Gestion <-> Boutique
+   Version 3.0 - Via MistralSync (in-memory + Supabase)
+
+   Le systeme est maintenant simplifie:
+   - instrument.statut === 'en_ligne' -> visible dans la boutique
+   - instrument.statut !== 'en_ligne' -> pas visible
    ========================================================================== */
 
 (function(window) {
@@ -13,26 +13,36 @@
   const INSTRUMENTS_KEY = 'mistral_gestion_instruments';
 
   // ============================================================================
+  // HELPERS
+  // ============================================================================
+
+  function getInstruments() {
+    if (window.MistralSync && MistralSync.hasKey(INSTRUMENTS_KEY)) {
+      return MistralSync.getData(INSTRUMENTS_KEY);
+    }
+    return [];
+  }
+
+  function setInstruments(instruments) {
+    if (window.MistralSync && MistralSync.hasKey(INSTRUMENTS_KEY)) {
+      return MistralSync.setData(INSTRUMENTS_KEY, instruments);
+    }
+    return false;
+  }
+
+  // ============================================================================
   // FONCTIONS PRINCIPALES
   // ============================================================================
 
   const GestionBoutique = {
-    
+
     /**
-     * Vérifie si un instrument est publié (en ligne)
+     * Verifie si un instrument est publie (en ligne)
      */
     estPublie(instrumentId) {
-      try {
-        const stored = localStorage.getItem(INSTRUMENTS_KEY);
-        if (stored) {
-          const instruments = JSON.parse(stored);
-          const instrument = instruments.find(i => i.id === instrumentId);
-          return instrument && instrument.statut === 'en_ligne';
-        }
-      } catch (e) {
-        console.error('[Gestion-Boutique] Erreur:', e);
-      }
-      return false;
+      const instruments = getInstruments();
+      const instrument = instruments.find(i => i.id === instrumentId);
+      return instrument && instrument.statut === 'en_ligne';
     },
 
     /**
@@ -53,76 +63,56 @@
      * Change le statut d'un instrument
      */
     changerStatut(instrumentId, statut) {
-      try {
-        const stored = localStorage.getItem(INSTRUMENTS_KEY);
-        if (stored) {
-          const instruments = JSON.parse(stored);
-          const index = instruments.findIndex(i => i.id === instrumentId);
-          if (index !== -1) {
-            instruments[index].statut = statut;
-            instruments[index].updated_at = new Date().toISOString();
-            localStorage.setItem(INSTRUMENTS_KEY, JSON.stringify(instruments));
-            
-            // Notifier les autres composants
-            window.dispatchEvent(new CustomEvent('instrumentStatutChange', { 
-              detail: { id: instrumentId, statut: statut } 
-            }));
-            
-            return true;
-          }
-        }
-      } catch (e) {
-        console.error('[Gestion-Boutique] Erreur changement statut:', e);
+      const instruments = getInstruments();
+      const index = instruments.findIndex(i => i.id === instrumentId);
+
+      if (index !== -1) {
+        instruments[index].statut = statut;
+        instruments[index].updated_at = new Date().toISOString();
+        setInstruments(instruments);
+
+        // Notifier les autres composants
+        window.dispatchEvent(new CustomEvent('instrumentStatutChange', {
+          detail: { id: instrumentId, statut: statut }
+        }));
+
+        return true;
       }
       return false;
     },
 
     /**
-     * Met à jour les données d'un instrument (appelé lors de l'édition)
-     * Note: maintenant c'est juste un wrapper, la boutique lit directement les instruments
+     * Met a jour les donnees d'un instrument (appele lors de l'edition)
      */
     mettreAJourAnnonce(instrumentId) {
-      // Rien à faire - la boutique lit directement les instruments
-      // Cette fonction existe pour compatibilité avec le code existant
-      console.log('[Gestion-Boutique] mettreAJourAnnonce appelé pour', instrumentId);
-      
-      // Déclencher un refresh de la boutique si elle est ouverte
+      console.log('[Gestion-Boutique] mettreAJourAnnonce appele pour', instrumentId);
+
       if (typeof BoutiqueAdmin !== 'undefined') {
         BoutiqueAdmin.renderFlashCards();
       }
-      
+
       return true;
     },
 
     /**
-     * Récupère tous les instruments publiés
+     * Recupere tous les instruments publies
      */
     getInstrumentsPublies() {
-      try {
-        const stored = localStorage.getItem(INSTRUMENTS_KEY);
-        if (stored) {
-          const instruments = JSON.parse(stored);
-          return instruments.filter(i => i.statut === 'en_ligne');
-        }
-      } catch (e) {
-        console.error('[Gestion-Boutique] Erreur:', e);
-      }
-      return [];
+      return getInstruments().filter(i => i.statut === 'en_ligne');
     },
 
     /**
-     * Synchronise tout (pour compatibilité - ne fait plus rien de spécial)
+     * Synchronise tout (pour compatibilite)
      */
     synchroniserTout() {
-      console.log('[Gestion-Boutique] synchroniserTout appelé');
-      
+      console.log('[Gestion-Boutique] synchroniserTout appele');
+
       const publies = this.getInstrumentsPublies();
-      
-      // Déclencher un refresh
+
       if (typeof BoutiqueAdmin !== 'undefined') {
         BoutiqueAdmin.renderFlashCards();
       }
-      
+
       return {
         total: publies.length,
         message: publies.length + ' instrument(s) en ligne'
@@ -130,16 +120,14 @@
     },
 
     /**
-     * Formate le matériau pour affichage
-     * Uses centralized MistralMateriaux module if available
+     * Formate le materiau pour affichage
      */
     formatMateriau(code) {
       if (typeof MistralMateriaux !== 'undefined') {
         return MistralMateriaux.getLabel(code, 'full');
       }
-      // Fallback if module not loaded
       const labels = {
-        'NS': 'Acier nitruré',
+        'NS': 'Acier nitrure',
         'ES': 'Ember Steel',
         'SS': 'Acier inoxydable'
       };

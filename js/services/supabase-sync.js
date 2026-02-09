@@ -1,19 +1,22 @@
 /**
  * =============================================================================
- * MISTRAL PANS - Module de Synchronisation localStorage ↔ Supabase
+ * MISTRAL PANS - Module de Donnees In-Memory + Supabase
  * =============================================================================
- * 
- * Ce module synchronise automatiquement les données entre localStorage et Supabase.
- * 
- * Approche "offline-first":
- * - Les opérations CRUD restent sur localStorage (rapide, réactif)
- * - Les changements sont synchronisés vers Supabase en arrière-plan
- * - Au chargement, on récupère les dernières données de Supabase
- * 
- * Comportement selon la page:
- * - Pages admin : sync complète (pull + push + auto-sync 30s)
- * - Pages publiques : un seul pull au chargement, puis stop
- * 
+ *
+ * Ce module remplace l'ancien systeme de synchronisation localStorage <-> Supabase.
+ *
+ * Nouvelle approche "Supabase-first":
+ * - Les donnees sont stockees en memoire (Map), PAS dans localStorage
+ * - Au chargement, on recupere les donnees depuis Supabase
+ * - Les ecritures vont directement vers Supabase + memoire
+ * - localStorage est reserve aux preferences utilisateur (consent, stats)
+ *
+ * API:
+ * - MistralSync.getData(key)       -> Array depuis la memoire
+ * - MistralSync.setData(key, data) -> Ecrit en memoire + Supabase
+ * - MistralSync.hasKey(key)        -> Verifie si la cle est geree
+ * - MistralSync.onReady(callback)  -> Appele quand les donnees sont chargees
+ *
  * =============================================================================
  */
 
@@ -23,12 +26,9 @@
   // ============================================================================
   // CONFIGURATION
   // ============================================================================
-  
+
   const SYNC_CONFIG = {
-    // Intervalle de sync auto (en ms) - uniquement sur admin
-    autoSyncInterval: 30000, // 30 secondes
-    
-    // Tables à synchroniser
+    // Mapping cle locale -> table Supabase
     tables: [
       { local: 'mistral_gestion_clients', remote: 'clients', idField: 'id' },
       { local: 'mistral_gestion_instruments', remote: 'instruments', idField: 'id' },
@@ -39,152 +39,155 @@
       { local: 'mistral_gallery', remote: 'galerie', idField: 'id' },
       { local: 'mistral_blog_articles', remote: 'articles', idField: 'id' }
     ],
-    
-    // Tables nécessaires par page publique (pour pull ciblé)
+
+    // Tables necessaires par page publique
     publicPageTables: {
       'boutique':  ['instruments'],
       'apprendre': ['professeurs'],
       'galerie':   ['galerie'],
       'blog':      ['articles'],
       'article':   ['articles'],
-      'location':  ['instruments']
-    },
-    
-    // Clé pour stocker l'état de sync
-    syncStateKey: 'mistral_sync_state'
+      'location':  ['instruments'],
+      'index':     ['instruments']
+    }
   };
 
-  // État de la synchronisation
-  let syncState = {
-    lastSync: null,
-    pendingChanges: [],
-    isSyncing: false
-  };
+  // ============================================================================
+  // IN-MEMORY STORE
+  // ============================================================================
 
-  // Mode de fonctionnement
+  // Stockage en memoire (remplace localStorage pour les donnees synchronisees)
+  const dataStore = new Map();
+
+  // Etat
+  let isReady = false;
+  let isSyncing = false;
+  let lastSync = null;
   let isAdminPage = false;
+  const readyCallbacks = [];
+
+  // Initialiser le store vide pour chaque cle
+  SYNC_CONFIG.tables.forEach(t => {
+    dataStore.set(t.local, []);
+  });
+
+  // Set de cles gerees pour lookup rapide
+  const managedKeys = new Set(SYNC_CONFIG.tables.map(t => t.local));
 
   // ============================================================================
   // HELPERS
   // ============================================================================
-  
+
   function log(message, type = 'info') {
     const prefix = {
-      'info': '🔄',
-      'success': '✅',
-      'error': '❌',
-      'warning': '⚠️'
-    }[type] || '🔄';
-    
-    console.log(`[Sync] ${prefix} ${message}`);
-  }
+      'info': '[Sync]',
+      'success': '[Sync]',
+      'error': '[Sync ERR]',
+      'warning': '[Sync WARN]'
+    }[type] || '[Sync]';
 
-  function getLocalData(key) {
-    try {
-      const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      return [];
+    if (type === 'error') {
+      console.error(`${prefix} ${message}`);
+    } else {
+      console.log(`${prefix} ${message}`);
     }
   }
 
-  function setLocalData(key, data) {
-    try {
-      // Utiliser l'original pour ne pas déclencher la boucle d'interception
-      if (window._originalSetItem) {
-        window._originalSetItem.call(localStorage, key, JSON.stringify(data));
-      } else {
-        localStorage.setItem(key, JSON.stringify(data));
-      }
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function loadSyncState() {
-    try {
-      const stored = localStorage.getItem(SYNC_CONFIG.syncStateKey);
-      if (stored) {
-        syncState = { ...syncState, ...JSON.parse(stored) };
-      }
-    } catch (e) {
-      // Ignorer
-    }
-  }
-
-  function saveSyncState() {
-    try {
-      localStorage.setItem(SYNC_CONFIG.syncStateKey, JSON.stringify({
-        lastSync: syncState.lastSync,
-        pendingChanges: syncState.pendingChanges
-      }));
-    } catch (e) {
-      // Ignorer
-    }
-  }
-
-  /**
-   * Détecte si on est sur une page admin
-   */
   function detectPageType() {
     const path = window.location.pathname.toLowerCase();
     isAdminPage = path.includes('admin');
     return isAdminPage;
   }
 
-  /**
-   * Retourne les tables pertinentes pour la page courante
-   */
   function getTablesForCurrentPage() {
     if (isAdminPage) {
       return SYNC_CONFIG.tables;
     }
-    
-    // Détecter la page courante
+
     const path = window.location.pathname;
     const filename = path.substring(path.lastIndexOf('/') + 1).replace('.html', '') || 'index';
-    
     const relevantRemoteTables = SYNC_CONFIG.publicPageTables[filename];
-    
+
     if (!relevantRemoteTables) {
-      // Page sans besoin de données (index, location, etc.)
       return [];
     }
-    
-    // Filtrer les tables configurées
+
     return SYNC_CONFIG.tables.filter(t => relevantRemoteTables.includes(t.remote));
   }
 
+  function getTableConfig(localKey) {
+    return SYNC_CONFIG.tables.find(t => t.local === localKey) || null;
+  }
+
   // ============================================================================
-  // TRANSFORMATION DES DONNÉES
+  // TRANSFORMATION DES DONNEES
   // ============================================================================
-  
+
   /**
-   * Transforme les données locales vers le format Supabase
+   * Transforme les donnees Supabase vers le format local
+   */
+  function transformFromSupabase(tableName, item) {
+    const transformed = { ...item };
+
+    if (transformed.created_at) {
+      transformed.createdAt = transformed.created_at;
+    }
+    if (transformed.updated_at) {
+      transformed.updatedAt = transformed.updated_at;
+    }
+
+    switch (tableName) {
+      case 'professeurs':
+        if (transformed.nom && !transformed.name) {
+          transformed.name = transformed.nom;
+        }
+        if (transformed.course_types) {
+          transformed.courseTypes = transformed.course_types;
+        }
+        if (transformed.course_formats) {
+          transformed.courseFormats = transformed.course_formats;
+        }
+        if (transformed.instrument_available !== undefined) {
+          transformed.instrumentAvailable = transformed.instrument_available;
+        }
+        if (transformed.photo_url) {
+          transformed.photo = transformed.photo_url;
+        }
+        break;
+
+      case 'articles':
+        if (transformed.cover_image) {
+          transformed.coverImage = transformed.cover_image;
+        }
+        if (transformed.published_at) {
+          transformed.publishedAt = transformed.published_at;
+        }
+        break;
+    }
+
+    return transformed;
+  }
+
+  /**
+   * Transforme les donnees locales vers le format Supabase
    */
   function transformToSupabase(tableName, item) {
-    // Copie de l'objet
     const transformed = { ...item };
-    
-    // Supprimer les champs qui ne sont pas dans Supabase
+
     delete transformed.createdAt;
     delete transformed.updatedAt;
-    
-    // Renommer les champs si nécessaire selon la table
+
     switch (tableName) {
       case 'clients':
-        // Champs déjà compatibles
         break;
-        
+
       case 'instruments':
         if (transformed.notes && !transformed.nombre_notes) {
           transformed.nombre_notes = parseInt(transformed.notes) || 9;
         }
         break;
-        
+
       case 'professeurs':
-      case 'professeurs_pending':
         if (transformed.name && !transformed.nom) {
           transformed.nom = transformed.name;
         }
@@ -205,7 +208,7 @@
           delete transformed.photo;
         }
         break;
-        
+
       case 'articles':
         if (transformed.coverImage) {
           transformed.cover_image = transformed.coverImage;
@@ -222,144 +225,133 @@
         }
         break;
     }
-    
-    // Ajouter les timestamps
+
     if (!transformed.created_at) {
       transformed.created_at = new Date().toISOString();
     }
     transformed.updated_at = new Date().toISOString();
-    
-    return transformed;
-  }
 
-  /**
-   * Transforme les données Supabase vers le format local
-   */
-  function transformFromSupabase(tableName, item) {
-    const transformed = { ...item };
-    
-    // Convertir les timestamps
-    if (transformed.created_at) {
-      transformed.createdAt = transformed.created_at;
-    }
-    if (transformed.updated_at) {
-      transformed.updatedAt = transformed.updated_at;
-    }
-    
-    // Transformations spécifiques par table
-    switch (tableName) {
-      case 'professeurs':
-      case 'professeurs_pending':
-        if (transformed.nom && !transformed.name) {
-          transformed.name = transformed.nom;
-        }
-        if (transformed.course_types) {
-          transformed.courseTypes = transformed.course_types;
-        }
-        if (transformed.course_formats) {
-          transformed.courseFormats = transformed.course_formats;
-        }
-        if (transformed.instrument_available !== undefined) {
-          transformed.instrumentAvailable = transformed.instrument_available;
-        }
-        if (transformed.photo_url) {
-          transformed.photo = transformed.photo_url;
-        }
-        break;
-        
-      case 'articles':
-        if (transformed.cover_image) {
-          transformed.coverImage = transformed.cover_image;
-        }
-        if (transformed.published_at) {
-          transformed.publishedAt = transformed.published_at;
-        }
-        break;
-    }
-    
     return transformed;
   }
 
   // ============================================================================
-  // SYNCHRONISATION
+  // DATA ACCESS (API PUBLIQUE)
   // ============================================================================
-  
+
   /**
-   * Récupère les données de Supabase et met à jour localStorage
+   * Recupere les donnees depuis le store en memoire
+   * @param {string} key - Cle locale (ex: 'mistral_gestion_instruments')
+   * @returns {Array} Donnees ou tableau vide
    */
-  async function pullFromSupabase(tableConfig) {
-    if (!window.MistralDB) {
-      log('MistralDB non disponible', 'warning');
+  function getData(key) {
+    if (!managedKeys.has(key)) {
+      log(`Cle non geree: ${key}`, 'warning');
+      return [];
+    }
+    return dataStore.get(key) || [];
+  }
+
+  /**
+   * Ecrit les donnees en memoire et les synchronise vers Supabase
+   * @param {string} key - Cle locale
+   * @param {Array} data - Donnees a sauvegarder
+   * @returns {boolean} Succes
+   */
+  function setData(key, data) {
+    if (!managedKeys.has(key)) {
+      log(`Cle non geree: ${key}`, 'warning');
       return false;
     }
-    
+
+    // Mettre a jour le store en memoire
+    dataStore.set(key, data);
+
+    // Pousser vers Supabase en arriere-plan (sans bloquer)
+    const tableConfig = getTableConfig(key);
+    if (tableConfig) {
+      pushTableToSupabase(tableConfig, data).catch(err => {
+        log(`Erreur push ${tableConfig.remote}: ${err.message}`, 'error');
+      });
+    }
+
+    // Dispatcher un evenement pour que l'UI se rafraichisse
+    window.dispatchEvent(new CustomEvent('mistral-data-change', {
+      detail: { key, data }
+    }));
+
+    return true;
+  }
+
+  /**
+   * Verifie si une cle est geree par ce module
+   */
+  function hasKey(key) {
+    return managedKeys.has(key);
+  }
+
+  // ============================================================================
+  // SUPABASE OPERATIONS
+  // ============================================================================
+
+  /**
+   * Recupere les donnees d'une table depuis Supabase
+   */
+  async function fetchTable(tableConfig) {
+    if (!window.MistralDB) return false;
+
     const client = window.MistralDB.getClient();
     if (!client) return false;
-    
+
     try {
       const { data, error } = await client
         .from(tableConfig.remote)
         .select('*')
         .order('updated_at', { ascending: false });
-      
+
       if (error) {
-        log(`Erreur pull ${tableConfig.remote}: ${error.message}`, 'error');
+        log(`Erreur fetch ${tableConfig.remote}: ${error.message}`, 'error');
         return false;
       }
-      
-      if (data && data.length > 0) {
-        // Transformer les données
+
+      if (data) {
         const localData = data.map(item => transformFromSupabase(tableConfig.remote, item));
-        
-        // Fusionner avec les données locales (garder les plus récentes)
-        const existingData = getLocalData(tableConfig.local);
-        const mergedData = mergeData(existingData, localData, tableConfig.idField);
-        
-        setLocalData(tableConfig.local, mergedData);
-        log(`Pull ${tableConfig.remote}: ${data.length} enregistrements`, 'success');
+        dataStore.set(tableConfig.local, localData);
+        log(`Fetch ${tableConfig.remote}: ${data.length} enregistrements`, 'success');
       } else {
-        log(`Pull ${tableConfig.remote}: aucune donnée`, 'info');
+        dataStore.set(tableConfig.local, []);
       }
-      
+
       return true;
     } catch (e) {
-      log(`Exception pull ${tableConfig.remote}: ${e.message}`, 'error');
+      log(`Exception fetch ${tableConfig.remote}: ${e.message}`, 'error');
       return false;
     }
   }
 
   /**
-   * Envoie les données locales vers Supabase
+   * Pousse un tableau complet vers Supabase (upsert)
    */
-  async function pushToSupabase(tableConfig) {
-    if (!window.MistralDB) {
-      log('MistralDB non disponible', 'warning');
-      return false;
-    }
-    
+  async function pushTableToSupabase(tableConfig, data) {
+    if (!window.MistralDB) return false;
+
     const client = window.MistralDB.getClient();
     if (!client) return false;
-    
-    const localData = getLocalData(tableConfig.local);
-    if (!localData || localData.length === 0) {
-      return true; // Rien à synchroniser
-    }
-    
+
     try {
-      for (const item of localData) {
+      for (const item of data) {
+        if (!item.id) continue;
+
         const transformed = transformToSupabase(tableConfig.remote, item);
-        
-        // Upsert (insert ou update)
+
         const { error } = await client
           .from(tableConfig.remote)
           .upsert(transformed, { onConflict: tableConfig.idField });
-        
+
         if (error) {
           log(`Erreur push ${tableConfig.remote} (${item.id}): ${error.message}`, 'error');
         }
       }
-      
-      log(`Push ${tableConfig.remote}: ${localData.length} enregistrements`, 'success');
+
       return true;
     } catch (e) {
       log(`Exception push ${tableConfig.remote}: ${e.message}`, 'error');
@@ -368,261 +360,165 @@
   }
 
   /**
-   * Fusionne deux tableaux de données en gardant les plus récents
+   * Supprime un enregistrement dans Supabase
    */
-  function mergeData(localData, remoteData, idField) {
-    const merged = new Map();
-    
-    // Ajouter les données locales
-    localData.forEach(item => {
-      if (item[idField]) {
-        merged.set(item[idField], item);
-      }
-    });
-    
-    // Fusionner avec les données distantes (priorité à la plus récente)
-    remoteData.forEach(item => {
-      if (!item[idField]) return;
-      
-      const existing = merged.get(item[idField]);
-      if (!existing) {
-        merged.set(item[idField], item);
-      } else {
-        // Comparer les dates de mise à jour
-        const localDate = new Date(existing.updated_at || existing.updatedAt || 0);
-        const remoteDate = new Date(item.updated_at || item.updatedAt || 0);
-        
-        if (remoteDate > localDate) {
-          merged.set(item[idField], item);
-        }
-      }
-    });
-    
-    return Array.from(merged.values());
-  }
+  async function deleteFromSupabase(localKey, id) {
+    if (!window.MistralDB) return false;
 
-  /**
-   * Synchronisation complète (pull puis push) - Admin seulement
-   */
-  async function fullSync() {
-    if (syncState.isSyncing) {
-      log('Sync déjà en cours...', 'warning');
-      return;
-    }
-    
-    syncState.isSyncing = true;
-    log('Début synchronisation complète...');
-    
+    const tableConfig = getTableConfig(localKey);
+    if (!tableConfig) return false;
+
+    const client = window.MistralDB.getClient();
+    if (!client) return false;
+
     try {
-      // D'abord récupérer les données distantes
-      for (const tableConfig of SYNC_CONFIG.tables) {
-        await pullFromSupabase(tableConfig);
+      const { error } = await client
+        .from(tableConfig.remote)
+        .delete()
+        .eq(tableConfig.idField, id);
+
+      if (error) {
+        log(`Erreur delete ${tableConfig.remote} (${id}): ${error.message}`, 'error');
+        return false;
       }
-      
-      // Puis envoyer les données locales
-      for (const tableConfig of SYNC_CONFIG.tables) {
-        await pushToSupabase(tableConfig);
-      }
-      
-      syncState.lastSync = new Date().toISOString();
-      saveSyncState();
-      
-      log('Synchronisation terminée', 'success');
-      
-      // Dispatch un événement pour que l'UI se rafraîchisse
-      window.dispatchEvent(new CustomEvent('mistral-sync-complete'));
-      
+
+      return true;
     } catch (e) {
-      log(`Erreur sync: ${e.message}`, 'error');
-    } finally {
-      syncState.isSyncing = false;
+      log(`Exception delete ${tableConfig.remote}: ${e.message}`, 'error');
+      return false;
     }
   }
 
+  // ============================================================================
+  // REFRESH / SYNC
+  // ============================================================================
+
   /**
-   * Synchronise uniquement depuis Supabase (pull)
-   * @param {Array} tables - Tables à synchroniser (toutes si non spécifié)
+   * Rafraichit les donnees depuis Supabase
    */
-  async function pullAll(tables) {
-    const targetTables = tables || SYNC_CONFIG.tables;
-    
-    if (targetTables.length === 0) {
-      log('Aucune table à synchroniser pour cette page', 'info');
+  async function refresh(tables) {
+    if (isSyncing) {
+      log('Sync deja en cours...', 'warning');
       return;
     }
-    
-    log(`Pull depuis Supabase (${targetTables.map(t => t.remote).join(', ')})...`);
-    
-    for (const tableConfig of targetTables) {
-      await pullFromSupabase(tableConfig);
+
+    isSyncing = true;
+    const targetTables = tables || getTablesForCurrentPage();
+
+    if (targetTables.length === 0) {
+      log('Aucune table a synchroniser pour cette page');
+      isSyncing = false;
+      return;
     }
-    
-    syncState.lastSync = new Date().toISOString();
-    saveSyncState();
-    
-    log('Pull terminé', 'success');
+
+    log(`Fetch depuis Supabase (${targetTables.map(t => t.remote).join(', ')})...`);
+
+    for (const tableConfig of targetTables) {
+      await fetchTable(tableConfig);
+    }
+
+    lastSync = new Date().toISOString();
+    isSyncing = false;
+
+    log('Fetch termine', 'success');
     window.dispatchEvent(new CustomEvent('mistral-sync-complete'));
   }
 
-  /**
-   * Synchronise uniquement vers Supabase (push)
-   */
-  async function pushAll() {
-    log('Push vers Supabase...');
-    
-    for (const tableConfig of SYNC_CONFIG.tables) {
-      await pushToSupabase(tableConfig);
-    }
-    
-    log('Push terminé', 'success');
-  }
+  // ============================================================================
+  // MIGRATION: NETTOYER localStorage
+  // ============================================================================
 
-  // ============================================================================
-  // INTERCEPTION DES MODIFICATIONS localStorage (Admin seulement)
-  // ============================================================================
-  
   /**
-   * Intercepte les modifications localStorage pour déclencher une sync
+   * Supprime les anciennes cles localStorage qui sont maintenant en memoire
    */
-  function setupStorageListener() {
-    // Écouter les changements localStorage (depuis d'autres onglets)
-    window.addEventListener('storage', (e) => {
-      const isTrackedKey = SYNC_CONFIG.tables.some(t => t.local === e.key);
-      if (isTrackedKey) {
-        log(`Changement détecté: ${e.key}`);
-        debouncedPush();
+  function cleanupLocalStorage() {
+    SYNC_CONFIG.tables.forEach(t => {
+      try {
+        localStorage.removeItem(t.local);
+      } catch (e) {
+        // Ignorer
       }
     });
-    
-    // Intercepter les appels directs à setItem
-    const originalSetItem = localStorage.setItem.bind(localStorage);
-    window._originalSetItem = originalSetItem;
-    
-    localStorage.setItem = function(key, value) {
-      originalSetItem(key, value);
-      
-      const isTrackedKey = SYNC_CONFIG.tables.some(t => t.local === key);
-      if (isTrackedKey) {
-        log(`Modification locale: ${key}`);
-        debouncedPush();
-      }
-    };
-  }
 
-  // Debounce pour le push
-  let pushTimeout = null;
-  function debouncedPush() {
-    if (pushTimeout) {
-      clearTimeout(pushTimeout);
+    // Nettoyer aussi l'ancien etat de sync
+    try {
+      localStorage.removeItem('mistral_sync_state');
+    } catch (e) {
+      // Ignorer
     }
-    pushTimeout = setTimeout(() => {
-      pushAll();
-    }, 2000); // Attendre 2 secondes d'inactivité
-  }
 
-  // ============================================================================
-  // SYNCHRONISATION AUTOMATIQUE (Admin seulement)
-  // ============================================================================
-  
-  let autoSyncIntervalId = null;
-  
-  function startAutoSync() {
-    if (SYNC_CONFIG.autoSyncInterval > 0 && !autoSyncIntervalId) {
-      autoSyncIntervalId = setInterval(() => {
-        fullSync();
-      }, SYNC_CONFIG.autoSyncInterval);
-      
-      log(`Auto-sync activé (${SYNC_CONFIG.autoSyncInterval / 1000}s)`);
-    }
-  }
-
-  function stopAutoSync() {
-    if (autoSyncIntervalId) {
-      clearInterval(autoSyncIntervalId);
-      autoSyncIntervalId = null;
-      log('Auto-sync désactivé');
-    }
+    log('Anciennes cles localStorage nettoyees');
   }
 
   // ============================================================================
   // INITIALISATION
   // ============================================================================
-  
+
   async function init() {
-    log('Initialisation du module de synchronisation...');
-    
-    // Détecter le type de page
+    log('Initialisation du module de donnees...');
+
     detectPageType();
-    
-    // Charger l'état de sync
-    loadSyncState();
-    
-    if (isAdminPage) {
-      // ===== MODE ADMIN =====
-      log('Mode ADMIN : sync complète activée');
-      
-      // Intercepter les modifications localStorage
-      setupStorageListener();
-      
-      // Sync initiale complète (pull + push toutes les tables)
-      await fullSync();
-      
-      // Démarrer l'auto-sync toutes les 30s
-      startAutoSync();
-      
-    } else {
-      // ===== MODE PUBLIC =====
-      const pageTables = getTablesForCurrentPage();
-      
-      if (pageTables.length > 0) {
-        log(`Mode PUBLIC : pull unique (${pageTables.map(t => t.remote).join(', ')})`);
-        
-        // Un seul pull des tables nécessaires, puis stop
-        await pullAll(pageTables);
-      } else {
-        log('Mode PUBLIC : aucune donnée nécessaire pour cette page');
-      }
-    }
-    
-    log('Module de synchronisation prêt', 'success');
+
+    // Nettoyer les anciennes cles localStorage (migration)
+    cleanupLocalStorage();
+
+    // Charger les donnees depuis Supabase
+    await refresh();
+
+    // Marquer comme pret
+    isReady = true;
+
+    // Appeler les callbacks en attente
+    readyCallbacks.forEach(cb => {
+      try { cb(); } catch (e) { log(`Erreur callback onReady: ${e.message}`, 'error'); }
+    });
+    readyCallbacks.length = 0;
+
+    log('Module de donnees pret', 'success');
   }
 
-  // Démarrer quand le DOM est prêt
+  // Demarrer quand le DOM est pret
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    // Attendre un peu que les autres scripts soient chargés
     setTimeout(init, 500);
   }
 
   // ============================================================================
   // API PUBLIQUE
   // ============================================================================
-  
+
   window.MistralSync = {
-    // Sync manuelle
-    fullSync,
-    pullAll: () => pullAll(),
-    pushAll,
-    
-    // Auto-sync
-    startAutoSync,
-    stopAutoSync,
-    
-    // État
-    getState: () => ({ ...syncState, isAdminPage }),
-    getLastSync: () => syncState.lastSync,
-    isSyncing: () => syncState.isSyncing,
+    // Acces aux donnees
+    getData,
+    setData,
+    hasKey,
+
+    // Suppression Supabase
+    deleteFromSupabase,
+
+    // Rafraichissement
+    refresh: () => refresh(),
+    refreshAll: () => refresh(SYNC_CONFIG.tables),
+
+    // Etat
+    isReady: () => isReady,
+    onReady: (callback) => {
+      if (isReady) {
+        callback();
+      } else {
+        readyCallbacks.push(callback);
+      }
+    },
+    getLastSync: () => lastSync,
+    isSyncing: () => isSyncing,
     isAdmin: () => isAdminPage,
-    
-    // Config
-    setAutoSyncInterval: (ms) => {
-      SYNC_CONFIG.autoSyncInterval = ms;
-      stopAutoSync();
-      if (ms > 0) startAutoSync();
-    }
+
+    // Config (pour usage interne par d'autres modules)
+    getTableConfig,
+    getManagedKeys: () => [...managedKeys]
   };
 
-  console.log('✅ MistralSync chargé');
+  console.log('[MistralSync] charge (in-memory mode)');
 
 })(window);
