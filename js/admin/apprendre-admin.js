@@ -923,8 +923,14 @@
       FAB.destroy();
     });
 
-    window.addEventListener('storage', (e) => {
-      if (e.key && (e.key.includes('mistral_teachers') || e.key.includes('mistral_pending'))) {
+    // Ecouter les changements de donnees via MistralSync
+    window.addEventListener('mistral-sync-complete', () => {
+      renderTeacherCards();
+      updateMapMarkers();
+      updateFABBadge();
+    });
+    window.addEventListener('mistral-data-change', (e) => {
+      if (e.detail && (e.detail.key === 'mistral_teachers' || e.detail.key === 'mistral_pending_teachers')) {
         renderTeacherCards();
         updateMapMarkers();
         updateFABBadge();

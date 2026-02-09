@@ -371,19 +371,27 @@
   const EMAIL_CONFIG_KEY = 'mistral_email_automations';
 
   function getEmailConfig() {
-    try {
-      const stored = localStorage.getItem(EMAIL_CONFIG_KEY);
-      const parsed = stored ? JSON.parse(stored) : {};
-      // Merge defaults with stored values
-      const config = {};
-      for (const [key, defaults] of Object.entries(EMAIL_AUTOMATIONS_DEFAULTS)) {
-        config[key] = { ...defaults, ...(parsed[key] || {}) };
+    let parsed = {};
+
+    // Lire via MistralSync si disponible
+    if (window.MistralSync && MistralSync.hasKey(EMAIL_CONFIG_KEY)) {
+      parsed = MistralSync.getData(EMAIL_CONFIG_KEY) || {};
+    } else {
+      try {
+        const stored = localStorage.getItem(EMAIL_CONFIG_KEY);
+        parsed = stored ? JSON.parse(stored) : {};
+      } catch (e) {
+        console.error('Erreur lecture config emails:', e);
+        return { ...EMAIL_AUTOMATIONS_DEFAULTS };
       }
-      return config;
-    } catch (e) {
-      console.error('Erreur lecture config emails:', e);
-      return { ...EMAIL_AUTOMATIONS_DEFAULTS };
     }
+
+    // Merge defaults with stored values
+    const config = {};
+    for (const [key, defaults] of Object.entries(EMAIL_AUTOMATIONS_DEFAULTS)) {
+      config[key] = { ...defaults, ...(parsed[key] || {}) };
+    }
+    return config;
   }
 
   function saveEmailConfig() {
@@ -399,7 +407,12 @@
       if (replyToEl) config[key].replyTo = replyToEl.value.trim();
     }
 
-    localStorage.setItem(EMAIL_CONFIG_KEY, JSON.stringify(config));
+    // Ecrire via MistralSync (memoire + Supabase)
+    if (window.MistralSync && MistralSync.hasKey(EMAIL_CONFIG_KEY)) {
+      MistralSync.setData(EMAIL_CONFIG_KEY, config);
+    } else {
+      localStorage.setItem(EMAIL_CONFIG_KEY, JSON.stringify(config));
+    }
     Toast.success('Configuration emails enregistrée');
   }
 

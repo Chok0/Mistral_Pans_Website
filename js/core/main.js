@@ -18,7 +18,7 @@
   configScript.onload = function() {
     // Charger le SDK Supabase
     const supabaseSDK = document.createElement('script');
-    supabaseSDK.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    supabaseSDK.src = 'js/vendor/supabase.js';
     supabaseSDK.onload = function() {
       // Charger supabase-client.js
       const clientScript = document.createElement('script');

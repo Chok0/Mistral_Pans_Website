@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mistral Pans Website
 
-> **Last Updated:** February 2026 (v3.3)
+> **Last Updated:** February 2026 (v3.5)
 > **Project:** Mistral Pans - Premium Handpan Artisan Website
 > **Stack:** Vanilla JS + HTML/CSS + Supabase + Netlify Functions
 
@@ -138,7 +138,7 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 | `admin-core.js` | `js/admin/` | `Auth.isLoggedIn()`, `FAB.create()`, CRUD helpers |
 | `handpan-player.js` | `js/features/` | `HandpanPlayer` class, Web Audio API |
 | `feasibility-module.js` | `js/features/` | `checkFeasibility()`, surface calculations |
-| `supabase-sync.js` | `js/services/` | `syncFromSupabase()`, real-time updates |
+| `supabase-sync.js` | `js/services/` | `MistralSync.getData()`, `MistralSync.setData()`, in-memory store |
 
 ---
 
@@ -149,10 +149,16 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 - **Styling:** CSS custom properties, mobile-first responsive
 - **Typography:** Fraunces (display), Inter (body), JetBrains Mono (code)
 
-### External Libraries (CDN)
+### External Libraries (self-hosted in js/vendor/)
 - **Supabase JS SDK 2.x** - Database/Auth
 - **Leaflet 1.9.4** - Maps
-- **Quill.js** - WYSIWYG editor (blog)
+- **Chart.js 4.x** - Admin charts
+- **Quill.js 1.3.7** - WYSIWYG editor (blog)
+
+Versions tracked in `js/vendor/versions.json`. Update via `./scripts/update-vendor.sh`.
+
+### External CDN (not self-hostable)
+- **PayPlug SDK** - Payment (PCI-DSS requirement, commander.html only)
 
 ### Anti-Spam
 - **Honeypot** - Invisible form field (no external dependency, RGPD friendly)
@@ -272,14 +278,14 @@ MistralAdmin.injectFAB({
 | `professeurs` | Teachers | nom, location, lat/lng, email, photo, course_types |
 | `galerie` | Media | type, src, thumbnail, ordre, featured |
 | `articles` | Blog posts | slug, title, content (HTML), status, tags |
-| `accessoires` | Accessories | nom, prix, quantite_stock |
-| `configuration` | Settings | key/value pairs |
+| `accessoires` | Accessories | nom, categorie, prix, stock, statut, visible_configurateur, tailles_compatibles |
+| `configuration` | Settings (key-value) | key, value (JSON), namespace (gestion/compta/email_automations) |
 
 ### Row-Level Security
 
-- **Public read:** Active teachers, published articles, online instruments, gallery
+- **Public read:** Active teachers, published articles, online instruments, gallery, active accessories
 - **Public insert:** Teacher applications (pending status)
-- **Authenticated:** Full CRUD access for admin operations
+- **Authenticated:** Full CRUD access for admin operations (all tables including configuration)
 
 ---
 
@@ -383,20 +389,51 @@ const { data, error } = await supabase
 The site uses `fetch()` for partials. **Will not work with `file://` protocol.**
 
 ### Dynamic Script Loading
-`js/core/main.js` dynamically loads `js/core/config.js`, `js/services/supabase-client.js`, and `js/services/supabase-sync.js` at runtime. Keep these paths in sync if reorganizing.
+`js/core/main.js` dynamically loads `js/core/config.js`, `js/services/supabase-client.js`, and `js/services/supabase-sync.js` at runtime. Keep these paths in sync if reorganizing. The sync module fetches data from Supabase into an in-memory store (no localStorage) and dispatches `mistral-sync-complete` when ready.
+
+### Vendor Libraries
+- All third-party JS/CSS is in `js/vendor/` (no CDN dependency)
+- Run `./scripts/update-vendor.sh` to check for updates
+- `js/vendor/versions.json` tracks installed versions
+- PayPlug SDK is the only external CDN (PCI-DSS requirement)
 
 ### Cloudflare Consideration
 If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security settings.
 
-### localStorage Keys
+### Data Architecture
+
+**In-memory data (via MistralSync):** Business data and configuration are fetched from Supabase at page load and stored in a JavaScript `Map` in memory. No localStorage is used for this data. Tables with `isKeyValue: true` store config objects (not arrays). Tables with `fetchFilter` fetch a filtered subset of a shared Supabase table (e.g., `professeurs` filtered by `statut`).
+
+| Key (in-memory) | Supabase Table | Type | Purpose |
+|-----|---------|------|---------|
+| `mistral_gestion_clients` | `clients` | Array | Customer records |
+| `mistral_gestion_instruments` | `instruments` | Array | Instrument inventory |
+| `mistral_gestion_locations` | `locations` | Array | Rental records |
+| `mistral_gestion_commandes` | `commandes` | Array | Customer orders |
+| `mistral_gestion_factures` | `factures` | Array | Invoices |
+| `mistral_teachers` | `professeurs` (statut='active') | Array | Validated teachers |
+| `mistral_pending_teachers` | `professeurs` (statut='pending') | Array | Pending teacher applications |
+| `mistral_gallery` | `galerie` | Array | Gallery media |
+| `mistral_blog_articles` | `articles` | Array | Blog articles |
+| `mistral_accessoires` | `accessoires` | Array | Shop accessories (cases, oils, etc.) |
+| `mistral_gestion_config` | `configuration` (namespace='gestion') | Object | Admin business config (rates, invoice counter) |
+| `mistral_compta_config` | `configuration` (namespace='compta') | Object | Accounting settings (email dest, report prefs) |
+| `mistral_email_automations` | `configuration` (namespace='email_automations') | Object | Email automation rules |
+
+**localStorage keys (client-side preferences only):**
+
 | Key | Purpose |
 |-----|---------|
-| `mistral_flash_annonces` | Stock announcements (legacy, auto-cleaned) |
-| `mistral_teachers` | Validated teachers |
-| `mistral_pending_teachers` | Pending teacher requests |
-| `mistral_gallery` | Gallery media |
-| `mistral_blog_articles` | Blog articles |
+| `mistral_cookie_consent` | RGPD cookie consent preferences |
 | `mistral_leaflet_consent` | Map RGPD consent |
+| `mistral_stats_anonymous` | Anonymous page view aggregates |
+
+**In-memory only (no persistence):**
+
+| Module | Purpose |
+|--------|---------|
+| `MistralMateriaux` | Material specifications (hardcoded defaults) |
+| `MistralGammes` | Scale configurations (hardcoded defaults) |
 
 ### Admin Authentication
 - Authentication is handled via **Supabase Auth** (email + password)
@@ -432,12 +469,14 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 ### Admin FAB not showing
 - Check `MistralAdmin.Auth.isLoggedIn()` returns true
 - Verify `js/admin/admin-core.js` is loaded
-- Check localStorage for valid session
+- Verify Supabase auth session is active (no localStorage session)
 
 ### Supabase sync issues
 - Verify Supabase URL and anon key in `js/core/config.js`
 - Check browser network tab for failed requests
 - Verify RLS policies allow the operation
+- Data is in-memory only (not localStorage) -- check `MistralSync.getData(key)` in console
+- Check `MistralSync.isReady()` and `MistralSync.getLastSync()` for sync status
 
 ### Audio not playing
 - Check file exists in `ressources/audio/`

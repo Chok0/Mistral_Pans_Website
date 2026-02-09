@@ -780,22 +780,16 @@
 
   // ===== RENDER ACCESSOIRES (HOUSSE) =====
   function getAccessoiresForConfigurateur(size) {
-    // Get accessoires from localStorage (same source as boutique-admin)
-    try {
-      const stored = localStorage.getItem('mistral_accessoires');
-      if (stored) {
-        const accessoires = JSON.parse(stored);
-        return accessoires.filter(a =>
-          a.statut === 'actif' &&
-          a.visible_configurateur === true &&
-          a.tailles_compatibles &&
-          a.tailles_compatibles.includes(size)
-        );
-      }
-    } catch (e) {
-      console.warn('[Configurateur] Erreur lecture accessoires:', e);
-    }
-    return [];
+    // Get accessoires from MistralSync in-memory store
+    const accessoires = (window.MistralSync && MistralSync.hasKey('mistral_accessoires'))
+      ? MistralSync.getData('mistral_accessoires')
+      : [];
+    return accessoires.filter(a =>
+      a.statut === 'actif' &&
+      a.visible_configurateur === true &&
+      a.tailles_compatibles &&
+      a.tailles_compatibles.includes(size)
+    );
   }
 
   function renderAccessoiresSection() {

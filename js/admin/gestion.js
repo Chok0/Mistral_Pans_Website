@@ -208,62 +208,86 @@
   }
 
   // ============================================================================
-  // STOCKAGE localStorage
+  // STOCKAGE (via MistralSync in-memory store)
   // ============================================================================
-  
+
   /**
-   * Récupère les données depuis localStorage
+   * Récupère les données depuis le store in-memory (MistralSync)
    */
   function getData(key) {
-    try {
-      const data = localStorage.getItem(CONFIG.STORAGE_KEYS[key]);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      console.error(`Erreur lecture ${key}:`, e);
-      return [];
+    const localKey = CONFIG.STORAGE_KEYS[key];
+    if (window.MistralSync && MistralSync.hasKey(localKey)) {
+      return MistralSync.getData(localKey);
     }
+    return [];
   }
 
   /**
-   * Sauvegarde les données dans localStorage
+   * Sauvegarde les données via MistralSync (memoire + Supabase)
    */
   function setData(key, data) {
-    try {
-      localStorage.setItem(CONFIG.STORAGE_KEYS[key], JSON.stringify(data));
-      return true;
-    } catch (e) {
-      console.error(`Erreur écriture ${key}:`, e);
-      return false;
+    const localKey = CONFIG.STORAGE_KEYS[key];
+    if (window.MistralSync && MistralSync.hasKey(localKey)) {
+      return MistralSync.setData(localKey, data);
     }
+    return false;
   }
 
   /**
-   * Récupère la configuration
+   * Récupère la configuration (MistralSync pour les cles gerees, fallback localStorage)
    */
   function getConfig() {
-    try {
-      const data = localStorage.getItem(CONFIG.STORAGE_KEYS.config);
-      const stored = data ? JSON.parse(data) : {};
-      // Fusionner avec les valeurs par défaut de l'entreprise
-      return {
-        ...CONFIG.ENTREPRISE,
-        ...CONFIG.DEFAULTS,
-        ...stored
-      };
-    } catch (e) {
-      console.error('Erreur lecture config:', e);
-      return { ...CONFIG.ENTREPRISE, ...CONFIG.DEFAULTS };
+    const localKey = CONFIG.STORAGE_KEYS.config;
+    let stored = {};
+
+    // Essayer MistralSync d'abord (in-memory + Supabase backed)
+    if (window.MistralSync && MistralSync.hasKey(localKey)) {
+      stored = MistralSync.getData(localKey) || {};
+    } else {
+      // Fallback localStorage (avant que MistralSync soit pret)
+      try {
+        const data = localStorage.getItem(localKey);
+        stored = data ? JSON.parse(data) : {};
+      } catch (e) {
+        console.error('Erreur lecture config:', e);
+      }
     }
+
+    // Fusionner avec les valeurs par défaut de l'entreprise
+    return {
+      ...CONFIG.ENTREPRISE,
+      ...CONFIG.DEFAULTS,
+      ...stored
+    };
   }
 
   /**
    * Met à jour une valeur de configuration
    */
   function setConfigValue(key, value) {
+    const localKey = CONFIG.STORAGE_KEYS.config;
+
+    // Lire la config actuelle (sans les defaults pour ne sauvegarder que les overrides)
+    let stored = {};
+    if (window.MistralSync && MistralSync.hasKey(localKey)) {
+      stored = MistralSync.getData(localKey) || {};
+    } else {
+      try {
+        const data = localStorage.getItem(localKey);
+        stored = data ? JSON.parse(data) : {};
+      } catch (e) { /* ignorer */ }
+    }
+
+    stored[key] = value;
+
+    // Ecrire via MistralSync (memoire + Supabase)
+    if (window.MistralSync && MistralSync.hasKey(localKey)) {
+      return MistralSync.setData(localKey, stored);
+    }
+
+    // Fallback localStorage
     try {
-      const config = getConfig();
-      config[key] = value;
-      localStorage.setItem(CONFIG.STORAGE_KEYS.config, JSON.stringify(config));
+      localStorage.setItem(localKey, JSON.stringify(stored));
       return true;
     } catch (e) {
       console.error('Erreur écriture config:', e);
@@ -1095,7 +1119,7 @@
     importAll(jsonData) {
       try {
         const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-        
+
         if (data.data) {
           if (data.data.clients) setData('clients', data.data.clients);
           if (data.data.instruments) setData('instruments', data.data.instruments);
@@ -1103,10 +1127,19 @@
           if (data.data.commandes) setData('commandes', data.data.commandes);
           if (data.data.factures) setData('factures', data.data.factures);
           if (data.data.config) {
-            localStorage.setItem(CONFIG.STORAGE_KEYS.config, JSON.stringify(data.data.config));
+            const configKey = CONFIG.STORAGE_KEYS.config;
+            if (window.MistralSync && MistralSync.hasKey(configKey)) {
+              MistralSync.setData(configKey, data.data.config);
+            } else {
+              try {
+                localStorage.setItem(configKey, JSON.stringify(data.data.config));
+              } catch (e) {
+                console.error('Erreur import config:', e);
+              }
+            }
           }
         }
-        
+
         return { success: true };
       } catch (e) {
         console.error('Erreur import:', e);
@@ -1134,8 +1167,14 @@
      * Réinitialise toutes les données
      */
     resetAll() {
-      Object.values(CONFIG.STORAGE_KEYS).forEach(key => {
-        localStorage.removeItem(key);
+      // Vider les cles gerees par MistralSync
+      Object.entries(CONFIG.STORAGE_KEYS).forEach(([name, key]) => {
+        if (window.MistralSync && MistralSync.hasKey(key)) {
+          const tableConfig = MistralSync.getTableConfig(key);
+          MistralSync.setData(key, (tableConfig && tableConfig.isKeyValue) ? {} : []);
+        } else {
+          try { localStorage.removeItem(key); } catch (e) {}
+        }
       });
     }
   };
