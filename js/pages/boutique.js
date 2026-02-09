@@ -45,9 +45,29 @@
   };
 
   // ===== PRICING =====
-  const pricePerNote = 115;
-  const priceOctave2Bonus = 50;  // +50 par note en octave 2
-  const priceBottomBonus = 25;   // +25 si l'instrument a des bottoms
+  // Defaults (overridden by admin config if available)
+  const PRICING_DEFAULTS = {
+    prixParNote: 115,
+    bonusOctave2: 50,
+    bonusBottoms: 25,
+    malusDifficulteWarning: 5,
+    malusDifficulteDifficile: 10
+  };
+
+  function getPricingConfig() {
+    if (typeof MistralGestion !== 'undefined') {
+      const config = MistralGestion.getConfig();
+      return {
+        prixParNote: config.prixParNote ?? PRICING_DEFAULTS.prixParNote,
+        bonusOctave2: config.bonusOctave2 ?? PRICING_DEFAULTS.bonusOctave2,
+        bonusBottoms: config.bonusBottoms ?? PRICING_DEFAULTS.bonusBottoms,
+        malusDifficulteWarning: config.malusDifficulteWarning ?? PRICING_DEFAULTS.malusDifficulteWarning,
+        malusDifficulteDifficile: config.malusDifficulteDifficile ?? PRICING_DEFAULTS.malusDifficulteDifficile
+      };
+    }
+    return { ...PRICING_DEFAULTS };
+  }
+
   // Size malus - read dynamically from centralized module
   function getSizeMalus() {
     return typeof MistralTailles !== 'undefined'
@@ -56,13 +76,14 @@
   }
 
   function calculatePrice(notes, size, feasibilityStatus, materialCode) {
+    const pricing = getPricingConfig();
     let price = 0;
     let hasBottom = false;
 
     notes.forEach(note => {
-      price += pricePerNote;
+      price += pricing.prixParNote;
       if (note.octave === 2) {
-        price += priceOctave2Bonus;
+        price += pricing.bonusOctave2;
       }
       if (note.type === 'bottom') {
         hasBottom = true;
@@ -71,7 +92,7 @@
 
     // Bonus bottom (une seule fois)
     if (hasBottom) {
-      price += priceBottomBonus;
+      price += pricing.bonusBottoms;
     }
 
     // Malus taille (en %)
@@ -83,9 +104,9 @@
 
     // Pourcentage selon difficulte
     if (feasibilityStatus === 'warning') {
-      price = price * 1.05;
+      price = price * (1 + pricing.malusDifficulteWarning / 100);
     } else if (feasibilityStatus === 'difficult') {
-      price = price * 1.10;
+      price = price * (1 + pricing.malusDifficulteDifficile / 100);
     }
 
     // Arrondir a la tranche de 5 inferieure

@@ -45,7 +45,13 @@
       montantCaution: 1150,
       fraisDossierTransport: 100,
       fraisTransportRetour: 40,
-      dureeEngagementMois: 3
+      dureeEngagementMois: 3,
+      // Tarification configurateur
+      prixParNote: 115,
+      bonusOctave2: 50,
+      bonusBottoms: 25,
+      malusDifficulteWarning: 5,
+      malusDifficulteDifficile: 10
     },
     
     // Types de factures

@@ -443,6 +443,18 @@
             <div class="admin-form__group"><label class="admin-form__label">Crédit fidélité (%)</label><input type="number" class="admin-form__input" id="config-fidelite" value="50" min="0" max="100"></div>
             <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
           </div>
+          <div class="dashboard__card">
+            <div class="dashboard__card-title">Tarification configurateur</div>
+            <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 0.75rem;">
+              Prix de base utilisés par le configurateur de la boutique.
+            </p>
+            <div class="admin-form__group"><label class="admin-form__label">Prix par note (€)</label><input type="number" class="admin-form__input" id="config-prix-note" value="115" min="0" step="5"></div>
+            <div class="admin-form__group"><label class="admin-form__label">Bonus octave 2 (€/note)</label><input type="number" class="admin-form__input" id="config-bonus-octave2" value="50" min="0" step="5"></div>
+            <div class="admin-form__group"><label class="admin-form__label">Bonus bottoms (€)</label><input type="number" class="admin-form__input" id="config-bonus-bottoms" value="25" min="0" step="5"></div>
+            <div class="admin-form__group"><label class="admin-form__label">Malus difficulté warning (%)</label><input type="number" class="admin-form__input" id="config-malus-warning" value="5" min="0" max="100" step="1"></div>
+            <div class="admin-form__group"><label class="admin-form__label">Malus difficulté difficile (%)</label><input type="number" class="admin-form__input" id="config-malus-difficile" value="10" min="0" max="100" step="1"></div>
+            <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
+          </div>
           <!-- EMAILS AUTOMATIQUES -->
           <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
             <div class="dashboard__card-title">Emails automatiques</div>
