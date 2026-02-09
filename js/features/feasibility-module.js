@@ -11,6 +11,24 @@
  */
 
 const FeasibilityModule = (function() {
+
+  // Notification légère (Toast si dispo, sinon notification DOM éphémère)
+  function showNotice(message) {
+    if (window.MistralAdmin && MistralAdmin.Toast) {
+      MistralAdmin.Toast.warning(message);
+      return;
+    }
+    const el = document.createElement('div');
+    el.textContent = message;
+    Object.assign(el.style, {
+      position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+      background: '#F59E0B', color: '#fff',
+      padding: '12px 24px', borderRadius: '8px', zIndex: '9999',
+      fontSize: '0.9rem', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxWidth: '90vw'
+    });
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 5000);
+  }
   
   // ===========================================================================
   // DONNÉES
@@ -293,9 +311,9 @@ const FeasibilityModule = (function() {
         e.preventDefault();
         if (result.impossibleNotes?.length > 0) {
           const notesList = result.impossibleNotes.map(n => `${n.note}${n.octave}`).join(', ');
-          alert(`Cette configuration n'est pas réalisable : la note ${notesList} est incompatible avec une taille de ${size}cm.\n\nEssayez une autre taille ou une tonalité différente.`);
+          showNotice(`Configuration non réalisable : la note ${notesList} est incompatible avec une taille de ${size}cm. Essayez une autre taille ou une tonalité différente.`);
         } else {
-          alert('Cette configuration n\'est pas réalisable.\n\nEssayez une tonalité plus aiguë ou réduisez le nombre de notes.');
+          showNotice('Configuration non réalisable. Essayez une tonalité plus aiguë ou réduisez le nombre de notes.');
         }
       };
     } else if (result.status === 'difficult') {

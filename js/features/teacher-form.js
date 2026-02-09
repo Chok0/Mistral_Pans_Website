@@ -6,6 +6,24 @@
 (function(window) {
   'use strict';
 
+  // Notification légère (Toast si dispo, sinon notification DOM éphémère)
+  function showNotice(message, type) {
+    if (window.MistralAdmin && MistralAdmin.Toast) {
+      MistralAdmin.Toast[type === 'error' ? 'error' : 'warning'](message);
+      return;
+    }
+    const el = document.createElement('div');
+    el.textContent = message;
+    Object.assign(el.style, {
+      position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+      background: type === 'error' ? '#EF4444' : '#F59E0B', color: '#fff',
+      padding: '12px 24px', borderRadius: '8px', zIndex: '9999',
+      fontSize: '0.9rem', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxWidth: '90vw'
+    });
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
   /**
    * GÃ©nÃ¨re le HTML du formulaire de professeur complet
    * @param {Object} options - Options de configuration
@@ -450,13 +468,13 @@
 
         // VÃ©rifier le type
         if (!file.type.startsWith('image/')) {
-          alert('Veuillez sÃ©lectionner une image');
+          showNotice('Veuillez sélectionner une image', 'warning');
           return;
         }
 
         // VÃ©rifier la taille (max 5MB avant compression)
         if (file.size > 5 * 1024 * 1024) {
-          alert('L\'image est trop volumineuse (max 5Mo)');
+          showNotice('L\'image est trop volumineuse (max 5Mo)', 'warning');
           return;
         }
 
@@ -503,7 +521,7 @@
               <circle cx="12" cy="7" r="4"/>
             </svg>
           `;
-          alert('Erreur lors du traitement de l\'image. Veuillez rÃ©essayer.');
+          showNotice('Erreur lors du traitement de l\'image. Veuillez réessayer.', 'error');
         }
       });
     }
@@ -531,12 +549,12 @@
       const courseFormats = form.querySelectorAll('input[name="courseFormats"]:checked');
 
       if (courseTypes.length === 0) {
-        alert('Veuillez sÃ©lectionner au moins un type de cours');
+        showNotice('Veuillez sélectionner au moins un type de cours', 'warning');
         return false;
       }
 
       if (courseFormats.length === 0) {
-        alert('Veuillez sÃ©lectionner au moins un format de cours');
+        showNotice('Veuillez sélectionner au moins un format de cours', 'warning');
         return false;
       }
     }

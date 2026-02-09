@@ -13,6 +13,17 @@
 
   const { $, $$, escapeHtml, formatPrice, formatDate, isValidEmail, Toast, Confirm, Modal, Storage } = window.AdminUIHelpers;
 
+  // Guard anti-double-clic pour les sauvegardes
+  const _savingGuards = new Set();
+  function withSaveGuard(name, fn) {
+    return async function() {
+      if (_savingGuards.has(name)) return;
+      _savingGuards.add(name);
+      try { await fn.apply(this, arguments); }
+      finally { _savingGuards.delete(name); }
+    };
+  }
+
   // État local pour les uploads
   let instrumentImages = [];
   let instrumentVideo = null;
@@ -2215,11 +2226,11 @@
     showModal,
     closeModal,
     editClient,
-    saveClient,
+    saveClient: withSaveGuard('client', saveClient),
     deleteClient,
     unarchiveClient,
     editInstrument,
-    saveInstrument,
+    saveInstrument: withSaveGuard('instrument', saveInstrument),
     deleteInstrument,
     vendreInstrument,
     finaliserVenteInstrument,
@@ -2228,15 +2239,15 @@
     removeInstrumentImage,
     removeInstrumentVideo,
     editLocation,
-    saveLocation,
+    saveLocation: withSaveGuard('location', saveLocation),
     terminerLocation,
     deleteLocation,
     downloadContrat,
     editCommande,
-    saveCommande,
+    saveCommande: withSaveGuard('commande', saveCommande),
     deleteCommande,
     editFacture,
-    saveFacture,
+    saveFacture: withSaveGuard('facture', saveFacture),
     downloadFacture,
     envoyerFactureMail,
     marquerPayee,
@@ -2247,7 +2258,7 @@
     approveTeacher,
     rejectTeacher,
     editTeacher,
-    saveTeacher,
+    saveTeacher: withSaveGuard('teacher', saveTeacher),
     deleteTeacher,
     submitAddTeacherForm,
     fileToBase64,
