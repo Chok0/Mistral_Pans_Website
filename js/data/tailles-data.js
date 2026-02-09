@@ -21,7 +21,7 @@
       code: '45',
       label: '45 cm',
       description: 'Compact — idéal voyage et enfants',
-      prix_malus: 5,
+      prix_malus: 100,
       feasibility: {
         shell: 182400,           // Total shell area (mm²)
         comfortPct: 45,          // OK threshold (%)
@@ -41,7 +41,7 @@
       code: '50',
       label: '50 cm',
       description: 'Polyvalent — bon compromis taille/son',
-      prix_malus: 2.5,
+      prix_malus: 100,
       feasibility: {
         shell: 235200,           // Total shell area (mm²)
         comfortPct: 45,
@@ -148,16 +148,12 @@
   }
 
   /**
-   * Retourne le map sizeMalus compatible avec l'ancien format
-   * { '53': 0, '50': 0.025, '45': 0.05 }
+   * Retourne le malus taille en EUR pour un code donné
+   * Ex: getSizeMalusEur('45') => 100
    */
-  function getSizeMalusMap() {
-    const tailles = getAll();
-    const map = {};
-    tailles.forEach(t => {
-      map[t.code] = (t.prix_malus || 0) / 100;
-    });
-    return map;
+  function getSizeMalusEur(code) {
+    const taille = getByCode(code);
+    return taille ? (taille.prix_malus || 0) : 0;
   }
 
   // ============================================================================
@@ -231,7 +227,7 @@
     getPrixMalus,
     getFeasibility,
     toSelectOptions,
-    getSizeMalusMap,
+    getSizeMalusEur,
 
     // Admin
     save,

@@ -68,13 +68,6 @@
     return { ...PRICING_DEFAULTS };
   }
 
-  // Size malus - read dynamically from centralized module
-  function getSizeMalus() {
-    return typeof MistralTailles !== 'undefined'
-      ? MistralTailles.getSizeMalusMap()
-      : { '53': 0, '50': 0.025, '45': 0.05 };
-  }
-
   function calculatePrice(notes, size, feasibilityStatus, materialCode) {
     const pricing = getPricingConfig();
     let price = 0;
@@ -95,10 +88,11 @@
       price += pricing.bonusBottoms;
     }
 
-    // Malus taille (en %)
-    const sizeMalus = getSizeMalus();
-    const sizeMultiplier = 1 + (sizeMalus[size] || 0);
-    price = price * sizeMultiplier;
+    // Malus taille (montant fixe en EUR)
+    const sizeMalus = typeof MistralTailles !== 'undefined'
+      ? MistralTailles.getSizeMalusEur(size)
+      : 0;
+    price += sizeMalus;
 
     // Note: tous les materiaux sont au meme prix (pas de malus)
 
@@ -770,7 +764,7 @@
     tailles.forEach(t => {
       const isActive = t.code === state.size ? ' active' : '';
       const priceHtml = t.prix_malus > 0
-        ? `<div class="radio-card__price">+${Math.round(t.prix_malus)}%</div>`
+        ? `<div class="radio-card__price">+${Math.round(t.prix_malus)} €</div>`
         : '';
       const desc = t.description ? t.description.split('\u2014')[0].trim() : t.code + ' cm';
       html += `<div class="radio-card${isActive}" data-value="${t.code}">

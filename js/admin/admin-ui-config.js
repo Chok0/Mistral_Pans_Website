@@ -877,7 +877,7 @@
         ? '<span style="background: var(--admin-accent); color: white; font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px;">Configurateur</span>'
         : '';
       const malusDisplay = t.prix_malus > 0
-        ? `<span style="color: var(--color-warning, #F59E0B); font-size: 0.8rem;">+${t.prix_malus}%</span>`
+        ? `<span style="color: var(--color-warning, #F59E0B); font-size: 0.8rem;">+${Math.round(t.prix_malus)} €</span>`
         : '<span style="color: var(--admin-text-muted); font-size: 0.8rem;">Standard</span>';
 
       html += `
