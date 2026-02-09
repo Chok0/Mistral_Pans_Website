@@ -129,6 +129,25 @@
     </header>
     
     <main id="main-content" class="admin-container">
+      <!-- NAV -->
+      <nav class="gestion-nav" id="gestion-nav">
+        <button class="gestion-nav__item gestion-nav__item--dashboard" data-section="dashboard">Tableau de bord</button>
+        <span class="gestion-nav__label">Gestion</span>
+        <button class="gestion-nav__item" data-section="commandes">Commandes <span class="gestion-nav__badge" id="badge-commandes" style="display:none;">0</span></button>
+        <button class="gestion-nav__item" data-section="instruments">Instruments</button>
+        <button class="gestion-nav__item" data-section="clients">Clients</button>
+        <button class="gestion-nav__item" data-section="locations">Locations <span class="gestion-nav__badge" id="badge-locations" style="display:none;">0</span></button>
+        <button class="gestion-nav__item" data-section="factures">Factures</button>
+        <span class="gestion-nav__label">Contenu</span>
+        <button class="gestion-nav__item" data-section="boutique">Vitrine</button>
+        <button class="gestion-nav__item" data-section="galerie">Galerie</button>
+        <button class="gestion-nav__item" data-section="blog">Blog</button>
+        <button class="gestion-nav__item" data-section="professeurs">Professeurs <span class="gestion-nav__badge" id="badge-professeurs" style="display:none;">0</span></button>
+        <span class="gestion-nav__label">Outils</span>
+        <button class="gestion-nav__item" data-section="comptabilite">Comptabilité</button>
+        <button class="gestion-nav__item" data-section="config">Config</button>
+      </nav>
+
       <!-- DASHBOARD -->
       <section class="dashboard" id="dashboard-section">
         <h1 class="dashboard__title">Tableau de bord</h1>
@@ -182,26 +201,7 @@
           </div>
         </div>
       </section>
-      
-      <!-- NAV -->
-      <nav class="gestion-nav" id="gestion-nav">
-        <button class="gestion-nav__item gestion-nav__item--dashboard" data-section="dashboard">Tableau de bord</button>
-        <span class="gestion-nav__label">Gestion</span>
-        <button class="gestion-nav__item" data-section="commandes">Commandes <span class="gestion-nav__badge" id="badge-commandes" style="display:none;">0</span></button>
-        <button class="gestion-nav__item" data-section="instruments">Instruments</button>
-        <button class="gestion-nav__item" data-section="clients">Clients</button>
-        <button class="gestion-nav__item" data-section="locations">Locations <span class="gestion-nav__badge" id="badge-locations" style="display:none;">0</span></button>
-        <button class="gestion-nav__item" data-section="factures">Factures</button>
-        <span class="gestion-nav__label">Contenu</span>
-        <button class="gestion-nav__item" data-section="boutique">Vitrine</button>
-        <button class="gestion-nav__item" data-section="galerie">Galerie</button>
-        <button class="gestion-nav__item" data-section="blog">Blog</button>
-        <button class="gestion-nav__item" data-section="professeurs">Professeurs <span class="gestion-nav__badge" id="badge-professeurs" style="display:none;">0</span></button>
-        <span class="gestion-nav__label">Outils</span>
-        <button class="gestion-nav__item" data-section="comptabilite">Comptabilité</button>
-        <button class="gestion-nav__item" data-section="config">Config</button>
-      </nav>
-      
+
       <!-- FACTURES -->
       <section class="gestion-section" id="section-factures">
         <div class="section-header"><h2 class="section-title">Gestion des factures</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('facture')">+ Nouvelle facture</button></div></div>

@@ -49,7 +49,7 @@
           sans engagement à long terme.
         </p>
         <p style="font-family: var(--font-display); font-size: 2.5rem; color: var(--color-white); margin-bottom: var(--space-xl);">
-          <span style="color: var(--color-accent);">60€</span><span style="font-size: 1.25rem; opacity: 0.8;">/mois</span>
+          <span style="color: var(--color-accent);" id="location-hero-price">60€</span><span style="font-size: 1.25rem; opacity: 0.8;">/mois</span>
           <span style="display: block; font-size: 0.875rem; font-family: var(--font-body); opacity: 0.7; margin-top: var(--space-xs);">50% déduit si achat</span>
         </p>
         <div class="hero__actions">
@@ -206,8 +206,8 @@
         <div class="accordion__content">
           <div class="accordion__inner">
             <p style="color: var(--color-text-light);">
-              Oui, moyennant des frais de livraison aller-retour. 
-              Comptez environ 50€ pour la France métropolitaine. 
+              Oui, moyennant des frais de dossier de <span id="location-faq-frais">100€</span>
+              incluant l'envoi aller-retour et les frais de caution numérique.
               Le retrait à l'atelier reste gratuit.
             </p>
           </div>
@@ -222,58 +222,101 @@
 
   <!-- ========== MODAL RÉSERVATION LOCATION ========== -->
   <div id="contact-modal" class="modal-overlay">
-    <div class="modal">
+    <div class="modal" style="max-width: 640px;">
       <div class="modal__header">
-        <h3 class="modal__title">Réserver une location</h3>
+        <h3 class="modal__title" id="rental-modal-title">Réserver une location</h3>
         <button class="modal__close" aria-label="Fermer">&times;</button>
       </div>
-      <div class="modal__body">
-        <form id="location-form" data-form="contact" data-honeypot>
-          <!-- Honeypot anti-spam -->
-          <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
-            <label for="hp-location-website">Site web</label>
-            <input type="text" name="website" id="hp-location-website" autocomplete="off" tabindex="-1">
+      <div class="modal__body" id="rental-modal-body">
+        <!-- Step 1: Instrument selection (dynamically populated) -->
+        <div id="rental-step-instruments" style="display:none;">
+          <p style="color:var(--color-text-light);margin-bottom:var(--space-md);">Sélectionnez l'instrument que vous souhaitez louer :</p>
+          <div id="rental-instruments-grid" style="display:grid;gap:0.75rem;margin-bottom:var(--space-lg);"></div>
+          <div style="text-align:center;border-top:1px solid var(--color-border);padding-top:var(--space-md);">
+            <p class="text-sm text-muted" style="margin-bottom:var(--space-sm);">Une question avant de réserver ?</p>
+            <a href="mailto:contact@mistralpans.fr?subject=Question location" class="btn btn--secondary btn--sm">Nous contacter</a>
           </div>
+        </div>
 
-          <input type="hidden" name="subject" value="Demande de location">
-
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="contact-firstname">Prénom *</label>
-              <input type="text" id="contact-firstname" name="firstname" class="form-input" required>
+        <!-- Step 1b: No instruments available -->
+        <div id="rental-step-notify" style="display:none;">
+          <div style="text-align:center;padding:var(--space-lg) 0;">
+            <p style="font-size:1.5rem;margin-bottom:var(--space-sm);">😔</p>
+            <p style="font-weight:600;margin-bottom:var(--space-sm);">Aucun instrument disponible actuellement</p>
+            <p style="color:var(--color-text-light);margin-bottom:var(--space-lg);">
+              Laissez votre email pour être prévenu dès qu'un instrument sera disponible à la location.
+              Vous ne recevrez qu'un seul email, sans aucun suivi commercial.
+            </p>
+          </div>
+          <form id="rental-notify-form">
+            <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+              <label for="hp-notify-website">Site web</label>
+              <input type="text" name="website" id="hp-notify-website" autocomplete="off" tabindex="-1">
             </div>
             <div class="form-group">
-              <label class="form-label" for="contact-lastname">Nom *</label>
-              <input type="text" id="contact-lastname" name="lastname" class="form-input" required>
+              <label class="form-label" for="notify-email">Votre email *</label>
+              <input type="email" id="notify-email" name="email" class="form-input" required placeholder="votre@email.com">
             </div>
+            <button type="submit" class="btn btn--primary btn--full">Me prévenir</button>
+          </form>
+        </div>
+
+        <!-- Step 2: Reservation form -->
+        <div id="rental-step-form" style="display:none;">
+          <div id="rental-selected-info" style="background:var(--color-bg-warm);padding:var(--space-md);border-radius:var(--radius-md);margin-bottom:var(--space-lg);display:flex;align-items:center;gap:var(--space-md);">
+            <div>
+              <p style="font-weight:600;" id="rental-selected-name"></p>
+              <p class="text-sm text-muted" id="rental-selected-details"></p>
+            </div>
+            <button class="btn btn--ghost btn--sm" onclick="LocationRental.showStep('instruments')" style="margin-left:auto;">Changer</button>
           </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="contact-email">Email *</label>
-            <input type="email" id="contact-email" name="email" class="form-input" required>
+          <form id="location-form" data-form="contact" data-honeypot>
+            <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+              <label for="hp-location-website">Site web</label>
+              <input type="text" name="website" id="hp-location-website" autocomplete="off" tabindex="-1">
+            </div>
+            <input type="hidden" name="instrument_id" id="rental-instrument-id">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="contact-firstname">Prénom *</label>
+                <input type="text" id="contact-firstname" name="firstname" class="form-input" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="contact-lastname">Nom *</label>
+                <input type="text" id="contact-lastname" name="lastname" class="form-input" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="contact-email">Email *</label>
+              <input type="email" id="contact-email" name="email" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="contact-phone">Téléphone *</label>
+              <input type="tel" id="contact-phone" name="phone" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="contact-city">Ville *</label>
+              <input type="text" id="contact-city" name="city" class="form-input" placeholder="Ex: Paris, Versailles..." required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="contact-message">Précisions (optionnel)</label>
+              <textarea id="contact-message" name="message" class="form-textarea" placeholder="Avez-vous déjà joué du handpan ? Questions particulières ?"></textarea>
+            </div>
+            <button type="submit" class="btn btn--primary btn--full">Réserver cet instrument</button>
+          </form>
+        </div>
+
+        <!-- Step 3: Confirmation -->
+        <div id="rental-step-confirm" style="display:none;">
+          <div style="text-align:center;padding:var(--space-xl) 0;">
+            <p style="font-size:2rem;margin-bottom:var(--space-sm);">✓</p>
+            <p style="font-size:1.25rem;font-weight:600;color:var(--color-success);margin-bottom:var(--space-sm);">Instrument réservé !</p>
+            <p style="color:var(--color-text-light);max-width:400px;margin:0 auto;">
+              Vérifiez vos emails pour les prochaines étapes.
+              Cette réservation est valide 72h.
+            </p>
           </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="contact-phone">Téléphone *</label>
-            <input type="tel" id="contact-phone" name="phone" class="form-input" required>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="contact-city">Ville *</label>
-            <input type="text" id="contact-city" name="city" class="form-input" placeholder="Ex: Paris, Versailles..." required>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="contact-message">Précisions (optionnel)</label>
-            <textarea id="contact-message" name="message" class="form-textarea" placeholder="Avez-vous déjà joué du handpan ? Questions particulières ?"></textarea>
-          </div>
-          
-          <button type="submit" class="btn btn--primary btn--full">Envoyer ma demande</button>
-        </form>
-        
-        <p class="text-sm text-muted text-center" style="margin-top: var(--space-md);">
-          Ou directement : <a href="mailto:contact@mistralpans.fr?subject=Demande de location">contact@mistralpans.fr</a>
-        </p>
+        </div>
       </div>
     </div>
   </div>
@@ -284,65 +327,272 @@
   <script src="js/core/main.js"></script>
   
   <script>
-  // Gérer le formulaire de réservation location
-  document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('location-form');
-    if (form) {
-      form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const firstname = document.getElementById('contact-firstname').value.trim();
-        const lastname = document.getElementById('contact-lastname').value.trim();
-        const email = document.getElementById('contact-email').value.trim();
-        const phone = document.getElementById('contact-phone').value.trim();
-        const city = document.getElementById('contact-city').value.trim();
-        const message = document.getElementById('contact-message').value.trim();
-        
-        const subject = '[Mistral Pans] Demande de location - ' + firstname + ' ' + lastname;
-        const body = 'DEMANDE DE LOCATION\n\nNom: ' + firstname + ' ' + lastname + '\nEmail: ' + email + '\nTéléphone: ' + phone + '\nVille: ' + city + '\n\nPrécisions:\n' + (message || 'Aucune');
-        
-        window.location.href = 'mailto:contact@mistralpans.fr?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-        
-        setTimeout(function() {
-          var modal = document.getElementById('contact-modal');
-          if (modal) {
-            modal.classList.remove('open');
-            document.body.style.overflow = '';
-          }
-          form.reset();
-        }, 500);
+  // ===== LOCATION RENTAL AUTOMATION =====
+  var LocationRental = (function() {
+    var selectedInstrument = null;
+    var instruments = [];
+
+    function getAvailableInstruments() {
+      if (typeof MistralSync === 'undefined' || !MistralSync.isReady()) return [];
+      var allInstruments = MistralSync.getData('mistral_gestion_instruments') || [];
+      return allInstruments.filter(function(i) {
+        return i.statut === 'disponible' || i.statut === 'en_ligne';
       });
     }
-    
-    // Fonctions pour ouvrir/fermer le modal
-    window.openContactModal = function() {
+
+    function getConfig() {
+      if (typeof MistralGestion !== 'undefined') {
+        return MistralGestion.getConfig();
+      }
+      return { loyer: 60, frais: 100, caution: 1150 };
+    }
+
+    function renderInstrumentCard(inst) {
+      var config = getConfig();
+      var loyer = config.loyer || 60;
+      var gamme = inst.gamme || inst.nom || 'Handpan';
+      var taille = inst.taille ? inst.taille + ' cm' : '';
+      var img = inst.photos && inst.photos.length > 0 ? inst.photos[0] : '';
+      var imgHtml = img
+        ? '<img src="' + img + '" alt="' + gamme + '" style="width:80px;height:80px;object-fit:cover;border-radius:var(--radius-md);flex-shrink:0;">'
+        : '<div style="width:80px;height:80px;background:var(--color-bg-warm);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:2rem;">🎵</div>';
+
+      return '<div class="rental-instrument-card" data-id="' + inst.id + '" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);border:1px solid var(--color-border);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s ease;" onmouseover="this.style.borderColor=\'var(--color-accent)\';this.style.boxShadow=\'var(--shadow-sm)\'" onmouseout="this.style.borderColor=\'var(--color-border)\';this.style.boxShadow=\'none\'">'
+        + imgHtml
+        + '<div style="flex:1;min-width:0;">'
+        + '<p style="font-weight:600;">' + gamme + '</p>'
+        + '<p class="text-sm text-muted">' + [taille, inst.tonalite, inst.materiau].filter(Boolean).join(' · ') + '</p>'
+        + '</div>'
+        + '<div style="text-align:right;flex-shrink:0;">'
+        + '<p style="font-weight:600;color:var(--color-accent);">' + loyer + '€<span class="text-sm" style="font-weight:400;opacity:0.7;">/mois</span></p>'
+        + '</div>'
+        + '</div>';
+    }
+
+    function showStep(step) {
+      var steps = ['instruments', 'notify', 'form', 'confirm'];
+      steps.forEach(function(s) {
+        var el = document.getElementById('rental-step-' + s);
+        if (el) el.style.display = s === step ? 'block' : 'none';
+      });
+
+      var title = document.getElementById('rental-modal-title');
+      if (step === 'instruments') title.textContent = 'Choisissez un instrument';
+      else if (step === 'notify') title.textContent = 'Être averti';
+      else if (step === 'form') title.textContent = 'Réserver une location';
+      else if (step === 'confirm') title.textContent = 'Réservation confirmée';
+    }
+
+    function openModal() {
+      instruments = getAvailableInstruments();
+
+      if (instruments.length > 0) {
+        var grid = document.getElementById('rental-instruments-grid');
+        grid.innerHTML = instruments.map(renderInstrumentCard).join('');
+
+        // Bind click events on instrument cards
+        grid.querySelectorAll('.rental-instrument-card').forEach(function(card) {
+          card.addEventListener('click', function() {
+            var id = card.dataset.id;
+            selectedInstrument = instruments.find(function(i) { return i.id === id; });
+            if (selectedInstrument) selectInstrument(selectedInstrument);
+          });
+        });
+
+        showStep('instruments');
+      } else {
+        showStep('notify');
+      }
+
       document.getElementById('contact-modal').classList.add('open');
       document.body.style.overflow = 'hidden';
-    };
-    window.closeContactModal = function() {
+    }
+
+    function selectInstrument(inst) {
+      selectedInstrument = inst;
+      document.getElementById('rental-instrument-id').value = inst.id;
+      document.getElementById('rental-selected-name').textContent = inst.gamme || inst.nom || 'Handpan';
+      document.getElementById('rental-selected-details').textContent =
+        [inst.taille ? inst.taille + ' cm' : '', inst.tonalite, inst.materiau].filter(Boolean).join(' · ');
+      showStep('form');
+    }
+
+    function closeModal() {
       document.getElementById('contact-modal').classList.remove('open');
       document.body.style.overflow = '';
+    }
+
+    function init() {
+      // Reservation form submit
+      var form = document.getElementById('location-form');
+      if (form) {
+        form.addEventListener('submit', async function(e) {
+          e.preventDefault();
+
+          var submitBtn = form.querySelector('button[type="submit"]');
+          var originalText = submitBtn.textContent;
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Réservation en cours...';
+
+          var firstname = document.getElementById('contact-firstname').value.trim();
+          var lastname = document.getElementById('contact-lastname').value.trim();
+          var email = document.getElementById('contact-email').value.trim();
+          var phone = document.getElementById('contact-phone').value.trim();
+          var city = document.getElementById('contact-city').value.trim();
+          var message = document.getElementById('contact-message').value.trim();
+
+          // Honeypot
+          var hp = form.querySelector('[name="website"]');
+          if (hp && hp.value) { submitBtn.disabled = false; submitBtn.textContent = originalText; return; }
+
+          var instrumentName = selectedInstrument ? (selectedInstrument.gamme || selectedInstrument.nom || 'Handpan') : 'Handpan';
+          var instrumentId = selectedInstrument ? selectedInstrument.id : '';
+          var config = getConfig();
+
+          var fullMessage = 'RÉSERVATION DE LOCATION\n\n'
+            + 'Instrument: ' + instrumentName + (selectedInstrument ? ' (' + (selectedInstrument.reference || instrumentId) + ')' : '') + '\n'
+            + 'Ville: ' + city + '\n'
+            + 'Téléphone: ' + phone + '\n\n'
+            + 'Précisions:\n' + (message || 'Aucune');
+
+          try {
+            // 1. Send notification email to admin
+            var response = await fetch('/.netlify/functions/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                emailType: 'contact',
+                firstname: firstname,
+                lastname: lastname,
+                email: email,
+                phone: phone,
+                message: fullMessage,
+                type: 'Réservation location'
+              })
+            });
+
+            var result = await response.json();
+
+            if (response.ok && result.success) {
+              // 2. Try to mark instrument as reserved via Supabase
+              if (selectedInstrument && typeof supabase !== 'undefined') {
+                try {
+                  await supabase.from('instruments').update({ statut: 'reserve' }).eq('id', instrumentId);
+                } catch (err) { /* Non-blocking */ }
+              }
+
+              // 3. Show confirmation
+              showStep('confirm');
+            } else {
+              submitBtn.disabled = false;
+              submitBtn.textContent = originalText;
+              alert('Erreur lors de l\'envoi. Contactez-nous à contact@mistralpans.fr');
+            }
+          } catch (err) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            alert('Erreur de connexion. Contactez-nous à contact@mistralpans.fr');
+          }
+        });
+      }
+
+      // Notification form submit
+      var notifyForm = document.getElementById('rental-notify-form');
+      if (notifyForm) {
+        notifyForm.addEventListener('submit', async function(e) {
+          e.preventDefault();
+
+          var hp = notifyForm.querySelector('[name="website"]');
+          if (hp && hp.value) return;
+
+          var email = document.getElementById('notify-email').value.trim();
+          var submitBtn = notifyForm.querySelector('button[type="submit"]');
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Inscription...';
+
+          try {
+            // Store notification email via Supabase if available
+            if (typeof supabase !== 'undefined') {
+              await supabase.from('configuration').upsert({
+                key: 'location_notify_emails',
+                namespace: 'gestion',
+                value: { emails: [email], updated: new Date().toISOString() }
+              }, { onConflict: 'key,namespace' });
+            }
+
+            // Also send an email notification to admin
+            await fetch('/.netlify/functions/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                emailType: 'contact',
+                firstname: 'Notification',
+                lastname: 'Location',
+                email: email,
+                message: 'Demande de notification pour disponibilité location.\nEmail: ' + email,
+                type: 'Notification location'
+              })
+            });
+
+            notifyForm.innerHTML = '<div style="text-align:center;padding:var(--space-lg);"><p style="color:var(--color-success);font-weight:600;">Inscrit !</p><p class="text-sm text-muted" style="margin-top:var(--space-xs);">Vous recevrez un email unique dès qu\'un instrument sera disponible.</p></div>';
+          } catch (err) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Me prévenir';
+            alert('Erreur. Contactez-nous à contact@mistralpans.fr');
+          }
+        });
+      }
+
+      // Modal open/close handlers
+      document.addEventListener('click', function(e) {
+        var contactTrigger = e.target.closest('[data-modal="contact"]');
+        if (contactTrigger) {
+          e.preventDefault();
+          openModal();
+        }
+        if (e.target.id === 'contact-modal') closeModal();
+        if (e.target.closest('.modal__close')) closeModal();
+      });
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeModal();
+      });
+    }
+
+    // Init on DOM ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+    return {
+      openModal: openModal,
+      closeModal: closeModal,
+      showStep: showStep,
+      selectInstrument: selectInstrument
     };
-    
-    // Event listeners pour les liens data-modal="contact"
-    document.addEventListener('click', function(e) {
-      var contactTrigger = e.target.closest('[data-modal="contact"]');
-  if (contactTrigger) {
-        e.preventDefault();
-        openContactModal();
-      }
-      if (e.target.id === 'contact-modal') {
-        closeContactModal();
-      }
-      if (e.target.closest('.modal__close')) {
-        closeContactModal();
-      }
-    });
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeContactModal();
-    });
+  })();
+  </script>
+  <script>
+  // Connecter les prix dynamiques à la config admin
+  window.addEventListener('mistral-sync-complete', function() {
+    try {
+      var config = window.MistralGestion ? MistralGestion.getConfig() : null;
+      if (!config) return;
+
+      var loyer = config.loyer || 60;
+      var frais = config.frais || 100;
+
+      var heroPrice = document.getElementById('location-hero-price');
+      if (heroPrice) heroPrice.textContent = loyer + '€';
+
+      var faqFrais = document.getElementById('location-faq-frais');
+      if (faqFrais) faqFrais.textContent = frais + '€';
+    } catch (e) {
+      // Config not available, keep defaults
+    }
   });
   </script>
-<script src="js/features/mistral-stats.js"></script>
+  <script src="js/features/mistral-stats.js"></script>
 </body>
 </html>
