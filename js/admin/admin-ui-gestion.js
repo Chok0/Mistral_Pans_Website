@@ -12,17 +12,7 @@
     return;
   }
 
-  // Destructure helpers with fallbacks
-  const helpers = window.AdminUIHelpers || {};
-  const $ = helpers.$ || ((sel) => document.querySelector(sel));
-  const $$ = helpers.$$ || ((sel) => document.querySelectorAll(sel));
-  const escapeHtml = helpers.escapeHtml || ((text) => { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; });
-  const formatPrice = helpers.formatPrice || ((val) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(val || 0));
-  const formatDate = helpers.formatDate || ((d) => d ? new Date(d).toLocaleDateString('fr-FR') : '-');
-  const Toast = helpers.Toast || { success: console.log, error: console.error, info: console.log };
-  const Confirm = helpers.Confirm || { show: async () => confirm('Confirmer ?') };
-  const Modal = helpers.Modal || {};
-  const Storage = helpers.Storage || { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch { return d; } }, set: (k, v) => localStorage.setItem(k, JSON.stringify(v)) };
+  const { $, $$, escapeHtml, formatPrice, formatDate, Toast, Confirm, Modal, Storage } = window.AdminUIHelpers;
 
   function renderClients(query = '') {
     if (typeof MistralGestion === 'undefined') return;

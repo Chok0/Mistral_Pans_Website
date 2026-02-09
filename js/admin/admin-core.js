@@ -320,6 +320,14 @@
       if (filtered.length === items.length) return false;
 
       this.set(key, filtered);
+
+      // Supprimer aussi dans Supabase
+      if (window.MistralSync && MistralSync.deleteFromSupabase) {
+        MistralSync.deleteFromSupabase(key, id).catch(err => {
+          console.error(`[Storage] Erreur suppression Supabase ${key}/${id}:`, err);
+        });
+      }
+
       return true;
     },
 
@@ -355,29 +363,30 @@
 
   // ============================================================================
   // COMPOSANT FAB (FLOATING ACTION BUTTON)
+  // Affiche automatiquement sur toutes les pages sauf admin.html
+  // 2 actions : lien panneau admin + deconnexion
   // ============================================================================
+
+  function isAdminPage() {
+    return window.location.pathname.endsWith('admin.html') ||
+           window.location.pathname.endsWith('admin');
+  }
 
   const FAB = {
     element: null,
-    menu: null,
     isOpen: false,
 
     /**
-     * Cree et injecte le FAB admin
+     * Cree et injecte le FAB admin (panneau admin + deconnexion)
+     * Ne s'affiche pas sur la page admin.html
      */
-    create(options = {}) {
+    create() {
       if (!Auth.isLoggedIn()) return null;
       if (this.element) return this.element;
+      if (isAdminPage()) return null;
 
-      const {
-        actions = [],
-        advancedLink = null,
-        position = 'bottom-right'
-      } = options;
-
-      // Creer le conteneur
       this.element = document.createElement('div');
-      this.element.className = `admin-fab-container admin-fab--${position}`;
+      this.element.className = 'admin-fab-container admin-fab--bottom-right';
       this.element.innerHTML = `
         <button class="admin-fab__trigger" aria-label="Menu administration" aria-expanded="false">
           <svg class="admin-fab__icon admin-fab__icon--gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -390,38 +399,36 @@
           </svg>
         </button>
         <div class="admin-fab__menu" role="menu">
-          ${actions.map(action => `
-            <button class="admin-fab__action" data-action="${action.id}" role="menuitem">
-              ${action.icon ? `<span class="admin-fab__action-icon">${action.icon}</span>` : ''}
-              <span>${escapeHtml(action.label)}</span>
-              ${action.badge ? `<span class="admin-fab__badge">${action.badge}</span>` : ''}
-            </button>
-          `).join('')}
-          ${advancedLink ? `
-            <a href="${advancedLink}" class="admin-fab__action admin-fab__action--link" role="menuitem">
-              <span>Gestion complete</span>
+          <a href="admin.html" class="admin-fab__action" role="menuitem">
+            <span class="admin-fab__action-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-                <polyline points="12 5 19 12 12 19"></polyline>
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
               </svg>
-            </a>
-          ` : ''}
+            </span>
+            <span>Panneau admin</span>
+          </a>
+          <button class="admin-fab__action" data-action="logout" role="menuitem">
+            <span class="admin-fab__action-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </span>
+            <span>Déconnexion</span>
+          </button>
         </div>
       `;
 
-      // Ajouter au DOM
       document.body.appendChild(this.element);
 
-      // References
-      this.menu = this.element.querySelector('.admin-fab__menu');
       const trigger = this.element.querySelector('.admin-fab__trigger');
-
-      // Events
       trigger.addEventListener('click', () => this.toggle());
 
       // Fermer au clic externe
       document.addEventListener('click', (e) => {
-        if (this.isOpen && !this.element.contains(e.target)) {
+        if (this.isOpen && this.element && !this.element.contains(e.target)) {
           this.close();
         }
       });
@@ -433,24 +440,15 @@
         }
       });
 
-      // Bind des actions
-      this.element.querySelectorAll('[data-action]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const actionId = btn.dataset.action;
-          const action = actions.find(a => a.id === actionId);
-          if (action && action.handler) {
-            action.handler();
-          }
-          this.close();
-        });
+      // Deconnexion
+      this.element.querySelector('[data-action="logout"]').addEventListener('click', () => {
+        this.close();
+        Auth.logout();
       });
 
       return this.element;
     },
 
-    /**
-     * Ouvre le menu
-     */
     open() {
       if (!this.element) return;
       this.isOpen = true;
@@ -458,9 +456,6 @@
       this.element.querySelector('.admin-fab__trigger').setAttribute('aria-expanded', 'true');
     },
 
-    /**
-     * Ferme le menu
-     */
     close() {
       if (!this.element) return;
       this.isOpen = false;
@@ -468,42 +463,14 @@
       this.element.querySelector('.admin-fab__trigger').setAttribute('aria-expanded', 'false');
     },
 
-    /**
-     * Toggle le menu
-     */
     toggle() {
       this.isOpen ? this.close() : this.open();
     },
 
-    /**
-     * Met a jour un badge
-     */
-    updateBadge(actionId, count) {
-      if (!this.element) return;
-      const action = this.element.querySelector(`[data-action="${actionId}"]`);
-      if (!action) return;
-
-      let badge = action.querySelector('.admin-fab__badge');
-      if (count > 0) {
-        if (!badge) {
-          badge = document.createElement('span');
-          badge.className = 'admin-fab__badge';
-          action.appendChild(badge);
-        }
-        badge.textContent = count;
-      } else if (badge) {
-        badge.remove();
-      }
-    },
-
-    /**
-     * Supprime le FAB
-     */
     destroy() {
       if (this.element) {
         this.element.remove();
         this.element = null;
-        this.menu = null;
         this.isOpen = false;
       }
     }
@@ -1077,16 +1044,20 @@
   // ============================================================================
 
   function init() {
-    // Ecouter les deconnexions pour nettoyer le FAB
-    window.addEventListener('adminLogout', () => {
-      FAB.destroy();
-    });
+    // Injecter le FAB si deja connecte
+    FAB.create();
 
-    // Ecouter les changements d'auth de MistralAuth
+    // Ecouter les changements d'auth pour creer/detruire le FAB
     window.addEventListener('mistral-auth-change', (e) => {
-      if (e.detail.event === 'logout') {
+      if (e.detail.event === 'login') {
+        FAB.create();
+      } else if (e.detail.event === 'logout') {
         FAB.destroy();
       }
+    });
+
+    window.addEventListener('adminLogout', () => {
+      FAB.destroy();
     });
   }
 
