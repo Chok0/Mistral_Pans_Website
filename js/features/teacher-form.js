@@ -6,6 +6,24 @@
 (function(window) {
   'use strict';
 
+  // Notification légère (Toast si dispo, sinon notification DOM éphémère)
+  function showNotice(message, type) {
+    if (window.MistralAdmin && MistralAdmin.Toast) {
+      MistralAdmin.Toast[type === 'error' ? 'error' : 'warning'](message);
+      return;
+    }
+    const el = document.createElement('div');
+    el.textContent = message;
+    Object.assign(el.style, {
+      position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+      background: type === 'error' ? '#EF4444' : '#F59E0B', color: '#fff',
+      padding: '12px 24px', borderRadius: '8px', zIndex: '9999',
+      fontSize: '0.9rem', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxWidth: '90vw'
+    });
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
   /**
    * GÃ©nÃ¨re le HTML du formulaire de professeur complet
    * @param {Object} options - Options de configuration
@@ -344,7 +362,7 @@
       if (data && data.features && data.features.length > 0) {
         const coords = data.features[0].geometry.coordinates;
         const label = data.features[0].properties.label;
-        console.log(`GÃ©ocodage: ${postalcode} ${city} Ã¢â€ â€™ ${coords[1]}, ${coords[0]} (${label})`);
+
         return {
           lat: coords[1],  // L'API retourne [lng, lat]
           lng: coords[0]
@@ -352,7 +370,7 @@
       }
       
       // Fallback: essayer Nominatim avec une query simple
-      console.warn('API adresse sans rÃ©sultat, essai Nominatim...');
+
       const nominatimQuery = encodeURIComponent(`${postalcode}, ${city}, France`);
       const nominatimResponse = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${nominatimQuery}&format=json&limit=1&countrycodes=fr`,
@@ -365,7 +383,7 @@
       if (nominatimResponse.ok) {
         const nominatimData = await nominatimResponse.json();
         if (nominatimData && nominatimData.length > 0) {
-          console.log(`GÃ©ocodage Nominatim: ${postalcode} ${city} Ã¢â€ â€™ ${nominatimData[0].lat}, ${nominatimData[0].lon}`);
+
           return {
             lat: parseFloat(nominatimData[0].lat),
             lng: parseFloat(nominatimData[0].lon)
@@ -374,7 +392,7 @@
       }
       
       // Fallback final: centre de l'ÃŽle-de-France
-      console.warn('GÃ©ocodage Ã©chouÃ©, utilisation des coordonnÃ©es par dÃ©faut');
+      if (window.MISTRAL_DEBUG) console.warn('GÃ©ocodage Ã©chouÃ©, utilisation des coordonnÃ©es par dÃ©faut');
       return { lat: 48.8566, lng: 2.3522 };
       
     } catch (error) {
@@ -450,13 +468,13 @@
 
         // VÃ©rifier le type
         if (!file.type.startsWith('image/')) {
-          alert('Veuillez sÃ©lectionner une image');
+          showNotice('Veuillez sélectionner une image', 'warning');
           return;
         }
 
         // VÃ©rifier la taille (max 5MB avant compression)
         if (file.size > 5 * 1024 * 1024) {
-          alert('L\'image est trop volumineuse (max 5Mo)');
+          showNotice('L\'image est trop volumineuse (max 5Mo)', 'warning');
           return;
         }
 
@@ -490,7 +508,7 @@
           // Afficher la taille originale vs compressÃ©e
           const originalSize = (file.size / 1024).toFixed(0);
           const compressedSize = (compressed.length * 0.75 / 1024).toFixed(0); // Base64 ~33% plus grand
-          console.log(`Photo: ${originalSize}Ko Ã¢â€ â€™ ${compressedSize}Ko`);
+
           
           if (onPhotoChange) {
             onPhotoChange(compressed);
@@ -503,7 +521,7 @@
               <circle cx="12" cy="7" r="4"/>
             </svg>
           `;
-          alert('Erreur lors du traitement de l\'image. Veuillez rÃ©essayer.');
+          showNotice('Erreur lors du traitement de l\'image. Veuillez réessayer.', 'error');
         }
       });
     }
@@ -531,12 +549,12 @@
       const courseFormats = form.querySelectorAll('input[name="courseFormats"]:checked');
 
       if (courseTypes.length === 0) {
-        alert('Veuillez sÃ©lectionner au moins un type de cours');
+        showNotice('Veuillez sélectionner au moins un type de cours', 'warning');
         return false;
       }
 
       if (courseFormats.length === 0) {
-        alert('Veuillez sÃ©lectionner au moins un format de cours');
+        showNotice('Veuillez sélectionner au moins un format de cours', 'warning');
         return false;
       }
     }

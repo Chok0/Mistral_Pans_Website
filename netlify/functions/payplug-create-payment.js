@@ -54,7 +54,8 @@ async function validateStockPrice(amountCents, instrumentId, paymentType) {
   const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    return { valid: true }; // Pas de DB = pas de validation
+    console.error('Variables Supabase manquantes pour la validation de prix');
+    return { valid: false, reason: 'Validation de prix indisponible' };
   }
 
   try {
@@ -70,7 +71,7 @@ async function validateStockPrice(amountCents, instrumentId, paymentType) {
       }
     );
 
-    if (!response.ok) return { valid: true };
+    if (!response.ok) return { valid: false, reason: 'Impossible de vérifier le prix' };
 
     const instruments = await response.json();
     if (!instruments || instruments.length === 0) {
@@ -110,7 +111,7 @@ async function validateStockPrice(amountCents, instrumentId, paymentType) {
     return { valid: true };
   } catch (error) {
     console.error('Erreur validation prix stock:', error);
-    return { valid: true }; // Fail open
+    return { valid: false, reason: 'Erreur lors de la validation du prix' };
   }
 }
 

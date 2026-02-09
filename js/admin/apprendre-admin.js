@@ -729,7 +729,6 @@
       if (data && data.features && data.features.length > 0) {
         const coords = data.features[0].geometry.coordinates;
         const label = data.features[0].properties.label;
-        console.log(`Géocodage: ${postalcode} ${city} → ${coords[1]}, ${coords[0]} (${label})`);
         return {
           lat: coords[1],  // L'API retourne [lng, lat]
           lng: coords[0]
@@ -737,7 +736,6 @@
       }
       
       // Fallback: essayer Nominatim avec une query simple
-      console.warn('API adresse sans résultat, essai Nominatim...');
       const nominatimQuery = encodeURIComponent(`${postalcode}, ${city}, France`);
       const nominatimResponse = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${nominatimQuery}&format=json&limit=1&countrycodes=fr`,
@@ -751,7 +749,6 @@
       if (nominatimResponse.ok) {
         const nominatimData = await nominatimResponse.json();
         if (nominatimData && nominatimData.length > 0) {
-          console.log(`Géocodage Nominatim: ${postalcode} ${city} → ${nominatimData[0].lat}, ${nominatimData[0].lon}`);
           return {
             lat: parseFloat(nominatimData[0].lat),
             lng: parseFloat(nominatimData[0].lon)
@@ -760,7 +757,7 @@
       }
       
       // Fallback final: centre de l'Île-de-France
-      console.warn('Géocodage échoué, utilisation des coordonnées par défaut');
+      if (window.MISTRAL_DEBUG) console.warn('Géocodage échoué, utilisation des coordonnées par défaut');
       return { lat: 48.8566, lng: 2.3522 };
       
     } catch (error) {

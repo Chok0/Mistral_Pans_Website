@@ -507,7 +507,6 @@
     // Honeypot
     var honeypotField = form.querySelector('[name="website"]');
     if (honeypotField && honeypotField.value) {
-      console.warn('Honeypot déclenché');
       return null;
     }
 

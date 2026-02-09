@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Configurez votre handpan Mistral Pans. Choisissez la gamme, la tonalité, le nombre de notes et les options.">
+  <link rel="canonical" href="https://mistralpans.fr/boutique.html">
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
@@ -20,6 +21,37 @@
   <meta name="twitter:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
 
   <title>Mistral Pans - Boutique | Configurez votre handpan</title>
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "Handpan Mistral Pans",
+    "description": "Handpan artisanal fabriqué sur mesure en Île-de-France. Choix de gamme, tonalité, taille et finition.",
+    "image": "https://mistralpans.fr/ressources/images/20230801_1622372.jpg",
+    "brand": {
+      "@type": "Brand",
+      "name": "Mistral Pans"
+    },
+    "manufacturer": {
+      "@type": "Organization",
+      "name": "Mistral Pans",
+      "url": "https://mistralpans.fr"
+    },
+    "category": "Instruments de musique",
+    "material": "Acier nitruré",
+    "countryOfOrigin": "FR",
+    "offers": {
+      "@type": "AggregateOffer",
+      "priceCurrency": "EUR",
+      "lowPrice": "920",
+      "highPrice": "2500",
+      "offerCount": "12",
+      "availability": "https://schema.org/MadeToOrder"
+    }
+  }
+  </script>
   
   <!-- Fonts -->
   
@@ -446,32 +478,32 @@
   </div>
 
   <!-- Scales data (unified source) -->
-  <script src="js/data/scales-data.js"></script>
+  <script src="js/data/scales-data.js" defer></script>
 
   <!-- Gammes data (centralized) -->
-  <script src="js/data/gammes-data.js"></script>
+  <script src="js/data/gammes-data.js" defer></script>
 
   <!-- Tailles data (centralized) -->
-  <script src="js/data/tailles-data.js"></script>
+  <script src="js/data/tailles-data.js" defer></script>
 
   <!-- Matériaux data (unified source) -->
-  <script src="js/data/materiaux-data.js"></script>
+  <script src="js/data/materiaux-data.js" defer></script>
 
   <!-- Module de faisabilité -->
-  <script src="js/features/feasibility-module.js"></script>
+  <script src="js/features/feasibility-module.js" defer></script>
 
   <!-- Configurateur -->
-  <script src="js/pages/boutique.js"></script>
+  <script src="js/pages/boutique.js" defer></script>
 
   <!-- Scripts -->
-  
+
   <script src="js/core/cookie-consent.js"></script>
   <script src="js/core/main.js"></script>
-  <script src="js/features/handpan-player.js"></script>
+  <script src="js/features/handpan-player.js" defer></script>
 
   <!-- Admin Scripts -->
-  <script src="js/admin/admin-core.js"></script>
-  <script src="js/admin/boutique-admin.js"></script>
-  <script src="js/features/mistral-stats.js"></script>
+  <script src="js/admin/admin-core.js" defer></script>
+  <script src="js/admin/boutique-admin.js" defer></script>
+  <script src="js/features/mistral-stats.js" defer></script>
 </body>
 </html>
