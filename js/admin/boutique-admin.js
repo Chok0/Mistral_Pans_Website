@@ -59,16 +59,10 @@
   }
 
   function getAccessoiresActifs() {
-    // Accessoires: not managed by MistralSync, use localStorage fallback
-    try {
-      const stored = localStorage.getItem(ACCESSOIRES_KEY);
-      if (stored) {
-        return JSON.parse(stored).filter(a => a.statut === 'actif');
-      }
-    } catch (e) {
-      console.error('[Boutique Admin] Erreur lecture accessoires:', e);
-    }
-    return [];
+    const accessoires = (window.MistralSync && MistralSync.hasKey(ACCESSOIRES_KEY))
+      ? MistralSync.getData(ACCESSOIRES_KEY)
+      : [];
+    return accessoires.filter(a => a.statut === 'actif');
   }
 
   function updateInstrumentStatut(id, statut) {
@@ -86,20 +80,15 @@
   }
 
   function updateAccessoireStatut(id, statut) {
-    try {
-      const stored = localStorage.getItem(ACCESSOIRES_KEY);
-      if (stored) {
-        const accessoires = JSON.parse(stored);
-        const index = accessoires.findIndex(a => a.id === id);
-        if (index !== -1) {
-          accessoires[index].statut = statut;
-          accessoires[index].updated_at = new Date().toISOString();
-          localStorage.setItem(ACCESSOIRES_KEY, JSON.stringify(accessoires));
-          return true;
-        }
+    if (window.MistralSync && MistralSync.hasKey(ACCESSOIRES_KEY)) {
+      const accessoires = MistralSync.getData(ACCESSOIRES_KEY);
+      const index = accessoires.findIndex(a => a.id === id);
+      if (index !== -1) {
+        accessoires[index].statut = statut;
+        accessoires[index].updated_at = new Date().toISOString();
+        MistralSync.setData(ACCESSOIRES_KEY, accessoires);
+        return true;
       }
-    } catch (e) {
-      console.error('[Boutique Admin] Erreur mise a jour accessoire:', e);
     }
     return false;
   }
@@ -568,21 +557,15 @@
   }
 
   function getHoussesForTaille(taille) {
-    try {
-      const stored = localStorage.getItem(ACCESSOIRES_KEY);
-      if (stored) {
-        const accessoires = JSON.parse(stored);
-        return accessoires.filter(function(a) {
-          return a.statut === 'actif' &&
-                 a.visible_configurateur === true &&
-                 a.tailles_compatibles &&
-                 a.tailles_compatibles.includes(taille);
-        });
-      }
-    } catch (e) {
-      console.warn('[Boutique Admin] Erreur lecture housses:', e);
-    }
-    return [];
+    const accessoires = (window.MistralSync && MistralSync.hasKey(ACCESSOIRES_KEY))
+      ? MistralSync.getData(ACCESSOIRES_KEY)
+      : [];
+    return accessoires.filter(function(a) {
+      return a.statut === 'actif' &&
+             a.visible_configurateur === true &&
+             a.tailles_compatibles &&
+             a.tailles_compatibles.includes(taille);
+    });
   }
 
   function updateModalPrice() {

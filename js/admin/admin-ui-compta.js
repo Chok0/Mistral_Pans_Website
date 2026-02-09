@@ -197,10 +197,10 @@
     doc.text(moisLabel.charAt(0).toUpperCase() + moisLabel.slice(1), 105, 30, { align: 'center' });
     
     // Informations entreprise
-    const config = Storage.get('mistral_gestion_config', {});
+    const pdfConfig = (typeof MistralGestion !== 'undefined') ? MistralGestion.getConfig() : Storage.get('mistral_gestion_config', {});
     doc.setFontSize(10);
-    doc.text(`${config.nom || 'Mistral Pan'}`, 20, 45);
-    doc.text(`SIRET: ${config.siret || '889 482 758 00014'}`, 20, 50);
+    doc.text(`${pdfConfig.nom || 'Mistral Pan'}`, 20, 45);
+    doc.text(`SIRET: ${pdfConfig.siret || '889 482 758 00014'}`, 20, 50);
     
     // Résumé URSSAF
     doc.setFontSize(14);
@@ -331,8 +331,13 @@
     });
     
     // Générer le contenu de l'email
-    const config = Storage.get('mistral_gestion_config', {});
-    const comptaConfig = Storage.get('mistral_compta_config', {});
+    const config = (typeof MistralGestion !== 'undefined') ? MistralGestion.getConfig() : Storage.get('mistral_gestion_config', {});
+    let comptaConfig = {};
+    if (window.MistralSync && MistralSync.hasKey('mistral_compta_config')) {
+      comptaConfig = MistralSync.getData('mistral_compta_config') || {};
+    } else {
+      comptaConfig = Storage.get('mistral_compta_config', {});
+    }
     const emailDest = comptaConfig.emailDest || config.email || '';
     
     if (!emailDest) {
@@ -378,19 +383,29 @@ Pensez à joindre le PDF du rapport détaillé.
       includeFactures: $('#compta-include-factures')?.checked || true,
       includePdf: $('#compta-include-pdf')?.checked || true
     };
-    
-    Storage.set('mistral_compta_config', config);
+
+    // Ecrire via MistralSync (memoire + Supabase) ou fallback Storage
+    if (window.MistralSync && MistralSync.hasKey('mistral_compta_config')) {
+      MistralSync.setData('mistral_compta_config', config);
+    } else {
+      Storage.set('mistral_compta_config', config);
+    }
     Toast.success('Configuration enregistrée');
-    
+
     // TODO: Si autoEmail activé, planifier l'envoi automatique
     if (config.autoEmail) {
       Toast.info('L\'envoi automatique nécessite une configuration serveur');
     }
   }
-  
+
   function loadComptaConfig() {
-    const config = Storage.get('mistral_compta_config', {});
-    
+    let config = {};
+    if (window.MistralSync && MistralSync.hasKey('mistral_compta_config')) {
+      config = MistralSync.getData('mistral_compta_config') || {};
+    } else {
+      config = Storage.get('mistral_compta_config', {});
+    }
+
     if ($('#compta-auto-email')) $('#compta-auto-email').checked = config.autoEmail || false;
     if ($('#compta-email-dest')) $('#compta-email-dest').value = config.emailDest || '';
     if ($('#compta-include-analytics')) $('#compta-include-analytics').checked = config.includeAnalytics !== false;

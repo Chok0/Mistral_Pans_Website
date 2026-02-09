@@ -231,7 +231,15 @@
       // Cles gerees par MistralSync -> lecture depuis memoire
       if (window.MistralSync && MistralSync.hasKey(key)) {
         const data = MistralSync.getData(key);
-        return data.length > 0 ? data : defaultValue;
+        // Pour les tableaux, verifier s'ils sont non-vides
+        if (Array.isArray(data)) {
+          return data.length > 0 ? data : defaultValue;
+        }
+        // Pour les objets (config key-value), verifier s'ils ont des cles
+        if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+          return data;
+        }
+        return defaultValue;
       }
       // Cles locales (consent, etc.) -> localStorage
       try {

@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mistral Pans Website
 
-> **Last Updated:** February 2026 (v3.4)
+> **Last Updated:** February 2026 (v3.5)
 > **Project:** Mistral Pans - Premium Handpan Artisan Website
 > **Stack:** Vanilla JS + HTML/CSS + Supabase + Netlify Functions
 
@@ -272,14 +272,14 @@ MistralAdmin.injectFAB({
 | `professeurs` | Teachers | nom, location, lat/lng, email, photo, course_types |
 | `galerie` | Media | type, src, thumbnail, ordre, featured |
 | `articles` | Blog posts | slug, title, content (HTML), status, tags |
-| `accessoires` | Accessories | nom, prix, quantite_stock |
-| `configuration` | Settings | key/value pairs |
+| `accessoires` | Accessories | nom, categorie, prix, stock, statut, visible_configurateur, tailles_compatibles |
+| `configuration` | Settings (key-value) | key, value (JSON), namespace (gestion/compta/email_automations) |
 
 ### Row-Level Security
 
-- **Public read:** Active teachers, published articles, online instruments, gallery
+- **Public read:** Active teachers, published articles, online instruments, gallery, active accessories
 - **Public insert:** Teacher applications (pending status)
-- **Authenticated:** Full CRUD access for admin operations
+- **Authenticated:** Full CRUD access for admin operations (all tables including configuration)
 
 ---
 
@@ -390,18 +390,23 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 
 ### Data Architecture
 
-**In-memory data (via MistralSync):** Business data is fetched from Supabase at page load and stored in a JavaScript `Map` in memory. No localStorage is used for this data.
+**In-memory data (via MistralSync):** Business data and configuration are fetched from Supabase at page load and stored in a JavaScript `Map` in memory. No localStorage is used for this data. Tables with `isKeyValue: true` store config objects (not arrays). Tables with `fetchFilter` fetch a filtered subset of a shared Supabase table (e.g., `professeurs` filtered by `statut`).
 
-| Key (in-memory) | Supabase Table | Purpose |
-|-----|---------|---------|
-| `mistral_gestion_clients` | `clients` | Customer records |
-| `mistral_gestion_instruments` | `instruments` | Instrument inventory |
-| `mistral_gestion_locations` | `locations` | Rental records |
-| `mistral_gestion_commandes` | `commandes` | Customer orders |
-| `mistral_gestion_factures` | `factures` | Invoices |
-| `mistral_teachers` | `professeurs` | Validated teachers |
-| `mistral_gallery` | `galerie` | Gallery media |
-| `mistral_blog_articles` | `articles` | Blog articles |
+| Key (in-memory) | Supabase Table | Type | Purpose |
+|-----|---------|------|---------|
+| `mistral_gestion_clients` | `clients` | Array | Customer records |
+| `mistral_gestion_instruments` | `instruments` | Array | Instrument inventory |
+| `mistral_gestion_locations` | `locations` | Array | Rental records |
+| `mistral_gestion_commandes` | `commandes` | Array | Customer orders |
+| `mistral_gestion_factures` | `factures` | Array | Invoices |
+| `mistral_teachers` | `professeurs` (statut='active') | Array | Validated teachers |
+| `mistral_pending_teachers` | `professeurs` (statut='pending') | Array | Pending teacher applications |
+| `mistral_gallery` | `galerie` | Array | Gallery media |
+| `mistral_blog_articles` | `articles` | Array | Blog articles |
+| `mistral_accessoires` | `accessoires` | Array | Shop accessories (cases, oils, etc.) |
+| `mistral_gestion_config` | `configuration` (namespace='gestion') | Object | Admin business config (rates, invoice counter) |
+| `mistral_compta_config` | `configuration` (namespace='compta') | Object | Accounting settings (email dest, report prefs) |
+| `mistral_email_automations` | `configuration` (namespace='email_automations') | Object | Email automation rules |
 
 **localStorage keys (client-side preferences only):**
 
@@ -410,7 +415,6 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 | `mistral_cookie_consent` | RGPD cookie consent preferences |
 | `mistral_leaflet_consent` | Map RGPD consent |
 | `mistral_stats_anonymous` | Anonymous page view aggregates |
-| `mistral_gestion_config` | Admin business configuration |
 
 **In-memory only (no persistence):**
 
