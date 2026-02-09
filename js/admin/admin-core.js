@@ -124,11 +124,10 @@
 
         // Nettoyer les URLs javascript: et data:
         if (attrName === 'href' || attrName === 'src') {
-          const value = attr.value.toLowerCase().replace(/\s+/g, '').trim();
-          if (value.startsWith('javascript:') ||
-              value.startsWith('data:') ||
-              value.startsWith('vbscript:') ||
-              value.startsWith('blob:')) {
+          let value;
+          try { value = decodeURIComponent(attr.value); } catch (e) { value = attr.value; }
+          const normalized = value.replace(/[\s\x00-\x1f]/g, '').toLowerCase();
+          if (/^(javascript|data|vbscript|blob):/.test(normalized)) {
             el.removeAttribute(attr.name);
           }
         }

@@ -1928,3 +1928,66 @@ h3 {
   }
 }
 
+/* ==========================================================================
+   PRINT STYLES
+   ========================================================================== */
+@media print {
+  /* Masquer les éléments non imprimables */
+  .header,
+  .nav,
+  #site-header,
+  #site-footer,
+  #contact-modal-container,
+  .cookie-banner,
+  .admin-fab,
+  .admin-modal-overlay,
+  .skip-link,
+  .btn,
+  .hero__overlay {
+    display: none !important;
+  }
+
+  /* Reset des couleurs pour l'impression */
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+
+  /* Contenu légal : largeur pleine */
+  .legal-content {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Liens : afficher l'URL */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+
+  /* Éviter les coupures dans les éléments importants */
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+  }
+
+  p, li, blockquote {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Hero : afficher en texte simple */
+  .hero {
+    background-image: none !important;
+    min-height: auto !important;
+    padding: 1cm 0 !important;
+  }
+
+  .hero__content {
+    color: #000 !important;
+  }
+}
+
