@@ -1,0 +1,28 @@
+{
+  "description": "Versions des librairies self-hosted",
+  "last_updated": "2026-02-09",
+  "libraries": {
+    "supabase-js": {
+      "version": "2.95.3",
+      "npm_package": "@supabase/supabase-js"
+    },
+    "leaflet": {
+      "version": "1.9.4",
+      "npm_package": "leaflet"
+    },
+    "chart.js": {
+      "version": "4.5.1",
+      "npm_package": "chart.js"
+    },
+    "quill": {
+      "version": "1.3.7",
+      "npm_package": "quill"
+    }
+  },
+  "not_self_hosted": {
+    "payplug-sdk": {
+      "reason": "PCI-DSS compliance",
+      "url": "https://cdn.payplug.com/js/integrated-payment/v1@1/index.js"
+    }
+  }
+}

@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/admin.css">
   <link rel="stylesheet" href="css/teacher-form.css">
-  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+  <link href="js/vendor/quill.snow.css" rel="stylesheet">
   
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -154,6 +154,20 @@
             <div class="dashboard__card-title">Ma liste de tâches</div>
             <div class="todo-list" id="todo-list"></div>
             <div class="todo-add"><input type="text" class="todo-add__input" id="todo-input" placeholder="Nouvelle tâche..." onkeypress="if(event.key==='Enter')AdminUI.addTodo()"><button class="todo-add__btn" onclick="AdminUI.addTodo()">Ajouter</button></div>
+          </div>
+          <div class="dashboard__card" id="vendor-check-container">
+            <div class="dashboard__card-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+              Librairies vendor
+              <span id="vendor-badge" class="quick-action__badge" style="display:none;">0</span>
+            </div>
+            <div id="vendor-check-content">
+              <div style="color: var(--admin-text-muted); font-size: 0.875rem;">Chargement...</div>
+            </div>
           </div>
         </div>
       </section>
@@ -1171,13 +1185,13 @@
 
   <!-- SCRIPTS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="js/vendor/chart.umd.js"></script>
   <!-- Cookie Consent -->
   <script src="js/core/cookie-consent.js"></script>
   <!-- Configuration Supabase (copier config.example.js vers config.js) -->
   <script src="js/core/config.js"></script>
   <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/vendor/supabase.js"></script>
   <script src="js/services/supabase-client.js"></script>
   <script src="js/services/supabase-auth.js"></script>
   <script src="js/admin/admin-core.js"></script>
@@ -1187,7 +1201,7 @@
   <script src="js/features/mistral-stats.js"></script>
   <script src="js/features/upload.js"></script>
   <script src="js/features/teacher-form.js"></script>
-  <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+  <script src="js/vendor/quill.min.js"></script>
   <script src="js/data/materiaux-data.js"></script>
   <script src="js/data/gammes-data.js"></script>
   <script src="js/data/tailles-data.js"></script>
@@ -1199,6 +1213,7 @@
   <script src="js/admin/admin-ui-config.js"></script>
   <script src="js/admin/admin-ui-modals.js"></script>
   <script src="js/admin/admin-ui-compta.js"></script>
+  <script src="js/admin/admin-vendor-check.js"></script>
   
   <script>
     (function() {
