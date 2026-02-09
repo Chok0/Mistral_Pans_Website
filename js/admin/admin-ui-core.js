@@ -179,6 +179,11 @@
     const pendingTeachers = Storage.get(CONFIG.STORAGE_KEYS.pendingTeachers || 'mistral_pending_teachers', []);
     updateStat('dash-pending-teachers', pendingTeachers.length);
     updateBadge('badge-professeurs', pendingTeachers.length);
+
+    // Widget vendor check
+    if (typeof VendorCheck !== 'undefined' && document.getElementById('vendor-check-container')) {
+      VendorCheck.render('vendor-check-container');
+    }
   }
 
   function updateStat(id, value) {

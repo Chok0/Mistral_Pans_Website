@@ -149,10 +149,16 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 - **Styling:** CSS custom properties, mobile-first responsive
 - **Typography:** Fraunces (display), Inter (body), JetBrains Mono (code)
 
-### External Libraries (CDN)
+### External Libraries (self-hosted in js/vendor/)
 - **Supabase JS SDK 2.x** - Database/Auth
 - **Leaflet 1.9.4** - Maps
-- **Quill.js** - WYSIWYG editor (blog)
+- **Chart.js 4.x** - Admin charts
+- **Quill.js 1.3.7** - WYSIWYG editor (blog)
+
+Versions tracked in `js/vendor/versions.json`. Update via `./scripts/update-vendor.sh`.
+
+### External CDN (not self-hostable)
+- **PayPlug SDK** - Payment (PCI-DSS requirement, commander.html only)
 
 ### Anti-Spam
 - **Honeypot** - Invisible form field (no external dependency, RGPD friendly)
@@ -384,6 +390,12 @@ The site uses `fetch()` for partials. **Will not work with `file://` protocol.**
 
 ### Dynamic Script Loading
 `js/core/main.js` dynamically loads `js/core/config.js`, `js/services/supabase-client.js`, and `js/services/supabase-sync.js` at runtime. Keep these paths in sync if reorganizing.
+
+### Vendor Libraries
+- All third-party JS/CSS is in `js/vendor/` (no CDN dependency)
+- Run `./scripts/update-vendor.sh` to check for updates
+- `js/vendor/versions.json` tracks installed versions
+- PayPlug SDK is the only external CDN (PCI-DSS requirement)
 
 ### Cloudflare Consideration
 If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security settings.

@@ -418,6 +418,19 @@ Dans Supabase > **Authentication > Users** > "Add User" :
 - [ ] Echelle z-index unifiee
 - [ ] Indicateurs `:focus-visible` complets
 
+### Mettre a jour les librairies tierces
+
+Les librairies JavaScript (Supabase, Leaflet, Chart.js, Quill) sont servies
+depuis le site, pas depuis des CDN. Pour verifier les mises a jour :
+
+    ./scripts/update-vendor.sh
+
+Pour installer les mises a jour :
+
+    ./scripts/update-vendor.sh --install
+
+Le dashboard admin affiche aussi un indicateur quand des mises a jour sont disponibles.
+
 ### Variables d'environnement requises (Netlify)
 
 ```env
