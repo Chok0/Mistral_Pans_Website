@@ -320,6 +320,14 @@
       if (filtered.length === items.length) return false;
 
       this.set(key, filtered);
+
+      // Supprimer aussi dans Supabase
+      if (window.MistralSync && MistralSync.deleteFromSupabase) {
+        MistralSync.deleteFromSupabase(key, id).catch(err => {
+          console.error(`[Storage] Erreur suppression Supabase ${key}/${id}:`, err);
+        });
+      }
+
       return true;
     },
 

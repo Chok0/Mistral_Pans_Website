@@ -440,18 +440,19 @@
       // data doit etre un tableau pour les tables normales
       if (!Array.isArray(data)) return false;
 
-      for (const item of data) {
-        if (!item.id) continue;
+      const rows = data
+        .filter(item => item.id)
+        .map(item => transformToSupabase(tableConfig.remote, item));
 
-        const transformed = transformToSupabase(tableConfig.remote, item);
+      if (rows.length === 0) return true;
 
-        const { error } = await client
-          .from(tableConfig.remote)
-          .upsert(transformed, { onConflict: tableConfig.idField });
+      const { error } = await client
+        .from(tableConfig.remote)
+        .upsert(rows, { onConflict: tableConfig.idField });
 
-        if (error) {
-          log(`Erreur push ${tableConfig.remote} (${item.id}): ${error.message}`, 'error');
-        }
+      if (error) {
+        log(`Erreur push ${tableConfig.remote}: ${error.message}`, 'error');
+        return false;
       }
 
       return true;
@@ -471,21 +472,23 @@
       // data est un objet {key: value, ...}
       if (!data || typeof data !== 'object') return false;
 
-      for (const [key, value] of Object.entries(data)) {
-        const row = {
-          key: key,
-          value: JSON.stringify(value),
-          namespace: namespace,
-          updated_at: new Date().toISOString()
-        };
+      const now = new Date().toISOString();
+      const rows = Object.entries(data).map(([key, value]) => ({
+        key,
+        value: JSON.stringify(value),
+        namespace,
+        updated_at: now
+      }));
 
-        const { error } = await client
-          .from(tableConfig.remote)
-          .upsert(row, { onConflict: 'key,namespace' });
+      if (rows.length === 0) return true;
 
-        if (error) {
-          log(`Erreur push config ${namespace}.${key}: ${error.message}`, 'error');
-        }
+      const { error } = await client
+        .from(tableConfig.remote)
+        .upsert(rows, { onConflict: 'key,namespace' });
+
+      if (error) {
+        log(`Erreur push config ${namespace}: ${error.message}`, 'error');
+        return false;
       }
 
       return true;
