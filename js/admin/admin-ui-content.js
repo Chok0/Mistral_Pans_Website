@@ -209,6 +209,7 @@
     
     Storage.set('mistral_gallery', gallery);
     closeModal('media');
+    mediaUploadedImage = null;
     renderGalerie();
   }
   
@@ -463,6 +464,7 @@
     
     
     closeModal('article');
+    articleUploadedImage = null;
     renderBlog();
     
   }
