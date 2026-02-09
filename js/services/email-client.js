@@ -132,7 +132,6 @@
      */
     generateInvoicePdfBase64(facture) {
       if (typeof MistralPDF === 'undefined' || !MistralPDF.generateFacture) {
-        console.warn('[MistralEmail] MistralPDF non disponible');
         return null;
       }
 

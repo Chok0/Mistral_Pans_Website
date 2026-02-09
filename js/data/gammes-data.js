@@ -422,6 +422,4 @@
     DEFAULT_GAMMES
   };
 
-  console.log('[Gammes] Module initialise (in-memory)');
-
 })();

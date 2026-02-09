@@ -42,7 +42,7 @@
     if (type === 'error') {
       console.error(`${prefix} ${message}`);
     } else {
-      console.log(`${prefix} ${message}`);
+      if (window.MISTRAL_DEBUG) console.log(`${prefix} ${message}`);
     }
   }
 
@@ -343,7 +343,5 @@
 
   // Note: MistralAdmin.Auth est defini dans admin-core.js et delegue
   // deja vers MistralAuth. Pas besoin d'alias ici.
-
-  console.log('[MistralAuth] charge');
 
 })(window);

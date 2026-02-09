@@ -85,8 +85,6 @@
      * Met a jour les donnees d'un instrument (appele lors de l'edition)
      */
     mettreAJourAnnonce(instrumentId) {
-      console.log('[Gestion-Boutique] mettreAJourAnnonce appele pour', instrumentId);
-
       if (typeof BoutiqueAdmin !== 'undefined') {
         BoutiqueAdmin.renderFlashCards();
       }
@@ -105,8 +103,6 @@
      * Synchronise tout (pour compatibilite)
      */
     synchroniserTout() {
-      console.log('[Gestion-Boutique] synchroniserTout appele');
-
       const publies = this.getInstrumentsPublies();
 
       if (typeof BoutiqueAdmin !== 'undefined') {

@@ -405,7 +405,6 @@ const FeasibilityModule = (function() {
     // Initialisation
     init: function() {
       this.injectStyles();
-      console.log('✅ FeasibilityModule initialisé');
     },
     
     // Mise à jour complète (à appeler dans updateDisplay)

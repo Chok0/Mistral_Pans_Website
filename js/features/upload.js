@@ -138,7 +138,7 @@
     canvas.width = 1;
     canvas.height = 1;
     webpSupported = canvas.toDataURL('image/webp').startsWith('data:image/webp');
-    console.log('[Upload] Support WebP:', webpSupported);
+    if (window.MISTRAL_DEBUG) console.log('[Upload] Support WebP:', webpSupported);
     return webpSupported;
   }
 
@@ -208,7 +208,6 @@
     const format = getOptimalFormat();
     const q = quality;
 
-    console.log(`[Upload] Compression (${profileName}): ${file.name} (${(file.size/1024).toFixed(1)}KB) -> ${format.ext} @ ${Math.round(q*100)}% (max ${maxWidth}px)`);
 
     const mainCanvas = resizeImage(img, maxWidth);
     const mainBlob = await canvasToBlob(mainCanvas, q);
@@ -221,7 +220,6 @@
     URL.revokeObjectURL(img.src);
 
     const compressionRatio = ((1 - mainBlob.size / file.size) * 100).toFixed(1);
-    console.log(`[Upload] Resultat: ${(mainBlob.size/1024).toFixed(1)}KB (${compressionRatio}% de reduction)`);
 
     return {
       main: {
@@ -483,8 +481,6 @@
       .from(CONFIG.STORAGE_BUCKET)
       .getPublicUrl(data.path);
 
-    console.log('[Upload] Supabase Storage OK:', data.path);
-
     return {
       path: data.path,
       publicUrl: urlData.publicUrl
@@ -512,7 +508,7 @@
       const thumbResult = await uploadToStorage(thumbBlob, thumbPath, format.mimeType);
       thumbUrl = thumbResult.publicUrl;
     } catch (e) {
-      console.warn('[Upload] Miniature non uploadee, fallback sur image principale:', e.message);
+      if (window.MISTRAL_DEBUG) console.warn('[Upload] Miniature non uploadee, fallback sur image principale:', e.message);
     }
 
     return {
@@ -561,7 +557,6 @@
       // Pas grave si la miniature n'existe pas
     }
 
-    console.log('[Upload] Supprime de Supabase Storage:', storagePath);
     return true;
   }
 

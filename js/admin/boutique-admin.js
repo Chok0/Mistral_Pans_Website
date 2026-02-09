@@ -10,8 +10,6 @@
 (function() {
   'use strict';
 
-  console.log('[Boutique Admin v2] Initialisation...');
-
   // Attendre que admin-core soit chargé (optionnel pour page publique)
   const hasAdminCore = typeof MistralAdmin !== 'undefined';
   
@@ -711,7 +709,6 @@
   // ============================================================================
 
   function init() {
-    console.log('[Boutique Admin v2] Rendu initial...');
     renderFlashCards();
     initAnnonceModalListeners();
 
@@ -726,7 +723,6 @@
       }
     });
 
-    console.log('[Boutique Admin v2] Prêt');
   }
 
   if (document.readyState === 'loading') {

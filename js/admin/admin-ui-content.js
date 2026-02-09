@@ -832,6 +832,4 @@
     renderAnalytics
   });
 
-  console.log('[admin-ui-content] Module chargé');
-
 })(window);

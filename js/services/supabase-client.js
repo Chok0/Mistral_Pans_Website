@@ -59,7 +59,6 @@
     
     if (!supabase) {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('✅ Supabase client initialisé');
     }
     
     return supabase;
@@ -124,7 +123,7 @@
         return handleError(error, 'connexion');
       }
       
-      console.log('✅ Connecté:', data.user.email);
+      if (window.MISTRAL_DEBUG) console.log('✅ Connecté:', data.user.email);
       return data.user;
     },
     
@@ -140,8 +139,6 @@
       if (error) {
         return handleError(error, 'déconnexion');
       }
-      
-      console.log('✅ Déconnecté');
       
       // Legacy cleanup (migration vers Supabase Auth)
       try { localStorage.removeItem('mistral_admin_session'); } catch(e) {}
@@ -273,7 +270,7 @@
           return handleError(error, `create ${tableName}`);
         }
         
-        console.log(`✅ ${tableName} créé:`, data.id);
+        if (window.MISTRAL_DEBUG) console.log(`✅ ${tableName} créé:`, data.id);
         return data;
       },
       
@@ -295,7 +292,7 @@
           return handleError(error, `update ${tableName}`);
         }
         
-        console.log(`✅ ${tableName} mis à jour:`, id);
+        if (window.MISTRAL_DEBUG) console.log(`✅ ${tableName} mis à jour:`, id);
         return data;
       },
       
@@ -315,7 +312,7 @@
           return handleError(error, `delete ${tableName}`) || false;
         }
         
-        console.log(`✅ ${tableName} supprimé:`, id);
+        if (window.MISTRAL_DEBUG) console.log(`✅ ${tableName} supprimé:`, id);
         return true;
       },
       
@@ -809,7 +806,5 @@
 
   // Alias pour compatibilité avec l'ancien code
   window.MistralGestion = window.MistralDB;
-
-  console.log('✅ MistralDB (Supabase) chargé');
 
 })(window);

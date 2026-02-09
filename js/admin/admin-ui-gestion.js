@@ -513,6 +513,4 @@
     }
   });
 
-  console.log('[admin-ui-gestion] Module chargé');
-
 })(window);

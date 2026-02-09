@@ -85,7 +85,6 @@
         e.preventDefault();
 
         if (this.isBot(form)) {
-          console.log('[Honeypot] Bot détecté, soumission bloquée silencieusement');
 
           if (onBot) {
             onBot(form);

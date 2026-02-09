@@ -63,7 +63,7 @@
         data: data
       }));
     } catch (e) {
-      console.warn('[VendorCheck] Impossible de mettre en cache:', e);
+      if (window.MISTRAL_DEBUG) console.warn('[VendorCheck] Impossible de mettre en cache:', e);
     }
   }
 
@@ -87,7 +87,6 @@
     if (!forceRefresh) {
       const cached = getCache();
       if (cached) {
-        console.log('[VendorCheck] Utilisation du cache');
         return cached;
       }
     }

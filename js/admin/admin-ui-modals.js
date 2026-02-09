@@ -511,7 +511,6 @@
   
   function initInstrumentUploads() {
     if (typeof MistralUpload === 'undefined') {
-      console.warn('[Admin UI] MistralUpload non disponible');
       return;
     }
     
@@ -617,10 +616,9 @@
     if (compress && file.type.startsWith('image/') && typeof MistralUpload !== 'undefined') {
       try {
         const result = await MistralUpload.compressImageAdvanced(file, profile);
-        console.log(`[fileToBase64] Compressé (${profile}): ${(file.size/1024).toFixed(1)}KB → ${(result.main.size/1024).toFixed(1)}KB (${result.format})`);
         return result.main.dataURL;
       } catch (e) {
-        console.warn('[fileToBase64] Compression échouée, fallback:', e);
+        if (window.MISTRAL_DEBUG) console.warn('[fileToBase64] Compression échouée, fallback:', e);
       }
     }
     
@@ -2264,7 +2262,5 @@
     fileToBase64,
     isCompressionEnabled
   });
-
-  console.log('[admin-ui-modals] Module chargé');
 
 })(window);

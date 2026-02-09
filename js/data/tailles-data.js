@@ -94,7 +94,6 @@
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_TAILLES));
-      console.log('[Tailles] Données initialisées avec les valeurs par défaut');
     }
   }
 

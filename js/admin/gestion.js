@@ -720,7 +720,7 @@
       if (!force) {
         const validation = validateStatusTransition(instrument.statut, statut);
         if (!validation.valid) {
-          console.warn(`[Gestion] Transition de statut refusée: ${validation.message}`);
+          if (window.MISTRAL_DEBUG) console.warn(`[Gestion] Transition de statut refusée: ${validation.message}`);
           // Dispatch un événement pour notifier l'UI
           window.dispatchEvent(new CustomEvent('mistral-status-error', {
             detail: {
@@ -1418,7 +1418,5 @@
     // Stats
     Stats
   };
-
-  console.log('✅ MistralGestion v' + CONFIG.VERSION + ' chargé');
 
 })(window);
