@@ -705,41 +705,6 @@
     });
   }
 
-  // ============================================================================
-  // FAB ADMIN
-  // ============================================================================
-
-  function setupAdminFAB() {
-    if (!hasAdminCore || !MistralAdmin.Auth.isLoggedIn()) return;
-    
-    const instruments = getInstrumentsEnLigne();
-    const accessoires = getAccessoiresActifs();
-    const totalCount = instruments.length + accessoires.length;
-    
-    MistralAdmin.FAB.create({
-      position: 'bottom-right',
-      actions: [
-        {
-          id: 'manage',
-          label: 'Gérer la boutique',
-          icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>',
-          badge: totalCount > 0 ? totalCount + ' en ligne' : null,
-          handler: function() { window.location.href = 'admin.html#boutique'; }
-        },
-        {
-          id: 'logout',
-          label: 'Déconnexion',
-          icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
-          handler: function() {
-            MistralAdmin.Auth.logout();
-            MistralAdmin.FAB.destroy();
-            Toast.info('Déconnecté');
-          }
-        }
-      ],
-      advancedLink: 'admin.html#boutique'
-    });
-  }
 
   // ============================================================================
   // INITIALISATION
@@ -748,7 +713,6 @@
   function init() {
     console.log('[Boutique Admin v2] Rendu initial...');
     renderFlashCards();
-    setupAdminFAB();
     initAnnonceModalListeners();
 
     // Ecouter les changements de donnees via MistralSync

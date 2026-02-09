@@ -45,7 +45,13 @@
       montantCaution: 1150,
       fraisDossierTransport: 100,
       fraisTransportRetour: 40,
-      dureeEngagementMois: 3
+      dureeEngagementMois: 3,
+      // Tarification configurateur
+      prixParNote: 115,
+      bonusOctave2: 50,
+      bonusBottoms: 25,
+      malusDifficulteWarning: 5,
+      malusDifficulteDifficile: 10
     },
     
     // Types de factures
@@ -99,9 +105,13 @@
   // ============================================================================
   
   /**
-   * Génère un UUID v4
+   * Genere un UUID v4 (crypto-safe)
    */
   function generateUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    // Fallback navigateurs anciens
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       const r = Math.random() * 16 | 0;
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -171,6 +181,85 @@
     return parseFloat(str.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0;
   }
 
+  // ============================================================================
+  // VALIDATION
+  // ============================================================================
+
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function isValidDate(str) {
+    return /^\d{4}-\d{2}-\d{2}/.test(str) && !isNaN(new Date(str).getTime());
+  }
+
+  /**
+   * Valide les donnees d'un client (champs requis + formats)
+   * @throws {Error} si validation echoue
+   */
+  function validateClient(data) {
+    if (!data.nom || !data.nom.trim()) {
+      throw new Error('Le nom du client est requis');
+    }
+    if (data.email && data.email.trim() && !isValidEmail(data.email.trim())) {
+      throw new Error('Format email invalide');
+    }
+  }
+
+  /**
+   * Valide les donnees d'un instrument
+   * @throws {Error} si validation echoue
+   */
+  function validateInstrument(data) {
+    if (!data.reference || !data.reference.trim()) {
+      throw new Error('La reference de l\'instrument est requise');
+    }
+    if (data.prix_vente !== undefined && data.prix_vente !== null) {
+      const prix = parsePrice(data.prix_vente);
+      if (prix < 0) throw new Error('Le prix de vente ne peut pas etre negatif');
+    }
+  }
+
+  /**
+   * Valide les donnees d'une location
+   * @throws {Error} si validation echoue
+   */
+  function validateLocation(data) {
+    if (!data.client_id) throw new Error('Le client est requis');
+    if (!data.instrument_id) throw new Error('L\'instrument est requis');
+    if (data.loyer_mensuel !== undefined) {
+      const loyer = parsePrice(data.loyer_mensuel);
+      if (loyer < 0) throw new Error('Le loyer ne peut pas etre negatif');
+    }
+  }
+
+  /**
+   * Valide les donnees d'une commande
+   * @throws {Error} si validation echoue
+   */
+  function validateCommande(data) {
+    if (!data.client_id) throw new Error('Le client est requis');
+    if (data.montant_total !== undefined) {
+      const montant = parsePrice(data.montant_total);
+      if (montant < 0) throw new Error('Le montant ne peut pas etre negatif');
+    }
+  }
+
+  /**
+   * Valide les donnees d'une facture
+   * @throws {Error} si validation echoue
+   */
+  function validateFacture(data) {
+    if (!data.client_id) throw new Error('Le client est requis');
+    if (!data.lignes || !Array.isArray(data.lignes) || data.lignes.length === 0) {
+      throw new Error('Au moins une ligne de facture est requise');
+    }
+    const validTypes = ['vente', 'acompte', 'solde', 'location', 'prestation', 'avoir'];
+    if (data.type && !validTypes.includes(data.type)) {
+      throw new Error('Type de facture invalide: ' + data.type);
+    }
+  }
+
   /**
    * Échappe le HTML pour éviter les injections XSS
    */
@@ -231,6 +320,18 @@
       return MistralSync.setData(localKey, data);
     }
     return false;
+  }
+
+  /**
+   * Supprime un enregistrement dans Supabase (apres suppression locale)
+   */
+  function deleteRemote(storageKey, id) {
+    const localKey = CONFIG.STORAGE_KEYS[storageKey];
+    if (window.MistralSync && MistralSync.deleteFromSupabase) {
+      MistralSync.deleteFromSupabase(localKey, id).catch(err => {
+        console.error(`[Gestion] Erreur suppression Supabase ${storageKey}/${id}:`, err);
+      });
+    }
   }
 
   /**
@@ -333,11 +434,12 @@
      * Crée un nouveau client
      */
     create(data) {
+      validateClient(data);
       const clients = this.list();
       const client = {
         id: generateUUID(),
-        nom: data.nom || '',
-        prenom: data.prenom || '',
+        nom: data.nom.trim(),
+        prenom: (data.prenom || '').trim(),
         email: data.email || '',
         telephone: data.telephone || '',
         adresse: data.adresse || '',
@@ -378,6 +480,7 @@
       const filtered = clients.filter(c => c.id !== id);
       if (filtered.length === clients.length) return false;
       setData('clients', filtered);
+      deleteRemote('clients', id);
       return true;
     },
 
@@ -410,9 +513,11 @@
     ajouterCredit(id, montant) {
       const client = this.get(id);
       if (!client) return null;
-      
+
       const creditActuel = parseFloat(client.credit_fidelite) || 0;
-      const nouveauCredit = creditActuel + montant;
+      const montantParse = parsePrice(montant);
+      if (montantParse === 0 && montant !== 0) return null;
+      const nouveauCredit = creditActuel + montantParse;
       
       return this.update(id, {
         credit_fidelite: nouveauCredit
@@ -546,10 +651,11 @@
      * Crée un nouvel instrument
      */
     create(data) {
+      validateInstrument(data);
       const instruments = this.list();
       const instrument = {
         id: generateUUID(),
-        reference: data.reference || '',
+        reference: data.reference.trim(),
         nom: data.nom || '',
         gamme: data.gamme || '',
         notes: data.notes || '',
@@ -595,6 +701,7 @@
       const filtered = instruments.filter(i => i.id !== id);
       if (filtered.length === instruments.length) return false;
       setData('instruments', filtered);
+      deleteRemote('instruments', id);
       return true;
     },
 
@@ -680,8 +787,9 @@
      * Crée une nouvelle location
      */
     create(data) {
+      validateLocation(data);
       const locations = this.list();
-      
+
       // Calculer la date de fin d'engagement
       const dateDebut = new Date(data.date_debut || new Date());
       const dateFinEngagement = new Date(dateDebut);
@@ -821,13 +929,14 @@
       const location = this.get(id);
       const filtered = locations.filter(l => l.id !== id);
       if (filtered.length === locations.length) return false;
-      
+
       // Remettre l'instrument disponible si la location était en cours
       if (location && location.statut === 'en_cours') {
         Instruments.setStatut(location.instrument_id, 'disponible');
       }
-      
+
       setData('locations', filtered);
+      deleteRemote('locations', id);
       return true;
     }
   };
@@ -867,6 +976,7 @@
      * Crée une nouvelle commande
      */
     create(data) {
+      validateCommande(data);
       const commandes = this.list();
       const commande = {
         id: generateUUID(),
@@ -940,6 +1050,7 @@
       const filtered = commandes.filter(c => c.id !== id);
       if (filtered.length === commandes.length) return false;
       setData('commandes', filtered);
+      deleteRemote('commandes', id);
       return true;
     }
   };
@@ -987,8 +1098,9 @@
      * @param {Array} data.lignes - Lignes de facture [{description, quantite, prix_unitaire}]
      */
     create(data) {
+      validateFacture(data);
       const factures = this.list();
-      
+
       // Calculer le sous-total
       const lignes = data.lignes || [];
       const sousTotal = lignes.reduce((sum, l) => sum + (l.quantite || 1) * (parsePrice(l.prix_unitaire) || 0), 0);
@@ -1069,14 +1181,13 @@
     },
 
     /**
-     * Supprime une facture (attention: déconseillé pour la conformité)
+     * Annule une facture (soft-delete — suppression interdite, conformite legale)
      */
-    delete(id) {
-      const factures = this.list();
-      const filtered = factures.filter(f => f.id !== id);
-      if (filtered.length === factures.length) return false;
-      setData('factures', filtered);
-      return true;
+    annuler(id) {
+      return this.update(id, {
+        statut: 'annulee',
+        date_annulation: new Date().toISOString().split('T')[0]
+      });
     },
 
     /**

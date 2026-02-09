@@ -11,22 +11,7 @@
     return;
   }
 
-  // Destructure helpers with fallbacks
-  const helpers = window.AdminUIHelpers || {};
-  const $ = helpers.$ || ((sel) => document.querySelector(sel));
-  const $$ = helpers.$$ || ((sel) => document.querySelectorAll(sel));
-  const escapeHtml = helpers.escapeHtml || ((text) => {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  });
-  const formatPrice = helpers.formatPrice || ((val) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(val || 0));
-  const formatDate = helpers.formatDate || ((d) => d ? new Date(d).toLocaleDateString('fr-FR') : '-');
-  const Toast = helpers.Toast || { success: console.log, error: console.error, info: console.log };
-  const Confirm = helpers.Confirm || { show: async () => confirm('Confirmer ?') };
-  const Modal = helpers.Modal || {};
-  const Storage = helpers.Storage || { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch { return d; } }, set: (k, v) => localStorage.setItem(k, JSON.stringify(v)) };
+  const { $, $$, escapeHtml, formatPrice, formatDate, isValidEmail, Toast, Confirm, Modal, Storage } = window.AdminUIHelpers;
 
   // État local pour les uploads
   let instrumentImages = [];
@@ -39,13 +24,6 @@
   let pendingInstrumentModalSource = null;
   let currentEditingTeacherId = null;
   let instrumentEnVente = false;
-
-  // Utilitaire de validation email
-  function isValidEmail(email) {
-    if (!email) return true; // Email optionnel
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
 
   function showModal(name) {
     const modal = $(`#modal-${name}`);
@@ -208,10 +186,16 @@
     if (modal) {
       modal.classList.remove('open');
       document.body.style.overflow = '';
-      
+
       // Reset ID caché
       const idField = $(`#${name}-id`);
       if (idField) idField.value = '';
+    }
+
+    // Liberer les etats upload pour eviter les fuites memoire
+    if (name === 'instrument') {
+      instrumentImages = [];
+      instrumentVideo = null;
     }
   }
   
@@ -315,12 +299,17 @@
     }
 
     let client;
-    if (id) {
-      client = MistralGestion.Clients.update(id, data);
-      Toast.success('Client modifié');
-    } else {
-      client = MistralGestion.Clients.create(data);
-      Toast.success('Client créé');
+    try {
+      if (id) {
+        client = MistralGestion.Clients.update(id, data);
+        Toast.success('Client modifié');
+      } else {
+        client = MistralGestion.Clients.create(data);
+        Toast.success('Client créé');
+      }
+    } catch (e) {
+      Toast.error(e.message);
+      return;
     }
     
     closeModal('client');
@@ -1082,18 +1071,23 @@
     }
     
     let instrument;
-    if (id) {
-      instrument = MistralGestion.Instruments.update(id, data);
-      
-      // Mettre à jour l'annonce si elle existe
-      if (typeof GestionBoutique !== 'undefined' && GestionBoutique.estPublie(id)) {
-        GestionBoutique.mettreAJourAnnonce(id);
+    try {
+      if (id) {
+        instrument = MistralGestion.Instruments.update(id, data);
+
+        // Mettre à jour l'annonce si elle existe
+        if (typeof GestionBoutique !== 'undefined' && GestionBoutique.estPublie(id)) {
+          GestionBoutique.mettreAJourAnnonce(id);
+        }
+
+        Toast.success('Instrument modifié');
+      } else {
+        instrument = MistralGestion.Instruments.create(data);
+        Toast.success('Instrument créé');
       }
-      
-      Toast.success('Instrument modifié');
-    } else {
-      instrument = MistralGestion.Instruments.create(data);
-      Toast.success('Instrument créé');
+    } catch (e) {
+      Toast.error(e.message);
+      return;
     }
     
     closeModal('instrument');
@@ -1204,14 +1198,18 @@
       notes: $('#location-notes')?.value.trim()
     };
     
-    if (id) {
-      MistralGestion.Locations.update(id, data);
-      Toast.success('Location modifiée');
-    } else {
-      MistralGestion.Locations.create(data);
-      // Mettre à jour le statut de l'instrument
-      MistralGestion.Instruments.update(instrumentId, { statut: 'en_location' });
-      Toast.success('Location créée');
+    try {
+      if (id) {
+        MistralGestion.Locations.update(id, data);
+        Toast.success('Location modifiée');
+      } else {
+        MistralGestion.Locations.create(data);
+        MistralGestion.Instruments.update(instrumentId, { statut: 'en_location' });
+        Toast.success('Location créée');
+      }
+    } catch (e) {
+      Toast.error(e.message);
+      return;
     }
     
     closeModal('location');
@@ -1284,12 +1282,17 @@
       notes: $('#commande-notes')?.value.trim()
     };
 
-    if (id) {
-      MistralGestion.Commandes.update(id, data);
-      Toast.success('Commande modifiée');
-    } else {
-      MistralGestion.Commandes.create(data);
-      Toast.success('Commande créée');
+    try {
+      if (id) {
+        MistralGestion.Commandes.update(id, data);
+        Toast.success('Commande modifiée');
+      } else {
+        MistralGestion.Commandes.create(data);
+        Toast.success('Commande créée');
+      }
+    } catch (e) {
+      Toast.error(e.message);
+      return;
     }
 
     // Automatisations lifecycle : détecter les transitions de statut
@@ -1482,12 +1485,17 @@
       notes: $('#facture-notes')?.value.trim()
     };
 
-    if (id) {
-      MistralGestion.Factures.update(id, data);
-      Toast.success('Facture modifiée');
-    } else {
-      MistralGestion.Factures.create(data);
-      Toast.success('Facture créée');
+    try {
+      if (id) {
+        MistralGestion.Factures.update(id, data);
+        Toast.success('Facture modifiée');
+      } else {
+        MistralGestion.Factures.create(data);
+        Toast.success('Facture créée');
+      }
+    } catch (e) {
+      Toast.error(e.message);
+      return;
     }
 
     // Si c'est une vente payée, marquer les instruments comme vendus

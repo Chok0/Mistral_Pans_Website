@@ -56,12 +56,6 @@
   right: 24px;
 }
 
-.admin-fab--bottom-left {
-  bottom: 24px;
-  left: 24px;
-  align-items: flex-start;
-}
-
 .admin-fab__trigger {
   width: 56px;
   height: 56px;
@@ -149,17 +143,6 @@
   background: var(--admin-surface-hover);
 }
 
-.admin-fab__action--link {
-  border-top: 1px solid var(--admin-border);
-  margin-top: 0.5rem;
-  padding-top: 1rem;
-  color: var(--admin-accent);
-}
-
-.admin-fab__action--link:hover {
-  color: var(--admin-accent-hover);
-}
-
 .admin-fab__action-icon {
   width: 20px;
   height: 20px;
@@ -167,21 +150,6 @@
   align-items: center;
   justify-content: center;
   opacity: 0.7;
-}
-
-.admin-fab__badge {
-  margin-left: auto;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  background: var(--admin-error);
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* ============================================================================
@@ -2007,6 +1975,57 @@ input[type="datetime-local"],
   background: var(--admin-border, #3d4450);
   margin: 0 0.5rem;
   align-self: center;
+}
+
+.gestion-nav__label {
+  display: flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--admin-text-muted, #94a3b8);
+  padding: 0.5rem 0.5rem 0.25rem;
+  width: 100%;
+  opacity: 0.6;
+}
+
+.gestion-nav__item--dashboard {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--admin-border, #3d4450);
+  border-radius: var(--admin-radius-md, 8px) var(--admin-radius-md, 8px) 0 0;
+  padding-bottom: 0.75rem;
+}
+
+/* Mobile nav */
+@media (max-width: 768px) {
+  .gestion-nav {
+    flex-wrap: wrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0.5rem;
+  }
+  .gestion-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .gestion-nav__item {
+    padding: 0.75rem 1rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .gestion-nav__item--dashboard {
+    width: 100%;
+    flex-shrink: 1;
+  }
+  .gestion-nav__label {
+    font-size: 0.6rem;
+    padding: 0.375rem 0.5rem 0.125rem;
+    width: 100%;
+  }
 }
 
 /* ============================================================================

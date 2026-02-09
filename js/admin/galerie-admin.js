@@ -825,52 +825,6 @@
     openLightbox
   };
 
-  // ============================================================================
-  // FAB
-  // ============================================================================
-
-  function initAdminFAB() {
-    if (!Auth.isLoggedIn()) return;
-
-    const instruments = Gallery.getAll();
-
-    FAB.create({
-      position: 'bottom-right',
-      actions: [
-        {
-          id: 'manage',
-          label: 'GÃ©rer la galerie',
-          icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
-          badge: instruments.length > 0 ? instruments.length : null,
-          handler: openManageModal
-        },
-        {
-          id: 'add',
-          label: 'Ajouter un instrument',
-          icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
-          handler: () => GalerieAdmin.openAddModal()
-        },
-        {
-          id: 'admin-panel',
-          label: 'Panneau admin',
-          icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
-          handler: () => {
-            window.location.href = 'admin.html#galerie';
-          }
-        },
-        {
-          id: 'logout',
-          label: 'Déconnexion',
-          icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
-          handler: () => {
-            Auth.logout();
-            FAB.destroy();
-            Toast.info('Déconnecté');
-          }
-        }
-      ]
-    });
-  }
 
   // ============================================================================
   // INIT
@@ -878,11 +832,6 @@
 
   function init() {
     renderGallery();
-    initAdminFAB();
-
-    window.addEventListener('adminLogout', () => {
-      FAB.destroy();
-    });
 
     // Ecouter les changements de donnees via MistralSync
     window.addEventListener('mistral-sync-complete', () => {
