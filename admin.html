@@ -155,6 +155,17 @@
             <div class="todo-list" id="todo-list"></div>
             <div class="todo-add"><input type="text" class="todo-add__input" id="todo-input" placeholder="Nouvelle tâche..." onkeypress="if(event.key==='Enter')AdminUI.addTodo()"><button class="todo-add__btn" onclick="AdminUI.addTodo()">Ajouter</button></div>
           </div>
+          <div class="dashboard__card dashboard__card--wide">
+            <div class="dashboard__card-title" style="display: flex; justify-content: space-between; align-items: center;">
+              Statistiques du site
+              <select class="admin-form__select" id="stats-period" style="width:auto; font-size: 0.8rem;" onchange="if(AdminUI.renderAnalytics)AdminUI.renderAnalytics()">
+                <option value="7">7 jours</option>
+                <option value="30" selected>30 jours</option>
+                <option value="90">90 jours</option>
+              </select>
+            </div>
+            <div id="stats-content"><p style="color:var(--admin-text-muted);">Chargement...</p></div>
+          </div>
           <div class="dashboard__card" id="vendor-check-container">
             <div class="dashboard__card-title">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -174,24 +185,25 @@
       
       <!-- NAV -->
       <nav class="gestion-nav" id="gestion-nav">
-        <button class="gestion-nav__item active" data-section="factures">Factures</button>
-        <button class="gestion-nav__item" data-section="clients">Clients</button>
-        <button class="gestion-nav__item" data-section="instruments">Instruments</button>
-        <button class="gestion-nav__item" data-section="locations">Locations <span class="gestion-nav__badge" id="badge-locations" style="display:none;">0</span></button>
+        <button class="gestion-nav__item gestion-nav__item--dashboard" data-section="dashboard">Tableau de bord</button>
+        <span class="gestion-nav__label">Gestion</span>
         <button class="gestion-nav__item" data-section="commandes">Commandes <span class="gestion-nav__badge" id="badge-commandes" style="display:none;">0</span></button>
-        <div class="gestion-nav__separator"></div>
-        <button class="gestion-nav__item" data-section="boutique">Boutique</button>
-        <button class="gestion-nav__item" data-section="professeurs">Professeurs <span class="gestion-nav__badge" id="badge-professeurs" style="display:none;">0</span></button>
+        <button class="gestion-nav__item" data-section="instruments">Instruments</button>
+        <button class="gestion-nav__item" data-section="clients">Clients</button>
+        <button class="gestion-nav__item" data-section="locations">Locations <span class="gestion-nav__badge" id="badge-locations" style="display:none;">0</span></button>
+        <button class="gestion-nav__item" data-section="factures">Factures</button>
+        <span class="gestion-nav__label">Contenu</span>
+        <button class="gestion-nav__item" data-section="boutique">Vitrine</button>
         <button class="gestion-nav__item" data-section="galerie">Galerie</button>
         <button class="gestion-nav__item" data-section="blog">Blog</button>
-        <div class="gestion-nav__separator"></div>
-        <button class="gestion-nav__item" data-section="analytics">Analytics</button>
+        <button class="gestion-nav__item" data-section="professeurs">Professeurs <span class="gestion-nav__badge" id="badge-professeurs" style="display:none;">0</span></button>
+        <span class="gestion-nav__label">Outils</span>
         <button class="gestion-nav__item" data-section="comptabilite">Comptabilité</button>
         <button class="gestion-nav__item" data-section="config">Config</button>
       </nav>
       
       <!-- FACTURES -->
-      <section class="gestion-section active" id="section-factures">
+      <section class="gestion-section" id="section-factures">
         <div class="section-header"><h2 class="section-title">Gestion des factures</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('facture')">+ Nouvelle facture</button></div></div>
         <div class="gestion-table-container"><table class="gestion-table"><thead><tr><th>N° Facture</th><th>Date</th><th>Client</th><th>Type</th><th>Montant</th><th>Statut</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="table-factures"></tbody></table></div>
         <div class="gestion-empty" id="empty-factures" style="display:none;"><p class="gestion-empty__text">Aucune facture</p></div>
@@ -227,7 +239,7 @@
       
       <!-- BOUTIQUE -->
       <section class="gestion-section" id="section-boutique">
-        <div class="section-header"><h2 class="section-title">Gestion de la boutique</h2></div>
+        <div class="section-header"><h2 class="section-title">Gestion de la vitrine</h2></div>
         <div class="admin-tabs" role="tablist">
           <button class="admin-tab active" data-subtab="boutique-instruments">Instruments</button>
           <button class="admin-tab" data-subtab="boutique-accessoires">Accessoires</button>
@@ -287,12 +299,6 @@
         <div class="section-header"><h2 class="section-title">Gestion du blog</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('article')">+ Nouvel article</button></div></div>
         <div id="articles-list"></div>
         <div class="admin-empty" id="articles-empty" style="display:none;"><div class="admin-empty__title">Aucun article</div></div>
-      </section>
-      
-      <!-- ANALYTICS -->
-      <section class="gestion-section" id="section-analytics">
-        <div class="section-header"><h2 class="section-title">Statistiques du site</h2><div class="section-actions"><select class="admin-form__select" id="stats-period" style="width:auto;"><option value="7">7 jours</option><option value="30" selected>30 jours</option><option value="90">90 jours</option></select></div></div>
-        <div id="stats-content"><p style="color:var(--admin-text-muted);">Module analytics à venir...</p></div>
       </section>
       
       <!-- COMPTABILITÉ -->
