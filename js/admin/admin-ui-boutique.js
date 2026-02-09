@@ -7,7 +7,7 @@
   'use strict';
 
   if (typeof window.AdminUI === 'undefined') {
-    console.warn('[admin-ui-boutique] AdminUI non disponible, module différé');
+    if (window.MISTRAL_DEBUG) console.warn('[admin-ui-boutique] AdminUI non disponible, module différé');
     return;
   }
 
@@ -513,7 +513,5 @@
     deleteAccessoire,
     removeAccessoireImage
   });
-
-  console.log('[admin-ui-boutique] Module chargé');
 
 })(window);

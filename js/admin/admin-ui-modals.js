@@ -13,6 +13,17 @@
 
   const { $, $$, escapeHtml, formatPrice, formatDate, isValidEmail, Toast, Confirm, Modal, Storage } = window.AdminUIHelpers;
 
+  // Guard anti-double-clic pour les sauvegardes
+  const _savingGuards = new Set();
+  function withSaveGuard(name, fn) {
+    return async function() {
+      if (_savingGuards.has(name)) return;
+      _savingGuards.add(name);
+      try { await fn.apply(this, arguments); }
+      finally { _savingGuards.delete(name); }
+    };
+  }
+
   // État local pour les uploads
   let instrumentImages = [];
   let instrumentVideo = null;
@@ -500,7 +511,6 @@
   
   function initInstrumentUploads() {
     if (typeof MistralUpload === 'undefined') {
-      console.warn('[Admin UI] MistralUpload non disponible');
       return;
     }
     
@@ -606,10 +616,9 @@
     if (compress && file.type.startsWith('image/') && typeof MistralUpload !== 'undefined') {
       try {
         const result = await MistralUpload.compressImageAdvanced(file, profile);
-        console.log(`[fileToBase64] Compressé (${profile}): ${(file.size/1024).toFixed(1)}KB → ${(result.main.size/1024).toFixed(1)}KB (${result.format})`);
         return result.main.dataURL;
       } catch (e) {
-        console.warn('[fileToBase64] Compression échouée, fallback:', e);
+        if (window.MISTRAL_DEBUG) console.warn('[fileToBase64] Compression échouée, fallback:', e);
       }
     }
     
@@ -2215,11 +2224,11 @@
     showModal,
     closeModal,
     editClient,
-    saveClient,
+    saveClient: withSaveGuard('client', saveClient),
     deleteClient,
     unarchiveClient,
     editInstrument,
-    saveInstrument,
+    saveInstrument: withSaveGuard('instrument', saveInstrument),
     deleteInstrument,
     vendreInstrument,
     finaliserVenteInstrument,
@@ -2228,15 +2237,15 @@
     removeInstrumentImage,
     removeInstrumentVideo,
     editLocation,
-    saveLocation,
+    saveLocation: withSaveGuard('location', saveLocation),
     terminerLocation,
     deleteLocation,
     downloadContrat,
     editCommande,
-    saveCommande,
+    saveCommande: withSaveGuard('commande', saveCommande),
     deleteCommande,
     editFacture,
-    saveFacture,
+    saveFacture: withSaveGuard('facture', saveFacture),
     downloadFacture,
     envoyerFactureMail,
     marquerPayee,
@@ -2247,13 +2256,11 @@
     approveTeacher,
     rejectTeacher,
     editTeacher,
-    saveTeacher,
+    saveTeacher: withSaveGuard('teacher', saveTeacher),
     deleteTeacher,
     submitAddTeacherForm,
     fileToBase64,
     isCompressionEnabled
   });
-
-  console.log('[admin-ui-modals] Module chargé');
 
 })(window);

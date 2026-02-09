@@ -516,6 +516,42 @@ async function handlePaymentNotification(paymentId, secretKey, headers) {
   if (payment.is_paid) {
     console.log(`Paiement ${paymentId} confirmé pour ${payment.amount / 100} €`);
 
+    // Vérifier si ce paiement a déjà été traité (protection contre les webhooks en double)
+    const sb = getSupabaseConfig();
+    let alreadyProcessed = false;
+    if (sb) {
+      try {
+        const checkResp = await fetch(
+          `${sb.url}/rest/v1/paiements?payplug_id=eq.${paymentId}&select=payplug_id`,
+          { method: 'GET', headers: sb.headers }
+        );
+        if (checkResp.ok) {
+          const existing = await checkResp.json();
+          alreadyProcessed = existing.length > 0;
+        }
+      } catch (e) {
+        // En cas d'erreur de vérification, on continue (fail-open pour les emails)
+      }
+    }
+
+    if (alreadyProcessed) {
+      console.log(`Paiement ${paymentId} déjà traité, upsert uniquement (pas de re-notification)`);
+      // Upsert le paiement et la commande (idempotent), mais pas d'emails
+      await Promise.all([
+        recordPayment(payment, metadata),
+        createOrUpdateOrder(payment, metadata)
+      ]);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          message: 'Paiement déjà traité (doublon ignoré)',
+          reference: orderReference
+        })
+      };
+    }
+
     // Valider le montant contre la base de données (protection anti-manipulation)
     const priceCheck = await validatePaymentAmount(payment, metadata);
     if (!priceCheck.valid) {

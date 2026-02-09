@@ -700,8 +700,6 @@
     }
   };
 
-  console.log('✅ MistralPDF chargé');
-  
   // Alias pour compatibilité avec admin-ui.js
   window.MistralGestionPDF = window.MistralPDF;
 

@@ -394,6 +394,4 @@
     _helpers: { $, $$, escapeHtml, formatPrice, formatDate }
   };
 
-  console.log('[Admin UI Core] Module chargé');
-
 })(window);

@@ -36,6 +36,7 @@
   // Si config.js échoue, continuer quand même (mode dégradé)
   configScript.onerror = function() {
     console.warn('[Main] config.js non trouvé, Supabase désactivé');
+    window.supabaseLoading = false;
   };
   document.head.appendChild(configScript);
 })();

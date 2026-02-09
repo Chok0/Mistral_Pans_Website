@@ -229,6 +229,4 @@
     DEFAULT_MATERIAUX
   };
 
-  console.log('[Materiaux] Module initialise (in-memory)');
-
 })();

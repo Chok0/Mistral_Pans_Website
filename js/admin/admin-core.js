@@ -124,11 +124,10 @@
 
         // Nettoyer les URLs javascript: et data:
         if (attrName === 'href' || attrName === 'src') {
-          const value = attr.value.toLowerCase().replace(/\s+/g, '').trim();
-          if (value.startsWith('javascript:') ||
-              value.startsWith('data:') ||
-              value.startsWith('vbscript:') ||
-              value.startsWith('blob:')) {
+          let value;
+          try { value = decodeURIComponent(attr.value); } catch (e) { value = attr.value; }
+          const normalized = value.replace(/[\s\x00-\x1f]/g, '').toLowerCase();
+          if (/^(javascript|data|vbscript|blob):/.test(normalized)) {
             el.removeAttribute(attr.name);
           }
         }
@@ -423,6 +422,10 @@
 
       document.body.appendChild(this.element);
 
+      // AbortController pour cleanup des listeners globaux
+      this._abortController = new AbortController();
+      const signal = this._abortController.signal;
+
       const trigger = this.element.querySelector('.admin-fab__trigger');
       trigger.addEventListener('click', () => this.toggle());
 
@@ -431,14 +434,14 @@
         if (this.isOpen && this.element && !this.element.contains(e.target)) {
           this.close();
         }
-      });
+      }, { signal });
 
       // Fermer avec Escape
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && this.isOpen) {
           this.close();
         }
-      });
+      }, { signal });
 
       // Deconnexion
       this.element.querySelector('[data-action="logout"]').addEventListener('click', () => {
@@ -468,6 +471,10 @@
     },
 
     destroy() {
+      if (this._abortController) {
+        this._abortController.abort();
+        this._abortController = null;
+      }
       if (this.element) {
         this.element.remove();
         this.element = null;
@@ -526,6 +533,9 @@
 
       // Events
       if (closable) {
+        const ac = new AbortController();
+        modal._abortController = ac;
+
         const closeBtn = modal.querySelector('.admin-modal__close');
         closeBtn.addEventListener('click', () => this.close(id));
 
@@ -539,7 +549,7 @@
           if (e.key === 'Escape' && this.activeModals[this.activeModals.length - 1] === id) {
             this.close(id);
           }
-        });
+        }, { signal: ac.signal });
       }
 
       // Stocker les callbacks
@@ -593,6 +603,12 @@
 
       if (this.activeModals.length === 0) {
         document.body.style.overflow = '';
+      }
+
+      // Nettoyer les listeners globaux
+      if (modal._abortController) {
+        modal._abortController.abort();
+        modal._abortController = null;
       }
 
       if (modal._onClose) {

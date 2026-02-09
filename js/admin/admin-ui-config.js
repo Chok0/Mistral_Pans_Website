@@ -7,7 +7,7 @@
   'use strict';
 
   if (typeof window.AdminUI === 'undefined') {
-    console.warn('[admin-ui-config] AdminUI non disponible, module différé');
+    if (window.MISTRAL_DEBUG) console.warn('[admin-ui-config] AdminUI non disponible, module différé');
     return;
   }
 

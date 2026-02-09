@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Mistral Pans - Handpans d'exception fabriqués artisanalement en Île-de-France. Découvrez nos instruments, notre service de location et trouvez un professeur près de chez vous.">
+  <link rel="canonical" href="https://mistralpans.fr/">
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
@@ -20,6 +21,42 @@
   <meta name="twitter:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
 
   <title>Mistral Pans - Handpans d'exception | Atelier Île-de-France</title>
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "Mistral Pans",
+    "description": "Fabricant artisanal de handpans en Île-de-France",
+    "url": "https://mistralpans.fr",
+    "image": "https://mistralpans.fr/ressources/images/20230801_1622372.jpg",
+    "email": "contact@mistralpans.fr",
+    "address": {
+      "@type": "PostalAddress",
+      "addressRegion": "Île-de-France",
+      "addressCountry": "FR"
+    },
+    "priceRange": "€€€",
+    "makesOffer": [
+      {
+        "@type": "Offer",
+        "itemOffered": {
+          "@type": "Product",
+          "name": "Handpan sur mesure",
+          "category": "Instruments de musique"
+        }
+      },
+      {
+        "@type": "Offer",
+        "itemOffered": {
+          "@type": "Service",
+          "name": "Location de handpan"
+        }
+      }
+    ]
+  }
+  </script>
   
   <!-- Fonts: chargées conditionnellement via cookie-consent.js pour conformité RGPD -->
   
@@ -67,7 +104,7 @@
       <div class="triangle-grid">
         <!-- Card 1: Apprendre -->
         <a href="apprendre.html" class="triangle-card">
-          <div class="triangle-card__icon"><img src="ressources/images/AMARA.png" alt="Handpan Mistral Pans" style="width: 60px; height: 60px; object-fit: cover; border-radius: 10%;"></div>
+          <div class="triangle-card__icon"><img src="ressources/images/AMARA.jpg" alt="Handpan Mistral Pans" width="60" height="60" style="object-fit: cover; border-radius: 10%;"></div>
           <h3 class="triangle-card__title">Découvrir et apprendre</h3>
           <p class="triangle-card__subtitle">Professeurs en Île-de-France</p>
           <p class="triangle-card__description">
@@ -79,7 +116,7 @@
         
         <!-- Card 2: Location -->
         <a href="location.html" class="triangle-card">
-          <div class="triangle-card__icon"><img src="ressources/images/AMARA.png" alt="Handpan Mistral Pans" style="width: 60px; height: 60px; object-fit: cover; border-radius: 10%;"></div>
+          <div class="triangle-card__icon"><img src="ressources/images/AMARA.jpg" alt="Handpan Mistral Pans" width="60" height="60" style="object-fit: cover; border-radius: 10%;"></div>
           <h3 class="triangle-card__title">Essayer et explorer</h3>
           <p class="triangle-card__subtitle">Location à 60€/mois</p>
           <p class="triangle-card__description">
@@ -91,7 +128,7 @@
         
         <!-- Card 3: Boutique -->
         <a href="boutique.html" class="triangle-card">
-          <div class="triangle-card__icon"><img src="ressources/images/AMARA.png" alt="Handpan Mistral Pans" style="width: 60px; height: 60px; object-fit: cover; border-radius: 10%;"></div>
+          <div class="triangle-card__icon"><img src="ressources/images/AMARA.jpg" alt="Handpan Mistral Pans" width="60" height="60" style="object-fit: cover; border-radius: 10%;"></div>
           <h3 class="triangle-card__title">Choisir votre instrument</h3>
           <p class="triangle-card__subtitle">À partir de 1 080€</p>
           <p class="triangle-card__description">
@@ -154,13 +191,13 @@
       <p class="partners-title">Nos partenaires</p>
       <div class="partners-logos">
         <a href="https://www.hangora.fr/" target="_blank" rel="noopener" class="partner-logo">
-          <img src="ressources/images/hangora-300x295.png" alt="Hangora">
+          <img src="ressources/images/hangora-300x295.png" alt="Hangora" width="80" height="79" loading="lazy">
         </a>
         <a href="https://www.masterthehandpan.com/fr?via=mistralpans" target="_blank" rel="noopener" class="partner-logo">
-          <img src="ressources/images/masterthehandpan_k9u5lc.png" alt="Master the Handpan">
+          <img src="ressources/images/masterthehandpan_k9u5lc.png" alt="Master the Handpan" width="80" height="79" loading="lazy">
         </a>
         <a href="https://www.notepan.fr/" target="_blank" rel="noopener" class="partner-logo">
-          <img src="ressources/images/notepan_small.png" alt="Notepan">
+          <img src="ressources/images/notepan_small.png" alt="Notepan" width="80" height="80" loading="lazy">
         </a>
       </div>
     </div>
@@ -176,7 +213,7 @@
   <!-- ========== SCRIPTS ========== -->
   <script src="js/core/cookie-consent.js"></script>
   <script src="js/core/main.js"></script>
-  <script src="js/features/mistral-stats.js"></script>
+  <script src="js/features/mistral-stats.js" defer></script>
   
   <script>
     // Gestion des boutons "Voir les instruments" selon le stock
