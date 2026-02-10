@@ -1409,7 +1409,12 @@ loginForm.addEventListener('submit', async function(e) {
         });
       }
       
-      updateView();
+      // Attendre DOMContentLoaded pour que les scripts defer (AdminUI, etc.) soient charges
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', updateView);
+      } else {
+        updateView();
+      }
     })();
   </script>
    <script src="js/services/supabase-sync.js"></script>

@@ -229,24 +229,6 @@ body[data-page="boutique"] {
   padding-bottom: 0.5rem;
 }
 
-.player-credit {
-  text-align: center;
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-  opacity: 0.6;
-  margin-top: 0.25rem;
-}
-
-.player-credit a {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.player-credit a:hover {
-  opacity: 0.8;
-}
-
 .btn-play {
   display: inline-flex;
   align-items: center;
@@ -344,37 +326,6 @@ body[data-page="boutique"] {
 
 /* Chips */
 .option-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-}
-
-/* Batch gamme groups */
-.chips-batch {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem;
-  width: 100%;
-}
-
-.chips-batch + .chips-batch {
-  margin-top: 0.25rem;
-  padding-top: 0.25rem;
-  border-top: 1px solid var(--color-border);
-}
-
-.chips-batch__label {
-  font-size: 0.625rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text-muted);
-  width: 100%;
-  margin-bottom: 0.125rem;
-}
-
-.chips-batch__items {
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem;
@@ -1160,7 +1111,7 @@ body[data-page="boutique"] {
 
 /* ===== TABS (Mobile only) ===== */
 .boutique-tabs {
-  display: block;
+  display: none;
   position: fixed;
   top: var(--header-height, 64px);
   left: 0;
@@ -1168,36 +1119,6 @@ body[data-page="boutique"] {
   z-index: 100;
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
-}
-
-/* Desktop tabs styling */
-@media (min-width: 769px) {
-  .boutique-tabs__inner {
-    max-width: 420px;
-    margin: 0 auto;
-    gap: 0.25rem;
-    padding: 0.3rem;
-    background: var(--color-bg-warm);
-    border-radius: 10px;
-    margin-top: 0.35rem;
-    margin-bottom: 0.35rem;
-  }
-
-  .boutique-tab {
-    border-radius: 8px;
-    padding: 0.625rem 1rem;
-    font-size: 0.875rem;
-  }
-
-  .boutique-tab.active {
-    background: var(--color-white);
-    color: var(--color-text);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  }
-
-  .boutique-panel {
-    padding-top: 48px;
-  }
 }
 
 .boutique-tabs__inner {
@@ -1265,22 +1186,17 @@ body[data-page="boutique"] {
 /* ===== WRAPPER ===== */
 .boutique-wrapper {
   display: flex;
-  flex-direction: row;
-  background: #F5F5F5;
-  overflow: hidden;
-  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-direction: column;
+  background: #F5F5F5; /* Warm background */
 }
 
 /* ===== PANELS ===== */
 .boutique-panel {
-  flex: 0 0 100%;
-  min-width: 100%;
-  min-height: calc(100vh - var(--header-height, 64px) - 48px);
-  overflow-y: auto;
+  min-height: calc(100vh - var(--header-height, 64px));
 }
 
 .boutique-panel--config {
-  background: #F5F5F5;
+  background: #F5F5F5; /* Same warm background */
 }
 
 .boutique-panel--stock {
@@ -1405,10 +1321,10 @@ body[data-page="boutique"] {
   50% { transform: translateY(-4px); }
 }
 
-/* Nav band hidden on desktop too (replaced by tabs) */
+/* Show on desktop */
 @media (min-width: 769px) {
   .boutique-nav-band {
-    display: none;
+    display: block;
   }
 }
 
@@ -1434,45 +1350,55 @@ body[data-page="boutique"] {
 
 /* ===== MOBILE STYLES ===== */
 @media (max-width: 768px) {
+  /* Show tabs */
+  .boutique-tabs {
+    display: block;
+  }
+  
   /* Hide nav band on mobile */
   .boutique-nav-band {
     display: none !important;
   }
-
-  /* Mobile: use scroll-snap instead of transform */
+  
+  /* Horizontal scroll wrapper */
   .boutique-wrapper {
+    flex-direction: row;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    transition: none;
+    padding-bottom: 0;
   }
-
+  
   .boutique-wrapper::-webkit-scrollbar {
     display: none;
   }
-
-  /* Each panel snap */
+  
+  /* Each panel takes full width */
   .boutique-panel {
+    flex: 0 0 100%;
     scroll-snap-align: start;
     scroll-snap-stop: always;
+    min-height: calc(100vh - var(--header-height, 64px) - 48px);
+    padding-top: 48px; /* Tab bar height */
+    overflow-y: auto;
   }
-
+  
   /* Show dots */
   .boutique-dots {
     display: flex;
   }
-
+  
   /* Adjust configurator for mobile panel */
   .boutique-panel--config .configurator {
     min-height: auto;
   }
-
+  
   /* Flash section adjustments */
   .boutique-panel--stock .flash-section {
     padding-top: 0;
   }
-
+  
   /* Flash cards mobile */
   .flash-cards {
     grid-template-columns: 1fr;
