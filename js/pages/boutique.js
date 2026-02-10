@@ -697,43 +697,26 @@
     const container = document.getElementById('chips-scale');
     if (!container) return;
 
-    // Get gammes grouped by category (batch mode)
-    const hasGammes = typeof MistralGammes !== 'undefined';
-    const grouped = hasGammes ? MistralGammes.getGroupedByCategorie() : null;
+    // Get gammes from centralized module, with fallback
+    const gammes = typeof MistralGammes !== 'undefined'
+      ? MistralGammes.getForConfigurateur()
+      : [
+          { code: 'kurd', nom: 'Kurd' },
+          { code: 'amara', nom: 'Amara' },
+          { code: 'lowpygmy', nom: 'Low Pygmy' },
+          { code: 'hijaz', nom: 'Hijaz' },
+          { code: 'myxolydian', nom: 'Myxolydian' },
+          { code: 'equinox', nom: 'Equinox' }
+        ];
+
+    // Only show gammes that have patterns in scales-data.js
+    const availableGammes = gammes.filter(g => SCALES_DATA[g.code]);
 
     let html = '';
-
-    if (grouped && Object.keys(grouped).length > 0) {
-      // Batch mode: render chips grouped by category
-      for (const [catKey, group] of Object.entries(grouped)) {
-        const availableInCat = group.gammes.filter(g => g.visible_configurateur && SCALES_DATA[g.code]);
-        if (availableInCat.length === 0) continue;
-
-        html += `<div class="chips-batch"><span class="chips-batch__label">${group.label}</span><div class="chips-batch__items">`;
-        availableInCat.forEach(g => {
-          const isActive = g.code === state.scale ? ' active' : '';
-          html += `<button class="chip${isActive}" data-value="${g.code}">${g.nom}</button>`;
-        });
-        html += `</div></div>`;
-      }
-    } else {
-      // Fallback: flat list
-      const gammes = hasGammes
-        ? MistralGammes.getForConfigurateur()
-        : [
-            { code: 'kurd', nom: 'Kurd' },
-            { code: 'amara', nom: 'Amara' },
-            { code: 'lowpygmy', nom: 'Low Pygmy' },
-            { code: 'hijaz', nom: 'Hijaz' },
-            { code: 'myxolydian', nom: 'Myxolydian' },
-            { code: 'equinox', nom: 'Equinox' }
-          ];
-      const availableGammes = gammes.filter(g => SCALES_DATA[g.code]);
-      availableGammes.forEach(g => {
-        const isActive = g.code === state.scale ? ' active' : '';
-        html += `<button class="chip${isActive}" data-value="${g.code}">${g.nom}</button>`;
-      });
-    }
+    availableGammes.forEach(g => {
+      const isActive = g.code === state.scale ? ' active' : '';
+      html += `<button class="chip${isActive}" data-value="${g.code}">${g.nom}</button>`;
+    });
 
     container.innerHTML = html;
 
@@ -1037,19 +1020,23 @@
     function scrollToPanel(panel) {
       const target = panel === 'config' ? panelConfig : panelStock;
       if (target) {
+        // Mobile: horizontal scroll
         if (window.innerWidth <= 768) {
-          // Mobile: scroll-snap based
           wrapper.scrollTo({
             left: target.offsetLeft,
             behavior: 'smooth'
           });
         } else {
-          // Desktop: transform-based slide
-          const offset = panel === 'config' ? 0 : -100;
-          wrapper.style.transform = `translateX(${offset}%)`;
-          currentSection = panel;
-          updateActiveState(panel);
-          updateNavBand(panel);
+          // Desktop: vertical scroll
+          if (panel === 'config') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else {
+            // Scroll to stock section (after nav band)
+            const stockSection = document.getElementById('flash-sales');
+            if (stockSection) {
+              stockSection.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
         }
       }
     }
@@ -1093,10 +1080,37 @@
       }, 50);
     });
 
-    // Desktop: no longer uses scroll detection (transform-based now)
+    // Detect scroll position on desktop (vertical)
     function checkDesktopScroll() {
-      // Kept for compatibility, no-op
+      if (window.innerWidth <= 768) return;
+
+      if (!navBand) return;
+
+      // Check if nav band is stuck (at top under header)
+      const navBandRect = navBand.getBoundingClientRect();
+      const headerHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height') || '64');
+
+      // If the nav band is stuck at the top (its top equals header height), we're in stock mode
+      const isStuck = navBandRect.top <= headerHeight + 2; // +2 for tolerance
+
+      if (isStuck) {
+        updateNavBand('stock');
+      } else {
+        updateNavBand('config');
+      }
     }
+
+    // Throttled scroll handler for desktop
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          checkDesktopScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    });
 
     // Update stock count in tab and nav band
     function updateStockCount() {
