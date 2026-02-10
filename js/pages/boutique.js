@@ -1033,11 +1033,18 @@
           if (panel === 'config') {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           } else {
-            // Scroll to stock section (after nav band)
-            const stockSection = document.getElementById('flash-sales');
-            if (stockSection) {
-              stockSection.scrollIntoView({ behavior: 'smooth' });
-            }
+            // Scroll so the nav band is stuck under the header.
+            // Calculate exact position: nav band's document position minus header height,
+            // plus a few pixels to guarantee it crosses the sticky threshold.
+            const headerHeight = parseInt(
+              getComputedStyle(document.documentElement)
+                .getPropertyValue('--header-height') || '72'
+            );
+            const navBandDocTop = navBand.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo({
+              top: navBandDocTop - headerHeight + 5,
+              behavior: 'smooth'
+            });
           }
         }
       }
@@ -1172,6 +1179,7 @@
           e.preventDefault();
           isSnapping = true;
           gateSection = 'stock';
+          updateNavBand('stock');
           scrollToPanel('stock');
           setTimeout(() => { isSnapping = false; }, 1000);
         }
@@ -1187,6 +1195,7 @@
               e.preventDefault();
               isSnapping = true;
               gateSection = 'config';
+              updateNavBand('config');
               scrollToPanel('config');
               setTimeout(() => { isSnapping = false; }, 1000);
             }
