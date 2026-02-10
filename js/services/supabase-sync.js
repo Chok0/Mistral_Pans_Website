@@ -552,9 +552,7 @@
 
     log(`Fetch depuis Supabase (${targetTables.map(t => t.remote).join(', ')})...`);
 
-    for (const tableConfig of targetTables) {
-      await fetchTable(tableConfig);
-    }
+    await Promise.all(targetTables.map(tableConfig => fetchTable(tableConfig)));
 
     lastSync = new Date().toISOString();
     isSyncing = false;
@@ -619,7 +617,7 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    setTimeout(init, 500);
+    init();
   }
 
   // ============================================================================
