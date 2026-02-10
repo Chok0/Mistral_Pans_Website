@@ -982,6 +982,8 @@
     const arrowUp = document.getElementById('nav-arrow-up');
 
     let currentSection = 'config'; // 'config' or 'stock'
+    let gateSection = 'config';   // Scroll gate state (only updated on snap or stable scroll)
+    let isSnapping = false;       // True during snap animation (blocks scroll)
 
     if (!wrapper) return;
 
@@ -1059,8 +1061,10 @@
     if (navBandBtn) {
       navBandBtn.addEventListener('click', () => {
         if (currentSection === 'config') {
+          gateSection = 'stock';
           scrollToPanel('stock');
         } else {
+          gateSection = 'config';
           scrollToPanel('config');
         }
       });
@@ -1095,8 +1099,10 @@
 
       if (isStuck) {
         updateNavBand('stock');
+        if (!isSnapping) gateSection = 'stock';
       } else {
         updateNavBand('config');
+        if (!isSnapping) gateSection = 'config';
       }
     }
 
@@ -1113,8 +1119,8 @@
     });
 
     // ===== SCROLL GATE: Nav band acts as page boundary =====
-    // Prevents scrolling through the teal banner — triggers a page snap instead
-    let isSnapping = false;
+    // Prevents scrolling through the teal banner — triggers a page snap instead.
+    // Uses gateSection (not currentSection) to avoid race conditions with scroll events.
 
     window.addEventListener('wheel', (e) => {
       if (window.innerWidth <= 768) return;
@@ -1134,28 +1140,30 @@
       const scrollingDown = e.deltaY > 0;
       const scrollingUp = e.deltaY < 0;
 
-      // Distance from nav band to its sticky position (0 = stuck)
-      const distFromSticky = navBandRect.top - headerHeight;
-
-      if (scrollingDown && currentSection === 'config') {
-        // Nav band is near or at its sticky position → snap to stock
-        if (distFromSticky <= 80) {
+      if (scrollingDown && gateSection === 'config') {
+        // Nav band is visible on screen → snap to stock
+        if (navBandRect.top < window.innerHeight) {
           e.preventDefault();
           isSnapping = true;
+          gateSection = 'stock';
           scrollToPanel('stock');
           setTimeout(() => { isSnapping = false; }, 1000);
         }
-      } else if (scrollingUp && currentSection === 'stock') {
-        // Check if we're at the top of stock content (not scrolled within)
-        const flashSection = document.getElementById('flash-sales');
-        if (flashSection) {
-          const flashTop = flashSection.getBoundingClientRect().top;
-          const expectedTop = headerHeight + navBand.offsetHeight;
-          if (flashTop >= expectedTop - 10) {
-            e.preventDefault();
-            isSnapping = true;
-            scrollToPanel('config');
-            setTimeout(() => { isSnapping = false; }, 1000);
+      } else if (scrollingUp && gateSection === 'stock') {
+        // Nav band is stuck at top → check if at top of stock content
+        const distFromSticky = navBandRect.top - headerHeight;
+        if (distFromSticky <= 2) {
+          const flashSection = document.getElementById('flash-sales');
+          if (flashSection) {
+            const flashTop = flashSection.getBoundingClientRect().top;
+            const expectedTop = headerHeight + navBand.offsetHeight;
+            if (flashTop >= expectedTop - 10) {
+              e.preventDefault();
+              isSnapping = true;
+              gateSection = 'config';
+              scrollToPanel('config');
+              setTimeout(() => { isSnapping = false; }, 1000);
+            }
           }
         }
       }
