@@ -364,6 +364,11 @@
     // Initialiser les selects avec recherche
     if (window.AdminUI.initSearchableSelects) window.AdminUI.initSearchableSelects();
 
+    // Re-render quand les donnees Supabase arrivent
+    window.addEventListener('mistral-sync-complete', () => {
+      refreshAll();
+    });
+
     console.log('[Admin UI Core] Initialisé');
   }
 
