@@ -897,16 +897,17 @@
       });
     }
 
-    // Ouvrir le modal d'inscription
-    document.querySelectorAll('[data-modal="teacher-signup"]').forEach(trigger => {
-      trigger.addEventListener('click', (e) => {
+    // Ouvrir le modal d'inscription (event delegation pour les liens dynamiques)
+    document.addEventListener('click', (e) => {
+      const trigger = e.target.closest('[data-modal="teacher-signup"]');
+      if (trigger) {
         e.preventDefault();
         const modal = document.getElementById('teacher-signup');
         if (modal) {
           modal.classList.add('open');
           document.body.style.overflow = 'hidden';
         }
-      });
+      }
     });
   }
 

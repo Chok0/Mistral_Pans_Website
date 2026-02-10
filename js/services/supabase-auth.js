@@ -312,9 +312,9 @@
 
   // Initialiser quand le DOM est pret
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => setTimeout(init, 100));
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    setTimeout(init, 100);
+    init();
   }
 
   // ============================================================================
