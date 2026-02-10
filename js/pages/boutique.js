@@ -1121,6 +1121,19 @@
     // ===== SCROLL GATE: Nav band acts as page boundary =====
     // Prevents scrolling through the teal banner — triggers a page snap instead.
     // Uses gateSection (not currentSection) to avoid race conditions with scroll events.
+    // Ignores wheel events consumed by inner scrollable containers (e.g. config-options-inner).
+
+    // Find nearest scrollable ancestor (not body/document)
+    function getScrollableParent(el) {
+      while (el && el !== document.body && el !== document.documentElement) {
+        const { overflowY } = getComputedStyle(el);
+        if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
+          return el;
+        }
+        el = el.parentElement;
+      }
+      return null;
+    }
 
     window.addEventListener('wheel', (e) => {
       if (window.innerWidth <= 768) return;
@@ -1132,13 +1145,26 @@
         return;
       }
 
+      const scrollingDown = e.deltaY > 0;
+      const scrollingUp = e.deltaY < 0;
+
+      // If the wheel target is inside an inner scrollable element that can still
+      // scroll in this direction, let the inner element handle it — don't snap.
+      const scrollableParent = getScrollableParent(e.target);
+      if (scrollableParent) {
+        if (scrollingDown) {
+          const canScroll = scrollableParent.scrollTop + scrollableParent.clientHeight < scrollableParent.scrollHeight - 2;
+          if (canScroll) return;
+        } else if (scrollingUp) {
+          if (scrollableParent.scrollTop > 2) return;
+        }
+      }
+
       const headerHeight = parseInt(
         getComputedStyle(document.documentElement)
           .getPropertyValue('--header-height') || '72'
       );
       const navBandRect = navBand.getBoundingClientRect();
-      const scrollingDown = e.deltaY > 0;
-      const scrollingUp = e.deltaY < 0;
 
       if (scrollingDown && gateSection === 'config') {
         // Nav band is visible on screen → snap to stock
