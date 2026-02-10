@@ -1112,6 +1112,55 @@
       }
     });
 
+    // ===== SCROLL GATE: Nav band acts as page boundary =====
+    // Prevents scrolling through the teal banner — triggers a page snap instead
+    let isSnapping = false;
+
+    window.addEventListener('wheel', (e) => {
+      if (window.innerWidth <= 768) return;
+      if (!navBand) return;
+
+      // Block all scrolling during snap animation
+      if (isSnapping) {
+        e.preventDefault();
+        return;
+      }
+
+      const headerHeight = parseInt(
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--header-height') || '72'
+      );
+      const navBandRect = navBand.getBoundingClientRect();
+      const scrollingDown = e.deltaY > 0;
+      const scrollingUp = e.deltaY < 0;
+
+      // Distance from nav band to its sticky position (0 = stuck)
+      const distFromSticky = navBandRect.top - headerHeight;
+
+      if (scrollingDown && currentSection === 'config') {
+        // Nav band is near or at its sticky position → snap to stock
+        if (distFromSticky <= 80) {
+          e.preventDefault();
+          isSnapping = true;
+          scrollToPanel('stock');
+          setTimeout(() => { isSnapping = false; }, 1000);
+        }
+      } else if (scrollingUp && currentSection === 'stock') {
+        // Check if we're at the top of stock content (not scrolled within)
+        const flashSection = document.getElementById('flash-sales');
+        if (flashSection) {
+          const flashTop = flashSection.getBoundingClientRect().top;
+          const expectedTop = headerHeight + navBand.offsetHeight;
+          if (flashTop >= expectedTop - 10) {
+            e.preventDefault();
+            isSnapping = true;
+            scrollToPanel('config');
+            setTimeout(() => { isSnapping = false; }, 1000);
+          }
+        }
+      }
+    }, { passive: false });
+
     // Update stock count in tab and nav band
     function updateStockCount() {
       const stockCountTab = document.getElementById('stock-count-tab');
