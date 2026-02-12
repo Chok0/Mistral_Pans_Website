@@ -1,0 +1,12 @@
+# Robots.txt - Mistral Pans
+# https://mistralpans.fr
+
+User-agent: *
+Allow: /
+
+# Pages privées
+Disallow: /admin.html
+Disallow: /seo-diagnostic.html
+
+# Sitemap
+Sitemap: https://mistralpans.fr/sitemap.xml
