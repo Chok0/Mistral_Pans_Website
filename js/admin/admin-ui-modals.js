@@ -113,12 +113,12 @@
         
         if (name === 'accessoire') {
           // Initialiser l'upload d'image
-          initAccessoireUpload();
+          if (AdminUI.initAccessoireUpload) AdminUI.initAccessoireUpload();
           // Initialiser le toggle des options configurateur
-          initAccessoireConfigToggle();
+          if (AdminUI.initAccessoireConfigToggle) AdminUI.initAccessoireConfigToggle();
           // Reset config options
           $('#accessoire-visible-config').checked = false;
-          toggleAccessoireConfigOptions(false);
+          if (AdminUI.toggleAccessoireConfigOptions) AdminUI.toggleAccessoireConfigOptions(false);
           $('#accessoire-taille-45').checked = false;
           $('#accessoire-taille-50').checked = false;
           $('#accessoire-taille-53').checked = false;
@@ -126,16 +126,16 @@
         
         if (name === 'media') {
           // Initialiser l'upload d'image/vidéo
-          initMediaUpload();
+          if (AdminUI.initMediaUpload) AdminUI.initMediaUpload();
           // Reset titre du modal
           $('#modal-media-title').textContent = 'Ajouter un média';
           $('#media-id').value = '';
           $('#form-media')?.reset();
         }
-        
+
         if (name === 'article') {
           // Initialiser l'upload et l'éditeur
-          initArticleUpload();
+          if (AdminUI.initArticleUpload) AdminUI.initArticleUpload();
           // Reset titre du modal
           $('#modal-article-title').textContent = 'Nouvel article';
           $('#article-id').value = '';
