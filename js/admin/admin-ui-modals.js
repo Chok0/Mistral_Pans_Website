@@ -378,6 +378,7 @@
     $('#instrument-accordage').value = instrument.accordage || '440';
     $('#instrument-prix').value = instrument.prix_vente || '';
     $('#instrument-statut').value = instrument.statut || 'disponible';
+    if ($('#instrument-disponible-location')) $('#instrument-disponible-location').checked = !!instrument.disponible_location;
     $('#instrument-layout').value = instrument.notes_layout || '';
     $('#instrument-description').value = instrument.description || '';
     $('#instrument-handpaner').value = instrument.handpaner_url || '';
@@ -1055,6 +1056,7 @@
       accordage: $('#instrument-accordage')?.value || '440',
       prix_vente: parseFloat($('#instrument-prix')?.value) || null,
       statut: $('#instrument-statut')?.value || 'disponible',
+      disponible_location: $('#instrument-disponible-location')?.checked || false,
       notes_layout: $('#instrument-layout')?.value.trim(),
       description: $('#instrument-description')?.value.trim(),
       images: media.images,
