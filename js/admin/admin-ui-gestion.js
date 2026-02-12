@@ -163,6 +163,11 @@
         }
       }
       
+      // Location
+      const locationCell = i.disponible_location
+        ? '<span class="admin-badge admin-badge--info">Dispo loc.</span>'
+        : '<span class="admin-badge admin-badge--neutral">—</span>';
+
       // Déterminer si l'instrument peut être vendu
       const canSell = ['disponible', 'en_ligne', 'reserve'].includes(i.statut);
 
@@ -174,6 +179,7 @@
           <td><span class="admin-badge admin-badge--${statutClass}">${statutLabel}</span></td>
           <td>${formatPrice(i.prix_vente)}</td>
           <td>${boutiqueCell}</td>
+          <td>${locationCell}</td>
           <td class="gestion-table__actions">
             ${canSell ? `
               <button class="admin-btn admin-btn--primary admin-btn--sm" onclick="AdminUI.vendreInstrument('${i.id}')" title="Vendre cet instrument">

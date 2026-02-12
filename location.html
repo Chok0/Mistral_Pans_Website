@@ -336,7 +336,7 @@
       if (typeof MistralSync === 'undefined' || !MistralSync.isReady()) return [];
       var allInstruments = MistralSync.getData('mistral_gestion_instruments') || [];
       return allInstruments.filter(function(i) {
-        return i.statut === 'disponible' || i.statut === 'en_ligne';
+        return i.disponible_location && i.statut !== 'vendu' && i.statut !== 'en_location';
       });
     }
 
