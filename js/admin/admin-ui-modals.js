@@ -729,12 +729,13 @@
     }
     
     // Charger la vidéo existante
-    if (instrument.video) {
+    const existingVideo = instrument.video_url || instrument.video;
+    if (existingVideo) {
       instrumentUploadedVideo = {
         type: 'url',
-        url: instrument.video
+        url: existingVideo
       };
-      
+
       const container = $('#instrument-video-preview');
       if (container) {
         container.innerHTML = `
@@ -746,7 +747,7 @@
               </svg>
               <div>
                 <div style="font-weight: 500;">Vidéo existante</div>
-                <div style="font-size: 0.8rem; color: var(--admin-text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(instrument.video)}</div>
+                <div style="font-size: 0.8rem; color: var(--admin-text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(existingVideo)}</div>
               </div>
               <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.removeInstrumentVideo()" style="margin-left: auto;">Supprimer</button>
             </div>
@@ -1060,7 +1061,7 @@
       notes_layout: $('#instrument-layout')?.value.trim(),
       description: $('#instrument-description')?.value.trim(),
       images: media.images,
-      video: media.video,
+      video_url: media.video,
       handpaner_url: $('#instrument-handpaner')?.value.trim(),
       commentaires: $('#instrument-commentaires')?.value.trim()
     };
@@ -1134,10 +1135,10 @@
     }
     
     // Si on doit publier l'instrument après création (depuis boutique)
-    if (publishAfterInstrumentCreation && instrument && !id) {
+    if (AdminUI.shouldPublishAfterCreation && AdminUI.shouldPublishAfterCreation() && instrument && !id) {
       // Récupérer l'instrument complet avec l'ID
       const createdInstrument = MistralGestion.Instruments.list().find(i => i.reference === data.reference) || instrument;
-      
+
       // Vérifier qu'il a un prix
       if (createdInstrument.prix_vente && createdInstrument.prix_vente > 0) {
         MistralGestion.Instruments.update(createdInstrument.id, { statut: 'en_ligne' });
@@ -1146,8 +1147,8 @@
       } else {
         Toast.info('Instrument créé. Ajoutez un prix pour le publier.');
       }
-      
-      publishAfterInstrumentCreation = false;
+
+      AdminUI.resetPublishAfterCreation();
     }
   }
 

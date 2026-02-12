@@ -148,7 +148,7 @@
       ? '<img src="' + instrument.images[0] + '" alt="' + utils.escapeHtml(instrument.nom || '') + '" style="width:100%;height:100%;object-fit:cover;">'
       : '<span style="font-size: 4rem; opacity: 0.2;">🎵</span>';
 
-    const videoIndicator = hasValue(instrument.video)
+    const videoIndicator = hasValue(instrument.video_url)
       ? '<span class="flash-card__video-badge" style="position:absolute;bottom:0.5rem;left:0.5rem;background:rgba(0,0,0,0.7);color:white;padding:0.25rem 0.5rem;border-radius:4px;font-size:0.75rem;">▶ Vidéo</span>'
       : '';
 
@@ -398,9 +398,9 @@
 
     // Video link
     const videoLink = document.getElementById('modal-video-link');
-    if (hasValue(instrument.video)) {
+    if (hasValue(instrument.video_url)) {
       videoLink.style.display = 'inline-flex';
-      videoLink.href = instrument.video;
+      videoLink.href = instrument.video_url;
     } else {
       videoLink.style.display = 'none';
     }
