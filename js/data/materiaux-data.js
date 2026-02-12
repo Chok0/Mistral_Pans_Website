@@ -1,6 +1,6 @@
 /* ==========================================================================
    MISTRAL PANS - Module Materiaux Centralise
-   Version 2.0 - In-memory (pas de localStorage)
+   Version 2.1 - localStorage (persistent)
 
    Source unique pour les donnees des materiaux.
    Utilise par: configurateur, admin, boutique, formulaires
@@ -54,14 +54,17 @@
   ];
 
   // ============================================================================
-  // IN-MEMORY STORE
+  // PERSISTENT STORE (localStorage)
   // ============================================================================
 
-  // Les materiaux sont stockes en memoire uniquement
-  let materiaux = [...DEFAULT_MATERIAUX];
+  const STORAGE_KEY = 'mistral_materiaux';
 
-  // Migration: nettoyer l'ancienne cle localStorage
-  try { localStorage.removeItem('mistral_materiaux'); } catch (e) {}
+  function initMateriaux() {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_MATERIAUX));
+    }
+  }
 
   // ============================================================================
   // FONCTIONS UTILITAIRES
@@ -76,7 +79,15 @@
   // ============================================================================
 
   function getAll() {
-    return [...materiaux].sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        return JSON.parse(stored).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
+      }
+    } catch (e) {
+      console.error('[Materiaux] Erreur lecture:', e);
+    }
+    return [...DEFAULT_MATERIAUX];
   }
 
   function getDisponibles() {
@@ -88,11 +99,13 @@
   }
 
   function getByCode(code) {
-    return materiaux.find(m => m.code === code) || null;
+    const all = getAll();
+    return all.find(m => m.code === code) || null;
   }
 
   function getById(id) {
-    return materiaux.find(m => m.id === id) || null;
+    const all = getAll();
+    return all.find(m => m.id === id) || null;
   }
 
   function getLabel(code, format = 'short') {
@@ -126,32 +139,35 @@
   }
 
   // ============================================================================
-  // ADMIN (CRUD) - In-memory
+  // ADMIN (CRUD) - localStorage
   // ============================================================================
 
   function save(materiau) {
+    const all = getAll();
     const now = new Date().toISOString();
 
     if (materiau.id) {
-      const index = materiaux.findIndex(m => m.id === materiau.id);
+      const index = all.findIndex(m => m.id === materiau.id);
       if (index !== -1) {
-        materiaux[index] = { ...materiaux[index], ...materiau, updated_at: now };
+        all[index] = { ...all[index], ...materiau, updated_at: now };
       }
     } else {
       materiau.id = generateId();
       materiau.created_at = now;
       materiau.updated_at = now;
-      materiaux.push(materiau);
+      all.push(materiau);
     }
 
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     dispatchUpdate();
     return materiau;
   }
 
   function remove(id) {
-    const len = materiaux.length;
-    materiaux = materiaux.filter(m => m.id !== id);
-    if (materiaux.length !== len) {
+    const all = getAll();
+    const filtered = all.filter(m => m.id !== id);
+    if (filtered.length !== all.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
       dispatchUpdate();
       return true;
     }
@@ -177,18 +193,20 @@
   }
 
   function reorder(orderedIds) {
+    const all = getAll();
     orderedIds.forEach((id, index) => {
-      const materiau = materiaux.find(m => m.id === id);
+      const materiau = all.find(m => m.id === id);
       if (materiau) {
         materiau.ordre = index + 1;
         materiau.updated_at = new Date().toISOString();
       }
     });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     dispatchUpdate();
   }
 
   function reset() {
-    materiaux = [...DEFAULT_MATERIAUX];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_MATERIAUX));
     dispatchUpdate();
   }
 
@@ -201,6 +219,12 @@
       detail: { materiaux: getAll() }
     }));
   }
+
+  // ============================================================================
+  // INITIALISATION
+  // ============================================================================
+
+  initMateriaux();
 
   // ============================================================================
   // EXPORTS
@@ -226,7 +250,10 @@
     reset,
 
     // Constantes
+    STORAGE_KEY,
     DEFAULT_MATERIAUX
   };
+
+  console.log('[Materiaux] Module initialisé');
 
 })();

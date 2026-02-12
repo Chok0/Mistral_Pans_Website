@@ -753,7 +753,7 @@
 
     // Get tailles from centralized module, with fallback
     const tailles = typeof MistralTailles !== 'undefined'
-      ? MistralTailles.getDisponibles()
+      ? MistralTailles.getForConfigurateur()
       : [
           { code: '45', label: '45 cm', description: 'Compact', prix_malus: 5 },
           { code: '50', label: '50 cm', description: 'Medium', prix_malus: 2.5 },
