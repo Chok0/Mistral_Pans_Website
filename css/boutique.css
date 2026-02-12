@@ -280,7 +280,7 @@ body[data-page="boutique"] {
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem;
-  padding-bottom: 0;
+  padding-bottom: 1rem;
 }
 
 .config-title {
@@ -446,7 +446,7 @@ body[data-page="boutique"] {
 }
 
 .options-advanced-content.open {
-  max-height: 500px;
+  max-height: 2000px;
 }
 
 .options-advanced-content .option-group:first-child {
