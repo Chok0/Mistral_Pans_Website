@@ -701,7 +701,12 @@
       const instruments = this.list();
       const filtered = instruments.filter(i => i.id !== id);
       if (filtered.length === instruments.length) return false;
-      setData('instruments', filtered);
+      // Mise à jour mémoire uniquement (pas d'UPSERT) pour éviter la race condition
+      // avec le DELETE Supabase qui suit
+      const localKey = CONFIG.STORAGE_KEYS['instruments'];
+      if (window.MistralSync && MistralSync.setDataLocal) {
+        MistralSync.setDataLocal(localKey, filtered);
+      }
       deleteRemote('instruments', id);
       return true;
     },

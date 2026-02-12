@@ -524,6 +524,8 @@
 
   // ── Chargement de l'instrument ──
 
+  var syncComplete = false;
+
   function loadInstrument() {
     var container = document.getElementById('main-content');
     var id = getIdFromURL();
@@ -541,6 +543,8 @@
     var instrument = instruments.find(function(i) { return i.id === id; });
 
     if (!instrument) {
+      // Avant la fin du sync, afficher un loader plutôt que "non trouvé"
+      if (!syncComplete) return;
       showNotFound(container);
       return;
     }
@@ -986,7 +990,10 @@
 
   // ── Init ──
 
-  window.addEventListener('mistral-sync-complete', loadInstrument);
+  window.addEventListener('mistral-sync-complete', function() {
+    syncComplete = true;
+    loadInstrument();
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadInstrument);

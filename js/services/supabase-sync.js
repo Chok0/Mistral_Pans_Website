@@ -292,6 +292,19 @@
   }
 
   /**
+   * Ecrit les donnees en memoire SANS synchroniser vers Supabase
+   * Utile pour les suppressions (on ne veut pas UPSERT avant DELETE)
+   */
+  function setDataLocal(key, data) {
+    if (!managedKeys.has(key)) return false;
+    dataStore.set(key, data);
+    window.dispatchEvent(new CustomEvent('mistral-data-change', {
+      detail: { key, data }
+    }));
+    return true;
+  }
+
+  /**
    * Ecrit les donnees en memoire et les synchronise vers Supabase
    * @param {string} key - Cle locale
    * @param {Array} data - Donnees a sauvegarder
@@ -629,6 +642,7 @@
     // Acces aux donnees
     getData,
     setData,
+    setDataLocal,
     hasKey,
     getTableConfig,
 
