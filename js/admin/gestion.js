@@ -663,6 +663,7 @@
         accordage: data.accordage || 440,
         materiau: data.materiau || 'Acier nitruré',
         statut: data.statut || 'disponible',
+        disponible_location: data.disponible_location || false,
         prix_vente: parsePrice(data.prix_vente) || 0,
         prix_location_mensuel: parsePrice(data.prix_location_mensuel) || CONFIG.DEFAULTS.loyerMensuel,
         montant_caution: parsePrice(data.montant_caution) || CONFIG.DEFAULTS.montantCaution,
