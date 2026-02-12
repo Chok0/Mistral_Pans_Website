@@ -519,10 +519,7 @@
 
   function getIdFromURL() {
     var params = new URLSearchParams(window.location.search);
-    var ref = params.get('ref');
-    if (!ref) return null;
-    var num = Number(ref);
-    return isNaN(num) ? ref : num;
+    return params.get('ref') || null;
   }
 
   // ── Chargement de l'instrument ──
