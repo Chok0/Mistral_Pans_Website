@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Diagnostic SEO - Mistral Pans</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    .seo-page-wrapper {
+      min-height: 100vh;
+      background: var(--color-bg);
+      padding-top: var(--header-height);
+    }
+    .seo-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: var(--space-2xl) var(--space-lg) var(--space-3xl);
+    }
+
+    /* Header */
+    .seo-hero {
+      text-align: center;
+      margin-bottom: var(--space-2xl);
+    }
+    .seo-hero .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-size: 0.8125rem;
+      color: var(--color-accent);
+      margin-bottom: var(--space-sm);
+    }
+    .seo-hero h1 {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      color: var(--color-text);
+      margin-bottom: var(--space-sm);
+    }
+    .seo-hero p {
+      color: var(--color-text-muted);
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    /* Run button */
+    .seo-run {
+      text-align: center;
+      margin-bottom: var(--space-2xl);
+    }
+    .seo-run button {
+      padding: 14px 32px;
+      background: var(--color-accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .seo-run button:hover {
+      background: #0a5c5f;
+    }
+    .seo-run button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Progress */
+    #seo-progress {
+      display: none;
+      text-align: center;
+      color: var(--color-text-muted);
+      font-size: 0.9375rem;
+      margin-bottom: var(--space-xl);
+    }
+
+    /* Global score */
+    #seo-global-score {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: var(--space-2xl);
+    }
+    .seo-score-circle {
+      position: relative;
+      width: 140px;
+      height: 140px;
+    }
+    .seo-score-circle svg {
+      width: 100%;
+      height: 100%;
+    }
+    .seo-score-value {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    .seo-score-number {
+      font-family: 'Fraunces', serif;
+      font-size: 2.5rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .seo-score-unit {
+      display: block;
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+    }
+    .seo-score-label {
+      font-weight: 700;
+      font-size: 1.125rem;
+      margin-top: var(--space-sm);
+    }
+
+    /* Sections */
+    .seo-section {
+      background: white;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      margin-bottom: var(--space-lg);
+      overflow: hidden;
+    }
+    .seo-section > h2 {
+      padding: var(--space-lg) var(--space-xl) var(--space-md);
+      font-family: 'Fraunces', serif;
+      font-size: 1.25rem;
+      color: var(--color-text);
+      margin: 0;
+    }
+
+    /* Technical files grid */
+    .seo-checks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: var(--space-sm);
+      padding: 0 var(--space-xl) var(--space-xl);
+    }
+
+    /* Check items */
+    .seo-check {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius-sm);
+      font-size: 0.9375rem;
+    }
+    .seo-check--ok { background: #f0fdf4; }
+    .seo-check--warning { background: #fffbeb; }
+    .seo-check--error { background: #fef2f2; }
+    .seo-check__icon {
+      flex-shrink: 0;
+      width: 20px;
+      text-align: center;
+      font-size: 0.875rem;
+      line-height: 1.4;
+    }
+    .seo-check--ok .seo-check__icon { color: #16a34a; }
+    .seo-check--warning .seo-check__icon { color: #d97706; }
+    .seo-check--error .seo-check__icon { color: #dc2626; }
+    .seo-check__content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .seo-check__name {
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    .seo-check__detail {
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+    }
+    .seo-check__value {
+      font-size: 0.75rem;
+      color: var(--color-text-light);
+      font-family: 'JetBrains Mono', monospace;
+      word-break: break-all;
+      background: rgba(0,0,0,0.04);
+      padding: 2px 6px;
+      border-radius: 3px;
+      margin-top: 2px;
+    }
+
+    /* Page cards */
+    .seo-page__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-lg) var(--space-xl);
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .seo-page__header:hover {
+      background: rgba(0,0,0,0.02);
+    }
+    .seo-page__info h3 {
+      font-size: 1rem;
+      margin: 0 0 4px;
+      color: var(--color-text);
+    }
+    .seo-page__url {
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .seo-page__priority {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 10px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-left: var(--space-sm);
+    }
+    .seo-page__priority--haute { background: #fef2f2; color: #dc2626; }
+    .seo-page__priority--moyenne { background: #fffbeb; color: #d97706; }
+    .seo-page__priority--basse { background: #f0fdf4; color: #16a34a; }
+    .seo-page__score {
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .seo-page__score-value {
+      font-family: 'Fraunces', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .seo-page--good .seo-page__score-value { color: #16a34a; }
+    .seo-page--medium .seo-page__score-value { color: #d97706; }
+    .seo-page--poor .seo-page__score-value { color: #dc2626; }
+    .seo-page__score-unit {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+
+    /* Collapsible body */
+    .seo-page__body {
+      display: none;
+      padding: 0 var(--space-xl) var(--space-xl);
+    }
+    .seo-page--open .seo-page__body {
+      display: block;
+    }
+    .seo-checks-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+    }
+
+    /* Recommendations */
+    .seo-recommendations > h2 {
+      padding-bottom: var(--space-sm);
+    }
+    .seo-recs-list {
+      padding: 0 var(--space-xl) var(--space-xl);
+    }
+    .seo-recs-group {
+      margin-bottom: var(--space-lg);
+    }
+    .seo-recs-group:last-child {
+      margin-bottom: 0;
+    }
+    .seo-recs-priority {
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 0 0 var(--space-sm);
+    }
+    .seo-recs-priority--critique { color: #dc2626; }
+    .seo-recs-priority--haute { color: #d97706; }
+    .seo-recs-priority--moyenne { color: #6b7280; }
+    .seo-rec-item {
+      padding: var(--space-sm) var(--space-md);
+      border-left: 3px solid;
+      margin-bottom: var(--space-xs);
+      font-size: 0.875rem;
+      background: rgba(0,0,0,0.02);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+    .seo-rec-item--critique { border-color: #dc2626; }
+    .seo-rec-item--haute { border-color: #d97706; }
+    .seo-rec-item--moyenne { border-color: #6b7280; }
+
+    /* Footer */
+    .seo-footer {
+      text-align: center;
+      margin-top: var(--space-2xl);
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
+    }
+    .seo-footer a {
+      color: var(--color-accent);
+      text-decoration: none;
+    }
+    .seo-footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 500px) {
+      .seo-page__header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-sm);
+      }
+      .seo-page__score {
+        align-self: flex-end;
+      }
+    }
+  </style>
+</head>
+<body data-page="seo-diagnostic" class="seo-page-wrapper">
+  <div id="site-header"></div>
+
+  <main id="main-content">
+    <div class="seo-container">
+
+      <div class="seo-hero">
+        <p class="eyebrow">Outil interne</p>
+        <h1>Diagnostic SEO</h1>
+        <p>Analyse automatique de toutes les pages du site : balises meta, Open Graph, données structurées, hiérarchie des titres, accessibilité des images et fichiers techniques.</p>
+      </div>
+
+      <div class="seo-run">
+        <button id="btn-run-diagnostic" onclick="runSEODiagnostic()">Lancer le diagnostic</button>
+      </div>
+
+      <div id="seo-progress"></div>
+      <div id="seo-global-score"></div>
+      <div id="seo-results"></div>
+
+      <div class="seo-footer">
+        <p><a href="admin.html">&larr; Retour à l'admin</a></p>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+  <div id="contact-modal-container"></div>
+
+  <script src="js/core/cookie-consent.js"></script>
+  <script src="js/core/main.js"></script>
+  <script src="js/features/seo-diagnostic.js"></script>
+</body>
+</html>
