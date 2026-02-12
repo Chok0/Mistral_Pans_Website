@@ -255,7 +255,15 @@
   
   // Variable pour indiquer qu'on vient de la boutique
   let publishAfterInstrumentCreation = false;
-  
+
+  function shouldPublishAfterCreation() {
+    return publishAfterInstrumentCreation;
+  }
+
+  function resetPublishAfterCreation() {
+    publishAfterInstrumentCreation = false;
+  }
+
   // Créer un instrument et le publier
   function creerEtPublierInstrument() {
     publishAfterInstrumentCreation = true;
@@ -506,6 +514,8 @@
     initBoutiqueInstrumentSelect,
     publierInstrumentSelectionne,
     creerEtPublierInstrument,
+    shouldPublishAfterCreation,
+    resetPublishAfterCreation,
     initAccessoireUpload,
     saveAccessoire,
     editAccessoire,
