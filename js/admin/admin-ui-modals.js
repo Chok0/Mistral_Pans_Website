@@ -411,12 +411,7 @@
     });
     
     if (confirmed) {
-      // Supprimer l'annonce associée si elle existe
-      if (typeof GestionBoutique !== 'undefined') {
-        GestionBoutique.retirer(id);
-      }
-      
-      // Supprimer l'instrument
+      // Supprimer l'instrument (et sa ligne Supabase)
       MistralGestion.Instruments.delete(id);
       AdminUI.renderInstruments();
       AdminUI.refreshDashboard();
