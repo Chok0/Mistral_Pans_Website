@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Handpan artisanal Mistral Pans - Découvrez les détails, photos et spécifications de cet instrument unique.">
+  <link rel="canonical" href="https://mistralpans.fr/annonce.html">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="product">
+  <meta property="og:url" content="https://mistralpans.fr/annonce.html">
+  <meta property="og:title" content="Instrument - Mistral Pans">
+  <meta property="og:description" content="Handpan artisanal Mistral Pans - Instrument unique, fabriqué à la main en Île-de-France.">
+  <meta property="og:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:site_name" content="Mistral Pans">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Instrument - Mistral Pans">
+  <meta name="twitter:description" content="Handpan artisanal Mistral Pans - Instrument unique, fabriqué à la main en Île-de-France.">
+  <meta name="twitter:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
+
+  <title>Instrument — Mistral Pans</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230D7377'/></svg>">
+
+  <style>
+    /* ===== Page layout ===== */
+    .annonce-page {
+      min-height: 100vh;
+      background: var(--color-bg, #FDFBF7);
+      padding-top: var(--header-height, 70px);
+    }
+
+    .annonce-container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: var(--space-2xl, 2rem) var(--space-lg, 1.5rem) var(--space-3xl, 3rem);
+    }
+
+    /* ===== Two-column layout ===== */
+    .annonce-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-2xl, 2rem);
+      background: white;
+      border-radius: var(--radius-lg, 16px);
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    @media (max-width: 768px) {
+      .annonce-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ===== Gallery ===== */
+    .annonce-gallery {
+      background: var(--color-bg-warm, #f5f5f5);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .annonce-gallery__main {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      background: linear-gradient(135deg, #e8e4dc 0%, #d4cfc5 100%);
+    }
+
+    @media (max-width: 768px) {
+      .annonce-gallery__main {
+        min-height: 300px;
+      }
+    }
+
+    .annonce-gallery__main img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .annonce-gallery__no-image {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--color-text-muted, #6b7280);
+      font-size: 0.875rem;
+    }
+
+    /* Gallery navigation */
+    .annonce-gallery__nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.9);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      opacity: 0;
+    }
+
+    .annonce-gallery__main:hover .annonce-gallery__nav {
+      opacity: 1;
+    }
+
+    .annonce-gallery__nav:hover {
+      background: white;
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    .annonce-gallery__nav--prev { left: 1rem; }
+    .annonce-gallery__nav--next { right: 1rem; }
+
+    .annonce-gallery__nav:disabled {
+      opacity: 0.3 !important;
+      cursor: not-allowed;
+    }
+
+    /* Thumbnails */
+    .annonce-gallery__thumbs {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      overflow-x: auto;
+      flex-shrink: 0;
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    .annonce-gallery__thumb {
+      width: 64px;
+      height: 64px;
+      flex-shrink: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .annonce-gallery__thumb:hover {
+      border-color: var(--color-text-muted, #6b7280);
+    }
+
+    .annonce-gallery__thumb.active {
+      border-color: var(--color-accent, #0d7377);
+    }
+
+    .annonce-gallery__thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    @media (max-width: 768px) {
+      .annonce-gallery__thumbs { padding: 0.5rem; }
+      .annonce-gallery__thumb { width: 56px; height: 56px; }
+    }
+
+    /* ===== Details panel ===== */
+    .annonce-details {
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .annonce-details { padding: 1.25rem; }
+    }
+
+    .annonce-details__title {
+      font-family: var(--font-display, Georgia, serif);
+      font-size: 1.75rem;
+      font-weight: 500;
+      margin: 0;
+      color: var(--color-text, #2c2825);
+    }
+
+    /* Specs grid */
+    .annonce-specs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .annonce-spec {
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+
+    .annonce-spec__label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-muted, #6b7280);
+    }
+
+    .annonce-spec__value {
+      font-size: 0.9375rem;
+      font-weight: 500;
+      color: var(--color-text, #2c2825);
+    }
+
+    /* Notes layout */
+    .annonce-notes-layout {
+      padding: 0.75rem;
+      background: var(--color-bg-warm, #f5f5f5);
+      border-radius: var(--radius-md, 8px);
+    }
+
+    .annonce-notes-layout__label {
+      display: block;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-muted, #6b7280);
+      margin-bottom: 0.25rem;
+    }
+
+    .annonce-notes-layout__value {
+      font-family: var(--font-mono, monospace);
+      font-size: 0.8125rem;
+      color: var(--color-text, #2c2825);
+      word-break: break-word;
+    }
+
+    /* Description */
+    .annonce-description {
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: var(--color-text-light, #4b5563);
+    }
+
+    .annonce-description p { margin: 0; }
+
+    /* Links (video, handpaner) */
+    .annonce-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.875rem;
+      color: var(--color-accent, #0d7377);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .annonce-link:hover {
+      color: var(--color-accent-hover, #095456);
+    }
+
+    /* Options */
+    .annonce-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--color-border, #e5e7eb);
+    }
+
+    .annonce-option__label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--color-text-muted, #6b7280);
+      margin-bottom: 0.375rem;
+    }
+
+    .annonce-option__select {
+      width: 100%;
+      padding: 0.625rem 0.875rem;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      background: var(--color-bg-warm, #f5f5f5);
+      border: 1px solid var(--color-border, #e5e7eb);
+      border-radius: 6px;
+      color: var(--color-text, #2c2825);
+      cursor: pointer;
+    }
+
+    .annonce-option__select:focus {
+      outline: none;
+      border-color: var(--color-accent, #0d7377);
+    }
+
+    .annonce-option__checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.9375rem;
+      color: var(--color-text, #2c2825);
+    }
+
+    .annonce-option__checkbox input { display: none; }
+
+    .annonce-option__checkmark {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--color-border-dark, #d1d5db);
+      border-radius: 4px;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .annonce-option__checkbox input:checked + .annonce-option__checkmark {
+      background: var(--color-accent, #0d7377);
+      border-color: var(--color-accent, #0d7377);
+    }
+
+    .annonce-option__checkbox input:checked + .annonce-option__checkmark::after {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 2px;
+      width: 5px;
+      height: 10px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    /* Price */
+    .annonce-price {
+      padding: 1rem;
+      background: var(--color-bg-warm, #f5f5f5);
+      border-radius: var(--radius-md, 8px);
+      margin-top: auto;
+    }
+
+    .annonce-price__breakdown {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px dashed var(--color-border, #e5e7eb);
+    }
+
+    .annonce-price__line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.875rem;
+      color: var(--color-text-muted, #6b7280);
+    }
+
+    .annonce-price__total {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .annonce-price__label {
+      font-size: 0.9375rem;
+      color: var(--color-text-light, #4b5563);
+    }
+
+    .annonce-price__value {
+      font-family: var(--font-display, Georgia, serif);
+      font-size: 1.75rem;
+      font-weight: 500;
+      color: var(--color-text, #2c2825);
+    }
+
+    @media (max-width: 768px) {
+      .annonce-price__value { font-size: 1.5rem; }
+    }
+
+    /* CTA */
+    .annonce-cta {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 0.875rem 1.5rem;
+      background: var(--color-accent, #0d7377);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md, 8px);
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .annonce-cta:hover {
+      background: #0a5c5f;
+      color: white;
+    }
+
+    .annonce-contact-note {
+      font-size: 0.75rem;
+      color: var(--color-text-muted, #6b7280);
+      text-align: center;
+      margin-top: 0.5rem;
+    }
+
+    .annonce-contact-note a {
+      color: var(--color-accent, #0d7377);
+    }
+
+    /* ===== Back nav ===== */
+    .annonce-nav {
+      max-width: 960px;
+      margin: var(--space-xl, 1.5rem) auto 0;
+      padding: 0 var(--space-lg, 1.5rem);
+    }
+
+    .annonce-nav__link {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs, 0.25rem);
+      color: var(--color-accent, #0d7377);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.9375rem;
+    }
+
+    .annonce-nav__link:hover {
+      text-decoration: underline;
+    }
+
+    /* ===== Placeholder / not found ===== */
+    .annonce-placeholder {
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: white;
+      border-radius: var(--radius-lg, 16px);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .annonce-placeholder svg {
+      width: 64px;
+      height: 64px;
+      color: var(--color-text-muted, #6b7280);
+      opacity: 0.5;
+      margin-bottom: var(--space-md, 1rem);
+    }
+
+    .annonce-not-found {
+      text-align: center;
+      padding: var(--space-3xl, 3rem) var(--space-lg, 1.5rem);
+    }
+
+    .annonce-not-found h1 {
+      font-family: var(--font-display, Georgia, serif);
+      margin-bottom: var(--space-md, 1rem);
+    }
+  </style>
+</head>
+<body data-page="boutique" class="annonce-page">
+
+  <div id="site-header"></div>
+
+  <main id="main-content">
+    <div class="annonce-container">
+      <!-- Contenu chargé dynamiquement -->
+      <div class="annonce-placeholder" id="annonce-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <p>Chargement de l'instrument...</p>
+      </div>
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+  <div id="contact-modal-container"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── Config ──
+  var INSTRUMENTS_KEY = 'mistral_gestion_instruments';
+  var ACCESSOIRES_KEY = 'mistral_accessoires';
+
+  var currentInstrument = null;
+  var currentGalleryIndex = 0;
+
+  // ── Utilitaires ──
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function hasValue(val) {
+    return val !== null && val !== undefined && val !== '' && val !== 'null' && String(val).trim() !== '';
+  }
+
+  function formatPrice(price) {
+    if (!price && price !== 0) return 'Prix sur demande';
+    return Number(price).toLocaleString('fr-FR') + ' €';
+  }
+
+  function getIdFromURL() {
+    var params = new URLSearchParams(window.location.search);
+    return params.get('ref');
+  }
+
+  // ── Chargement de l'instrument ──
+
+  function loadInstrument() {
+    var container = document.getElementById('main-content');
+    var id = getIdFromURL();
+
+    if (!id) {
+      showNotFound(container);
+      return;
+    }
+
+    var instruments = [];
+    if (window.MistralSync && MistralSync.hasKey(INSTRUMENTS_KEY)) {
+      instruments = MistralSync.getData(INSTRUMENTS_KEY);
+    }
+
+    var instrument = instruments.find(function(i) { return i.id === id; });
+
+    if (!instrument) {
+      showNotFound(container);
+      return;
+    }
+
+    // Vérifier visibilité (en_ligne pour public, admin voit tout)
+    var isAdmin = window.MistralAuth ? window.MistralAuth.isLoggedInSync() : false;
+    if (instrument.statut !== 'en_ligne' && !isAdmin) {
+      showNotFound(container);
+      return;
+    }
+
+    currentInstrument = instrument;
+    currentGalleryIndex = 0;
+
+    // Mettre à jour meta tags
+    updateMeta(instrument);
+
+    // Rendre la page
+    renderInstrument(container, instrument);
+
+    // Initialiser les interactions
+    initGallery(instrument.images || []);
+    initHousse(instrument.taille);
+    initLivraison();
+    initKeyboard();
+    updatePrice();
+  }
+
+  // ── Meta tags SEO ──
+
+  function updateMeta(instrument) {
+    var displayName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || 'Instrument';
+    var specs = [];
+    if (hasValue(instrument.nombre_notes)) specs.push(instrument.nombre_notes + ' notes');
+    if (hasValue(instrument.taille)) specs.push(instrument.taille + 'cm');
+    if (hasValue(instrument.gamme)) specs.push(instrument.gamme);
+    var specsStr = specs.length > 0 ? ' - ' + specs.join(', ') : '';
+
+    var title = displayName + specsStr + ' | Mistral Pans';
+    var description = 'Handpan ' + displayName + specsStr + '. Instrument artisanal fabriqué à la main en Île-de-France par Mistral Pans.';
+
+    document.title = title;
+
+    var setMeta = function(selector, attr, value) {
+      var el = document.querySelector(selector);
+      if (el) el.setAttribute(attr, value);
+    };
+
+    setMeta('meta[name="description"]', 'content', description);
+    setMeta('link[rel="canonical"]', 'href', 'https://mistralpans.fr/annonce.html?ref=' + instrument.id);
+    setMeta('meta[property="og:title"]', 'content', title);
+    setMeta('meta[property="og:description"]', 'content', description);
+    setMeta('meta[property="og:url"]', 'content', 'https://mistralpans.fr/annonce.html?ref=' + instrument.id);
+    setMeta('meta[name="twitter:title"]', 'content', title);
+    setMeta('meta[name="twitter:description"]', 'content', description);
+
+    // Image
+    if (instrument.images && instrument.images.length > 0) {
+      setMeta('meta[property="og:image"]', 'content', instrument.images[0]);
+      setMeta('meta[name="twitter:image"]', 'content', instrument.images[0]);
+    }
+  }
+
+  // ── Structured Data JSON-LD ──
+
+  function buildJsonLd(instrument) {
+    var displayName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || 'Handpan Mistral Pans';
+    var desc = instrument.description || ('Handpan ' + displayName + ' fabriqué artisanalement par Mistral Pans en Île-de-France.');
+
+    var ld = {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      'name': displayName,
+      'description': desc,
+      'brand': { '@type': 'Brand', 'name': 'Mistral Pans' },
+      'category': 'Instruments de musique',
+      'url': 'https://mistralpans.fr/annonce.html?ref=' + instrument.id
+    };
+
+    if (instrument.images && instrument.images.length > 0) {
+      ld.image = instrument.images;
+    }
+
+    if (hasValue(instrument.prix_vente)) {
+      ld.offers = {
+        '@type': 'Offer',
+        'price': instrument.prix_vente,
+        'priceCurrency': 'EUR',
+        'availability': 'https://schema.org/InStock',
+        'seller': { '@type': 'Organization', 'name': 'Mistral Pans' }
+      };
+    }
+
+    return '<script type="application/ld+json">' + JSON.stringify(ld) + '<\/script>';
+  }
+
+  // ── Rendu principal ──
+
+  function renderInstrument(container, instrument) {
+    var displayName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || 'Instrument';
+
+    var hasImages = instrument.images && instrument.images.length > 0;
+    var galleryHtml = '<div class="annonce-gallery">' +
+      '<div class="annonce-gallery__main" id="annonce-gallery-main">' +
+        (hasImages
+          ? '<img alt="' + escapeHtml(displayName) + '" id="annonce-main-image" src="' + instrument.images[0] + '">'
+          : '<span class="annonce-gallery__no-image" id="annonce-no-image">' +
+              '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>' +
+                '<circle cx="8.5" cy="8.5" r="1.5"></circle>' +
+                '<polyline points="21 15 16 10 5 21"></polyline>' +
+              '</svg>' +
+              '<span>Aucune photo</span>' +
+            '</span>'
+        ) +
+        '<button class="annonce-gallery__nav annonce-gallery__nav--prev" id="annonce-gallery-prev" aria-label="Photo précédente" style="display:none;">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>' +
+        '</button>' +
+        '<button class="annonce-gallery__nav annonce-gallery__nav--next" id="annonce-gallery-next" aria-label="Photo suivante" style="display:none;">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
+        '</button>' +
+      '</div>' +
+      '<div class="annonce-gallery__thumbs" id="annonce-gallery-thumbs"></div>' +
+    '</div>';
+
+    // Material label
+    var matLabel = hasValue(instrument.materiau) && typeof MistralMateriaux !== 'undefined'
+      ? MistralMateriaux.getLabel(instrument.materiau, 'full')
+      : (instrument.materiau || '—');
+
+    var specsHtml = '<div class="annonce-specs">' +
+      renderSpec('Gamme', instrument.gamme) +
+      renderSpec('Notes', instrument.nombre_notes ? instrument.nombre_notes + ' notes' : null) +
+      renderSpec('Tonalité', instrument.tonalite) +
+      renderSpec('Accordage', instrument.accordage ? instrument.accordage + ' Hz' : null) +
+      renderSpec('Taille', instrument.taille ? instrument.taille + ' cm' : null) +
+      renderSpec('Matériau', matLabel) +
+    '</div>';
+
+    var notesLayoutHtml = '';
+    if (hasValue(instrument.notes_layout)) {
+      notesLayoutHtml = '<div class="annonce-notes-layout">' +
+        '<span class="annonce-notes-layout__label">Disposition des notes</span>' +
+        '<span class="annonce-notes-layout__value">' + escapeHtml(instrument.notes_layout) + '</span>' +
+      '</div>';
+    }
+
+    var descHtml = '';
+    if (hasValue(instrument.description)) {
+      descHtml = '<div class="annonce-description"><p>' + escapeHtml(instrument.description) + '</p></div>';
+    }
+
+    var videoHtml = '';
+    if (hasValue(instrument.video)) {
+      videoHtml = '<a href="' + escapeHtml(instrument.video) + '" class="annonce-link" target="_blank" rel="noopener">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>' +
+        'Voir la vidéo</a>';
+    }
+
+    var handpanerHtml = '';
+    if (hasValue(instrument.handpaner_url)) {
+      handpanerHtml = '<a href="' + escapeHtml(instrument.handpaner_url) + '" class="annonce-link" target="_blank" rel="noopener">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+          '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>' +
+          '<polyline points="15 3 21 3 21 9"/>' +
+          '<line x1="10" y1="14" x2="21" y2="3"/>' +
+        '</svg>' +
+        'Voir sur Handpaner</a>';
+    }
+
+    var optionsHtml = '<div class="annonce-options">' +
+      '<div id="annonce-housse-container" style="display:none;">' +
+        '<label class="annonce-option__label" for="annonce-housse-select">Ajouter une housse</label>' +
+        '<select class="annonce-option__select" id="annonce-housse-select"><option value="">Sans housse</option></select>' +
+      '</div>' +
+      '<div>' +
+        '<label class="annonce-option__checkbox">' +
+          '<input type="checkbox" id="annonce-livraison-checkbox">' +
+          '<span class="annonce-option__checkmark"></span>' +
+          '<span>Livraison (+50€)</span>' +
+        '</label>' +
+      '</div>' +
+    '</div>';
+
+    var priceHtml = '<div class="annonce-price">' +
+      '<div class="annonce-price__breakdown">' +
+        '<div class="annonce-price__line"><span>Instrument</span><span id="annonce-price-instrument">0 €</span></div>' +
+        '<div class="annonce-price__line" id="annonce-price-housse-line" style="display:none;"><span>Housse</span><span id="annonce-price-housse">0 €</span></div>' +
+        '<div class="annonce-price__line" id="annonce-price-livraison-line" style="display:none;"><span>Livraison</span><span>50 €</span></div>' +
+      '</div>' +
+      '<div class="annonce-price__total">' +
+        '<span class="annonce-price__label">Prix total</span>' +
+        '<span class="annonce-price__value" id="annonce-price-total">0 €</span>' +
+      '</div>' +
+    '</div>';
+
+    var ctaHtml = '<a href="commander.html" class="annonce-cta" id="annonce-order-btn">Commander cet instrument</a>' +
+      '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
+
+    var detailsHtml = '<div class="annonce-details">' +
+      '<h1 class="annonce-details__title">' + escapeHtml(displayName) + '</h1>' +
+      specsHtml + notesLayoutHtml + descHtml + videoHtml + handpanerHtml +
+      optionsHtml + priceHtml + ctaHtml +
+    '</div>';
+
+    var navHtml = '<nav class="annonce-nav">' +
+      '<a href="boutique.html#flash-sales" class="annonce-nav__link">' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+          '<line x1="19" y1="12" x2="5" y2="12"></line>' +
+          '<polyline points="12 19 5 12 12 5"></polyline>' +
+        '</svg>' +
+        'Retour à la boutique' +
+      '</a>' +
+    '</nav>';
+
+    var statusBadge = '';
+    if (instrument.statut !== 'en_ligne') {
+      statusBadge = '<div style="position:fixed;bottom:1rem;left:1rem;background:#f59e0b;color:white;padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.875rem;font-weight:500;">' +
+        'Statut : ' + escapeHtml(instrument.statut) + ' (non visible publiquement)' +
+      '</div>';
+    }
+
+    container.innerHTML = '<div class="annonce-container">' +
+      buildJsonLd(instrument) +
+      '<div class="annonce-layout">' + galleryHtml + detailsHtml + '</div>' +
+      navHtml + statusBadge +
+    '</div>';
+  }
+
+  function renderSpec(label, value) {
+    return '<div class="annonce-spec">' +
+      '<span class="annonce-spec__label">' + escapeHtml(label) + '</span>' +
+      '<span class="annonce-spec__value">' + escapeHtml(value || '—') + '</span>' +
+    '</div>';
+  }
+
+  // ── Galerie ──
+
+  function initGallery(images) {
+    if (!images || images.length === 0) return;
+
+    var prevBtn = document.getElementById('annonce-gallery-prev');
+    var nextBtn = document.getElementById('annonce-gallery-next');
+    var thumbsContainer = document.getElementById('annonce-gallery-thumbs');
+
+    if (images.length > 1) {
+      if (prevBtn) prevBtn.style.display = 'flex';
+      if (nextBtn) nextBtn.style.display = 'flex';
+
+      if (prevBtn) prevBtn.addEventListener('click', function() { navigateGallery(-1); });
+      if (nextBtn) nextBtn.addEventListener('click', function() { navigateGallery(1); });
+    }
+
+    // Thumbnails
+    if (thumbsContainer) {
+      var html = '';
+      images.forEach(function(img, idx) {
+        var activeClass = idx === 0 ? ' active' : '';
+        html += '<div class="annonce-gallery__thumb' + activeClass + '" data-index="' + idx + '">' +
+          '<img src="' + img + '" alt="Photo ' + (idx + 1) + '">' +
+        '</div>';
+      });
+      thumbsContainer.innerHTML = html;
+
+      thumbsContainer.addEventListener('click', function(e) {
+        var thumb = e.target.closest('.annonce-gallery__thumb');
+        if (thumb) {
+          setGalleryIndex(parseInt(thumb.dataset.index));
+        }
+      });
+    }
+
+    updateGalleryNav();
+  }
+
+  function navigateGallery(direction) {
+    var images = currentInstrument && currentInstrument.images ? currentInstrument.images : [];
+    if (images.length === 0) return;
+    setGalleryIndex(currentGalleryIndex + direction);
+  }
+
+  function setGalleryIndex(idx) {
+    var images = currentInstrument && currentInstrument.images ? currentInstrument.images : [];
+    if (idx < 0) idx = images.length - 1;
+    if (idx >= images.length) idx = 0;
+    currentGalleryIndex = idx;
+
+    var mainImage = document.getElementById('annonce-main-image');
+    if (mainImage) mainImage.src = images[idx];
+
+    document.querySelectorAll('.annonce-gallery__thumb').forEach(function(thumb, i) {
+      thumb.classList.toggle('active', i === idx);
+    });
+
+    updateGalleryNav();
+  }
+
+  function updateGalleryNav() {
+    var images = currentInstrument && currentInstrument.images ? currentInstrument.images : [];
+    var prevBtn = document.getElementById('annonce-gallery-prev');
+    var nextBtn = document.getElementById('annonce-gallery-next');
+    if (prevBtn) prevBtn.disabled = currentGalleryIndex === 0;
+    if (nextBtn) nextBtn.disabled = currentGalleryIndex === images.length - 1;
+  }
+
+  // ── Housse ──
+
+  function initHousse(taille) {
+    var container = document.getElementById('annonce-housse-container');
+    var select = document.getElementById('annonce-housse-select');
+    if (!container || !select) return;
+
+    var accessoires = [];
+    if (window.MistralSync && MistralSync.hasKey(ACCESSOIRES_KEY)) {
+      accessoires = MistralSync.getData(ACCESSOIRES_KEY);
+    }
+    var housses = accessoires.filter(function(a) {
+      return a.statut === 'actif' &&
+        a.visible_configurateur === true &&
+        a.tailles_compatibles &&
+        a.tailles_compatibles.includes(taille);
+    });
+
+    if (housses.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'block';
+    var optionsHtml = '<option value="">Sans housse</option>';
+    housses.forEach(function(h) {
+      optionsHtml += '<option value="' + h.id + '" data-prix="' + h.prix + '">' +
+        escapeHtml(h.nom) + ' (+' + formatPrice(h.prix) + ')' +
+      '</option>';
+    });
+    select.innerHTML = optionsHtml;
+
+    select.addEventListener('change', updatePrice);
+  }
+
+  // ── Livraison ──
+
+  function initLivraison() {
+    var checkbox = document.getElementById('annonce-livraison-checkbox');
+    if (checkbox) {
+      checkbox.addEventListener('change', updatePrice);
+    }
+  }
+
+  // ── Keyboard ──
+
+  function initKeyboard() {
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'ArrowLeft') navigateGallery(-1);
+      else if (e.key === 'ArrowRight') navigateGallery(1);
+    });
+  }
+
+  // ── Prix ──
+
+  function updatePrice() {
+    if (!currentInstrument) return;
+
+    var instrumentPrice = currentInstrument.prix_vente || 0;
+    var housseSelect = document.getElementById('annonce-housse-select');
+    var livraisonCheckbox = document.getElementById('annonce-livraison-checkbox');
+
+    var houssePrice = 0;
+    var housseName = null;
+    if (housseSelect && housseSelect.value) {
+      var opt = housseSelect.options[housseSelect.selectedIndex];
+      houssePrice = parseFloat(opt.dataset.prix) || 0;
+      housseName = opt.textContent.split(' (+')[0];
+    }
+
+    var livraisonPrice = (livraisonCheckbox && livraisonCheckbox.checked) ? 50 : 0;
+    var totalPrice = instrumentPrice + houssePrice + livraisonPrice;
+
+    var priceInstrument = document.getElementById('annonce-price-instrument');
+    if (priceInstrument) priceInstrument.textContent = formatPrice(instrumentPrice);
+
+    var housseLine = document.getElementById('annonce-price-housse-line');
+    var housseEl = document.getElementById('annonce-price-housse');
+    if (housseLine) housseLine.style.display = houssePrice > 0 ? 'flex' : 'none';
+    if (housseEl) housseEl.textContent = formatPrice(houssePrice);
+
+    var livraisonLine = document.getElementById('annonce-price-livraison-line');
+    if (livraisonLine) livraisonLine.style.display = livraisonPrice > 0 ? 'flex' : 'none';
+
+    var totalEl = document.getElementById('annonce-price-total');
+    if (totalEl) totalEl.textContent = formatPrice(totalPrice);
+
+    // Mettre à jour le lien commander
+    updateOrderUrl(totalPrice, housseSelect ? housseSelect.value : null, housseName, houssePrice, livraisonCheckbox ? livraisonCheckbox.checked : false);
+  }
+
+  function updateOrderUrl(totalPrice, housseId, housseName, houssePrice, livraison) {
+    if (!currentInstrument) return;
+    var btn = document.getElementById('annonce-order-btn');
+    if (!btn) return;
+
+    var params = new URLSearchParams({
+      type: 'stock',
+      instrument_id: currentInstrument.id,
+      name: currentInstrument.nom || ((currentInstrument.tonalite || '') + ' ' + (currentInstrument.gamme || '')).trim(),
+      gamme: currentInstrument.gamme || '',
+      tonalite: currentInstrument.tonalite || '',
+      notes: currentInstrument.nombre_notes || '',
+      accordage: currentInstrument.accordage || '',
+      taille: currentInstrument.taille || '',
+      materiau: currentInstrument.materiau || '',
+      price: totalPrice,
+      instrument_price: currentInstrument.prix_vente || 0
+    });
+
+    if (housseId) {
+      params.set('housse_id', housseId);
+      if (housseName) params.set('housse_nom', housseName);
+      params.set('housse_prix', houssePrice);
+    }
+
+    if (livraison) {
+      params.set('livraison', '1');
+    }
+
+    btn.href = 'commander.html?' + params.toString();
+  }
+
+  // ── Not found ──
+
+  function showNotFound(container) {
+    document.title = 'Instrument non trouvé — Mistral Pans';
+    container.innerHTML = '<div class="annonce-container">' +
+      '<div class="annonce-not-found">' +
+        '<h1>Instrument non trouvé</h1>' +
+        '<p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">' +
+          'Cet instrument n\'existe pas ou n\'est plus disponible.' +
+        '</p>' +
+        '<a href="boutique.html#flash-sales" class="annonce-cta" style="max-width:300px;margin:0 auto;">Retour à la boutique</a>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // ── Init ──
+
+  window.addEventListener('mistral-sync-complete', loadInstrument);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadInstrument);
+  } else {
+    loadInstrument();
+  }
+})();
+</script>
+
+<!-- Scripts -->
+<script src="js/core/cookie-consent.js"></script>
+<script src="js/core/main.js"></script>
+<script src="js/data/materiaux-data.js" defer></script>
+<script src="js/admin/admin-core.js" defer></script>
+<script src="js/features/mistral-stats.js" defer></script>
+</body>
+</html>
