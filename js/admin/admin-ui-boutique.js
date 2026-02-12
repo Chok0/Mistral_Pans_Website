@@ -517,6 +517,8 @@
     shouldPublishAfterCreation,
     resetPublishAfterCreation,
     initAccessoireUpload,
+    initAccessoireConfigToggle,
+    toggleAccessoireConfigOptions,
     saveAccessoire,
     editAccessoire,
     toggleAccessoire,
