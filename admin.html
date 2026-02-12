@@ -219,7 +219,7 @@
       <!-- INSTRUMENTS -->
       <section class="gestion-section" id="section-instruments">
         <div class="section-header"><h2 class="section-title">Gestion des instruments</h2><div class="section-actions"><input type="text" class="admin-form__input" style="max-width:250px;" placeholder="Rechercher..." id="search-instruments" aria-label="Rechercher un instrument" oninput="AdminUI.searchInstruments(this.value)"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('instrument')">+ Nouvel instrument</button></div></div>
-        <div class="gestion-table-container"><table class="gestion-table"><thead><tr><th>Référence</th><th>Nom</th><th>Gamme</th><th>Statut</th><th>Prix</th><th>Boutique</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="table-instruments"></tbody></table></div>
+        <div class="gestion-table-container"><table class="gestion-table"><thead><tr><th>Référence</th><th>Nom</th><th>Gamme</th><th>Statut</th><th>Prix</th><th>Boutique</th><th>Location</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="table-instruments"></tbody></table></div>
         <div class="gestion-empty" id="empty-instruments" style="display:none;"><p class="gestion-empty__text">Aucun instrument</p></div>
       </section>
       
@@ -600,6 +600,15 @@
             </div>
           </div>
           
+          <!-- Disponible à la location -->
+          <div class="admin-form__group">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="checkbox" id="instrument-disponible-location" style="width: 18px; height: 18px;">
+              <span class="admin-form__label" style="margin: 0;">Disponible à la location</span>
+            </label>
+            <div class="admin-form__hint">Cochez pour proposer cet instrument sur la page Location</div>
+          </div>
+
           <!-- Layout -->
           <div class="admin-form__group">
             <label class="admin-form__label">Layout (notes)</label>
