@@ -257,6 +257,8 @@
         break;
 
       case 'accessoires':
+        // Remove 'categorie' field - not in Supabase schema
+        delete transformed.categorie;
         // Ensure tailles_compatibles is stored as JSON array
         if (Array.isArray(transformed.tailles_compatibles)) {
           transformed.tailles_compatibles = JSON.stringify(transformed.tailles_compatibles);
