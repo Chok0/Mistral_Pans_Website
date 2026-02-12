@@ -1129,6 +1129,23 @@
     // Prevents scrolling through the teal banner — triggers a page snap instead.
     // Uses gateSection (not currentSection) to avoid race conditions with scroll events.
     // Ignores wheel events consumed by inner scrollable containers (e.g. config-options-inner).
+    // Requires intentional scrolling (accumulation threshold) to avoid accidental triggers.
+    // Normalizes deltaY across mouse types (pixel/line/page modes, sensitivity settings).
+
+    let gateAccumulator = 0;
+    let gateAccumulatorTimer = null;
+    let gateDirection = null;           // 'down' or 'up' — resets if direction changes
+    const GATE_SNAP_THRESHOLD = 150;    // normalized px to accumulate before snap
+    const GATE_RESET_MS = 400;          // ms of inactivity before accumulator resets
+    const GATE_MAX_SINGLE_DELTA = 120;  // cap per-event contribution (mouse sensitivity)
+
+    // Normalize wheel deltaY to pixels regardless of deltaMode
+    function normalizeWheelDelta(e) {
+      let delta = e.deltaY;
+      if (e.deltaMode === 1) delta *= 16;               // line mode → ~pixels
+      if (e.deltaMode === 2) delta *= window.innerHeight; // page mode → pixels
+      return delta;
+    }
 
     // Find nearest scrollable ancestor (not body/document)
     function getScrollableParent(el) {
@@ -1142,6 +1159,12 @@
       return null;
     }
 
+    function resetGate() {
+      gateAccumulator = 0;
+      gateDirection = null;
+      clearTimeout(gateAccumulatorTimer);
+    }
+
     window.addEventListener('wheel', (e) => {
       if (window.innerWidth <= 768) return;
       if (!navBand) return;
@@ -1152,8 +1175,9 @@
         return;
       }
 
-      const scrollingDown = e.deltaY > 0;
-      const scrollingUp = e.deltaY < 0;
+      const rawDelta = normalizeWheelDelta(e);
+      const scrollingDown = rawDelta > 0;
+      const scrollingUp = rawDelta < 0;
 
       // If the wheel target is inside an inner scrollable element that can still
       // scroll in this direction, let the inner element handle it — don't snap.
@@ -1173,15 +1197,32 @@
       );
       const navBandRect = navBand.getBoundingClientRect();
 
+      // Cap per-event contribution so high-sensitivity mice don't skip the threshold
+      const cappedDelta = Math.min(Math.abs(rawDelta), GATE_MAX_SINGLE_DELTA);
+
       if (scrollingDown && gateSection === 'config') {
-        // Nav band is visible on screen → snap to stock
+        // Nav band is visible on screen → gate zone active
         if (navBandRect.top < window.innerHeight) {
           e.preventDefault();
-          isSnapping = true;
-          gateSection = 'stock';
-          updateNavBand('stock');
-          scrollToPanel('stock');
-          setTimeout(() => { isSnapping = false; }, 1000);
+
+          // Reset accumulator if direction changed
+          if (gateDirection !== 'down') { gateAccumulator = 0; gateDirection = 'down'; }
+
+          gateAccumulator += cappedDelta;
+
+          // Restart inactivity timer
+          clearTimeout(gateAccumulatorTimer);
+          gateAccumulatorTimer = setTimeout(resetGate, GATE_RESET_MS);
+
+          // Threshold reached → snap
+          if (gateAccumulator >= GATE_SNAP_THRESHOLD) {
+            resetGate();
+            isSnapping = true;
+            gateSection = 'stock';
+            updateNavBand('stock');
+            scrollToPanel('stock');
+            setTimeout(() => { isSnapping = false; }, 1000);
+          }
         }
       } else if (scrollingUp && gateSection === 'stock') {
         // Nav band is stuck at top → check if at top of stock content
@@ -1193,14 +1234,31 @@
             const expectedTop = headerHeight + navBand.offsetHeight;
             if (flashTop >= expectedTop - 10) {
               e.preventDefault();
-              isSnapping = true;
-              gateSection = 'config';
-              updateNavBand('config');
-              scrollToPanel('config');
-              setTimeout(() => { isSnapping = false; }, 1000);
+
+              // Reset accumulator if direction changed
+              if (gateDirection !== 'up') { gateAccumulator = 0; gateDirection = 'up'; }
+
+              gateAccumulator += cappedDelta;
+
+              // Restart inactivity timer
+              clearTimeout(gateAccumulatorTimer);
+              gateAccumulatorTimer = setTimeout(resetGate, GATE_RESET_MS);
+
+              // Threshold reached → snap
+              if (gateAccumulator >= GATE_SNAP_THRESHOLD) {
+                resetGate();
+                isSnapping = true;
+                gateSection = 'config';
+                updateNavBand('config');
+                scrollToPanel('config');
+                setTimeout(() => { isSnapping = false; }, 1000);
+              }
             }
           }
         }
+      } else {
+        // Not at a gate boundary — reset accumulator
+        if (gateAccumulator > 0) resetGate();
       }
     }, { passive: false });
 
