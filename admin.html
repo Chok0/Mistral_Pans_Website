@@ -587,6 +587,14 @@
               <input type="number" class="admin-form__input" id="instrument-prix" min="0" step="5">
             </div>
             <div class="admin-form__group">
+              <label class="admin-form__label">Promo (badge)</label>
+              <input type="text" class="admin-form__input" id="instrument-promo" placeholder="ex: -20%, Promo, Nouveau..." maxlength="20">
+              <small style="color: var(--admin-text-muted); font-size: 0.75rem;">Laisser vide = pas de badge promo</small>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="admin-form__group">
               <label class="admin-form__label">Statut</label>
               <select class="admin-form__select" id="instrument-statut">
                 <option value="disponible">Disponible</option>
@@ -598,6 +606,7 @@
                 <option value="en_fabrication">En fabrication</option>
               </select>
             </div>
+            <div class="admin-form__group"></div>
           </div>
           
           <!-- Disponible à la location -->
@@ -718,6 +727,15 @@
               <input type="number" class="admin-form__input" id="accessoire-stock" min="-1" value="-1">
               <div class="admin-form__hint">-1 = illimité (toujours disponible)</div>
             </div>
+          </div>
+
+          <div class="form-row">
+            <div class="admin-form__group">
+              <label class="admin-form__label">Promo (badge)</label>
+              <input type="text" class="admin-form__input" id="accessoire-promo" placeholder="ex: -20%, Promo, Nouveau..." maxlength="20">
+              <small style="color: var(--admin-text-muted); font-size: 0.75rem;">Laisser vide = pas de badge promo</small>
+            </div>
+            <div class="admin-form__group"></div>
           </div>
           
           <div class="admin-form__group">

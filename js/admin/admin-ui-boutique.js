@@ -60,7 +60,10 @@
           <div style="font-size: 1.25rem; font-weight: 600; color: var(--admin-accent);">
             ${formatPrice(i.prix_vente || 0)}
           </div>
-          <span class="admin-badge admin-badge--success">En ligne</span>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            ${i.promo_label ? `<span class="admin-badge" style="background: var(--admin-accent); color: white;">${escapeHtml(i.promo_label)}</span>` : ''}
+            <span class="admin-badge admin-badge--success">En ligne</span>
+          </div>
         </div>
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
           <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editInstrument('${i.id}')">Modifier</button>
@@ -113,9 +116,12 @@
           <div style="font-size: 1.25rem; font-weight: 600; color: var(--admin-accent);">
             ${formatPrice(a.prix || 0)}
           </div>
-          <span class="admin-badge admin-badge--${a.statut === 'en_ligne' ? 'success' : a.statut === 'rupture' ? 'error' : 'neutral'}">
-            ${a.statut === 'en_ligne' ? 'En ligne' : a.statut === 'rupture' ? 'Rupture' : 'Masqué'}
-          </span>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            ${a.promo_label ? `<span class="admin-badge" style="background: var(--admin-accent); color: white;">${escapeHtml(a.promo_label)}</span>` : ''}
+            <span class="admin-badge admin-badge--${a.statut === 'en_ligne' ? 'success' : a.statut === 'rupture' ? 'error' : 'neutral'}">
+              ${a.statut === 'en_ligne' ? 'En ligne' : a.statut === 'rupture' ? 'Rupture' : 'Masqué'}
+            </span>
+          </div>
         </div>
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
           <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editAccessoire('${a.id}')">Modifier</button>
@@ -391,6 +397,7 @@
       description: $('#accessoire-description')?.value.trim(),
       image: getAccessoireImageForSave(),
       statut: $('#accessoire-statut')?.value || 'en_ligne',
+      promo_label: $('#accessoire-promo')?.value.trim() || null,
       visible_configurateur: $('#accessoire-visible-config')?.checked || false,
       tailles_compatibles: taillesCompatibles
     };
@@ -444,6 +451,7 @@
     $('#accessoire-prix').value = accessoire.prix || '';
     $('#accessoire-stock').value = accessoire.stock ?? -1;
     $('#accessoire-description').value = accessoire.description || '';
+    if ($('#accessoire-promo')) $('#accessoire-promo').value = accessoire.promo_label || '';
     $('#accessoire-statut').value = accessoire.statut || 'en_ligne';
 
     // Load configurator options
