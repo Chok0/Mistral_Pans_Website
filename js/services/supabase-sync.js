@@ -257,10 +257,7 @@
         break;
 
       case 'accessoires':
-        // Ensure tailles_compatibles is stored as JSON for Supabase jsonb column
-        if (Array.isArray(transformed.tailles_compatibles)) {
-          transformed.tailles_compatibles = JSON.stringify(transformed.tailles_compatibles);
-        }
+        // tailles_compatibles is a jsonb column - Supabase accepts arrays natively
         break;
     }
 
