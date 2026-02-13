@@ -831,14 +831,7 @@
       state.housse = null;
     }
 
-    let html = `
-      <div class="accessoire-card accessoire-card--none${!state.housse ? ' active' : ''}" data-id="">
-        <div class="accessoire-card__content">
-          <div class="accessoire-card__name">Sans housse</div>
-          <div class="accessoire-card__price">\u2014</div>
-        </div>
-      </div>
-    `;
+    let html = '';
 
     accessoires.forEach(acc => {
       const isActive = state.housse && state.housse.id === acc.id ? ' active' : '';
@@ -860,17 +853,17 @@
 
     container.innerHTML = html;
 
-    // Bind events
+    // Bind events — clicking an already-active card deselects it
     container.querySelectorAll('.accessoire-card').forEach(card => {
       card.addEventListener('click', () => {
-        container.querySelectorAll('.accessoire-card').forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-
         const id = card.dataset.id;
-        if (id) {
-          state.housse = accessoires.find(a => a.id === id) || null;
-        } else {
+        if (card.classList.contains('active')) {
+          card.classList.remove('active');
           state.housse = null;
+        } else {
+          container.querySelectorAll('.accessoire-card').forEach(c => c.classList.remove('active'));
+          card.classList.add('active');
+          state.housse = accessoires.find(a => a.id === id) || null;
         }
         updatePriceDisplay();
       });
