@@ -38,7 +38,7 @@
   //   { gamme, tonalite, notes, accordage, taille, materiau }
   //
   // options[] :
-  //   [{ type: 'housse', id, nom, prix }, { type: 'livraison', prix: 50 }]
+  //   [{ type: 'housse', id, nom, prix }]
 
   // ============================================================================
   // ÉTAT INTERNE
@@ -133,7 +133,7 @@
       addedAt: new Date().toISOString()
     };
 
-    // Ajouter les options (housse, livraison)
+    // Ajouter les options (housse)
     if (options) {
       if (options.housse) {
         item.options.push({
@@ -141,12 +141,6 @@
           id: options.housse.id,
           nom: options.housse.nom,
           prix: options.housse.prix || 0
-        });
-      }
-      if (options.livraison) {
-        item.options.push({
-          type: 'livraison',
-          prix: 50
         });
       }
     }

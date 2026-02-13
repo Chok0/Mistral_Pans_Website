@@ -15,10 +15,13 @@
   const ONEY_MIN = 100;
   const ONEY_MAX = 3000;
 
+  // Frais de livraison Colissimo
+  const SHIPPING_COST = 50;
+
   // État de la page
   let orderData = {
     productName: 'D Kurd 9 notes',
-    price: 1400,           // Prix total avec options
+    price: 1400,           // Prix articles (sans livraison)
     instrumentPrice: 1400, // Prix instrument seul
     notes: '',
     gamme: '',
@@ -29,7 +32,7 @@
     source: 'custom',      // 'stock' ou 'custom'
     instrumentId: null,    // ID Supabase (stock uniquement)
     housse: null,          // { id, nom, prix } ou null
-    livraison: false
+    shippingMethod: null   // 'colissimo' ou 'retrait' (obligatoire)
   };
 
   // Mode panier (multi-items)
@@ -47,8 +50,16 @@
   // CALCULS
   // ============================================================================
 
+  function getShippingCost() {
+    return orderData.shippingMethod === 'colissimo' ? SHIPPING_COST : 0;
+  }
+
+  function getTotalWithShipping() {
+    return orderData.price + getShippingCost();
+  }
+
   function getDepositAmount() {
-    return Math.round(orderData.price * DEPOSIT_RATE);
+    return Math.round(getTotalWithShipping() * DEPOSIT_RATE);
   }
 
   function getDepositAmountCents() {
@@ -56,7 +67,8 @@
   }
 
   function isOneyEligible() {
-    return orderData.price >= ONEY_MIN && orderData.price <= ONEY_MAX;
+    var total = getTotalWithShipping();
+    return total >= ONEY_MIN && total <= ONEY_MAX;
   }
 
   function computeInstallments(total, n) {
@@ -164,9 +176,6 @@
       };
     }
 
-    // Livraison
-    orderData.livraison = params.get('livraison') === '1';
-
     updateOrderDisplay();
   }
 
@@ -209,7 +218,6 @@
       if (item.options && item.options.length > 0) {
         item.options.forEach(function(opt) {
           if (opt.type === 'housse') optionsParts.push('+ ' + opt.nom + ' (' + formatPrice(opt.prix) + ')');
-          if (opt.type === 'livraison') optionsParts.push('+ Livraison (' + formatPrice(opt.prix) + ')');
         });
       }
       var optionsStr = optionsParts.join(', ');
@@ -235,7 +243,7 @@
     listEl.innerHTML = html;
 
     var totalEl = document.getElementById('cart-items-total-price');
-    if (totalEl) totalEl.textContent = formatPrice(cartData.totalPrice);
+    if (totalEl) totalEl.textContent = formatPrice(getTotalWithShipping());
   }
 
   /**
@@ -335,8 +343,9 @@
   // ============================================================================
 
   function updateOrderDisplay() {
+    const totalWithShipping = getTotalWithShipping();
     const deposit = getDepositAmount();
-    const remaining = orderData.price - deposit;
+    const remaining = totalWithShipping - deposit;
 
     // --- Champs cachés ---
     setVal('form-product', orderData.productName);
@@ -344,7 +353,7 @@
     setVal('form-product-rdv', orderData.productName);
     setVal('form-product-oney', orderData.productName);
     setVal('form-deposit-amount', deposit);
-    setVal('form-full-amount', orderData.price);
+    setVal('form-full-amount', totalWithShipping);
 
     // --- Produit en haut ---
     setText('product-name', orderData.productName);
@@ -356,24 +365,26 @@
 
     // --- Option cards ---
     setText('option-deposit-amount', '30 % (' + formatPrice(deposit) + ')');
-    setText('option-full-amount', formatPrice(orderData.price));
+    setText('option-full-amount', formatPrice(totalWithShipping));
 
     // --- Résumé deposit ---
     setText('summary-product', orderData.productName);
-    setText('summary-total', formatPrice(orderData.price));
+    updateShippingRow('summary-deposit-shipping-row', 'summary-deposit-shipping');
+    setText('summary-total', formatPrice(totalWithShipping));
     setText('summary-deposit', formatPrice(deposit));
     setText('summary-remaining', formatPrice(remaining));
     setText('deposit-btn-amount', formatPrice(deposit));
 
     // --- Résumé full ---
     setText('summary-full-product', orderData.productName);
-    setText('summary-full-total', formatPrice(orderData.price));
     if (orderData.housse) {
       const housseRow = document.getElementById('summary-full-housse-row');
       if (housseRow) housseRow.style.display = '';
       setText('summary-full-housse', orderData.housse.nom + ' (' + formatPrice(orderData.housse.prix) + ')');
     }
-    setText('full-btn-amount', formatPrice(orderData.price));
+    updateShippingRow('summary-full-shipping-row', 'summary-full-shipping');
+    setText('summary-full-total', formatPrice(totalWithShipping));
+    setText('full-btn-amount', formatPrice(totalWithShipping));
 
     // --- Oney ---
     updateOneyDisplay();
@@ -392,9 +403,10 @@
     if (orderData.housse) {
       items.push({ label: orderData.housse.nom, price: orderData.housse.prix });
     }
-    if (orderData.livraison) {
-      // Le prix de livraison est déjà inclus dans price
-      items.push({ label: 'Livraison', price: null });
+    if (orderData.shippingMethod === 'colissimo') {
+      items.push({ label: 'Livraison Colissimo', price: SHIPPING_COST });
+    } else if (orderData.shippingMethod === 'retrait') {
+      items.push({ label: 'Retrait atelier', price: 0 });
     }
 
     if (items.length === 0) {
@@ -414,8 +426,11 @@
     items.forEach(function(item) {
       var el = document.createElement('div');
       el.className = 'order-accessories__item';
-      el.innerHTML = '<span>' + escapeHtml(item.label) + '</span>'
-        + (item.price != null ? '<span>+ ' + escapeHtml(formatPrice(item.price)) + '</span>' : '<span>incluse</span>');
+      if (item.price > 0) {
+        el.innerHTML = '<span>' + escapeHtml(item.label) + '</span><span>+ ' + escapeHtml(formatPrice(item.price)) + '</span>';
+      } else {
+        el.innerHTML = '<span>' + escapeHtml(item.label) + '</span><span>gratuit</span>';
+      }
       list.appendChild(el);
     });
 
@@ -426,7 +441,7 @@
     totalItem.style.borderTop = '1px solid var(--color-border)';
     totalItem.style.paddingTop = 'var(--space-sm)';
     totalItem.style.marginTop = 'var(--space-xs)';
-    totalItem.innerHTML = '<span>Total</span><span>' + escapeHtml(formatPrice(orderData.price)) + '</span>';
+    totalItem.innerHTML = '<span>Total</span><span>' + escapeHtml(formatPrice(getTotalWithShipping())) + '</span>';
     list.appendChild(totalItem);
   }
 
@@ -440,7 +455,7 @@
 
     if (!eligible) return;
 
-    var total = orderData.price;
+    var total = getTotalWithShipping();
 
     setText('oney-product', orderData.productName);
     setText('oney-total', formatPrice(total));
@@ -455,7 +470,7 @@
   }
 
   function updateOneySchedule(n) {
-    var installments = computeInstallments(orderData.price, n);
+    var installments = computeInstallments(getTotalWithShipping(), n);
 
     for (var i = 0; i < 4; i++) {
       var row = document.getElementById('oney-schedule-' + (i + 1));
@@ -465,7 +480,7 @@
     }
 
     setText('oney-btn-installments', n);
-    setText('oney-btn-total', formatPrice(orderData.price));
+    setText('oney-btn-total', formatPrice(getTotalWithShipping()));
 
     setVal('form-installments', n);
   }
@@ -491,6 +506,20 @@
   function setVal(id, val) {
     var el = document.getElementById(id);
     if (el) el.value = val;
+  }
+
+  function updateShippingRow(rowId, textId) {
+    var row = document.getElementById(rowId);
+    if (!row) return;
+    if (orderData.shippingMethod) {
+      row.style.display = '';
+      var label = orderData.shippingMethod === 'colissimo'
+        ? 'Colissimo (' + formatPrice(SHIPPING_COST) + ')'
+        : 'Retrait atelier (gratuit)';
+      setText(textId, label);
+    } else {
+      row.style.display = 'none';
+    }
   }
 
   function escapeHtml(str) {
@@ -531,7 +560,9 @@
         productName: cartData.items.length === 1
           ? cartData.items[0].nom
           : cartData.items.length + ' articles',
-        totalPrice: cartData.totalPrice,
+        totalPrice: getTotalWithShipping(),
+        shippingMethod: orderData.shippingMethod,
+        shippingCost: getShippingCost(),
         // Premier instrument pour rétrocompatibilité
         instrumentId: cartData.items[0]?.sourceId || null,
         gamme: cartData.items[0]?.details?.gamme || null,
@@ -548,12 +579,13 @@
       tonalite: orderData.tonalite,
       materiau: orderData.materiau,
       productName: orderData.productName,
-      totalPrice: orderData.price,
+      totalPrice: getTotalWithShipping(),
       instrumentPrice: orderData.instrumentPrice,
       housseId: orderData.housse?.id || null,
       housseNom: orderData.housse?.nom || null,
       houssePrix: orderData.housse?.prix || null,
-      livraison: orderData.livraison
+      shippingMethod: orderData.shippingMethod,
+      shippingCost: getShippingCost()
     };
   }
 
@@ -565,9 +597,11 @@
       reference: null,
       gamme: orderData.gamme || orderData.productName,
       taille: orderData.taille,
-      prixTotal: orderData.price,
+      prixTotal: getTotalWithShipping(),
       instrumentId: orderData.instrumentId,
-      source: orderData.source
+      source: orderData.source,
+      shippingMethod: orderData.shippingMethod,
+      shippingCost: getShippingCost()
     };
   }
 
@@ -709,6 +743,8 @@
   async function handleFullSubmit(e) {
     e.preventDefault();
 
+    if (!validateShipping()) return;
+
     var form = e.target;
     var submitBtn = document.getElementById('full-submit-btn') || form.querySelector('button[type="submit"]');
     var originalText = submitBtn.innerHTML;
@@ -725,7 +761,7 @@
         return;
       }
 
-      var totalCents = orderData.price * 100;
+      var totalCents = getTotalWithShipping() * 100;
       var order = buildOrderObject();
       var metadata = buildOrderMetadata();
 
@@ -734,7 +770,7 @@
       });
 
       if (result.success && result.paymentUrl) {
-        savePendingOrder(result.reference, customer, 'full', orderData.price);
+        savePendingOrder(result.reference, customer, 'full', getTotalWithShipping());
 
         showMessage('Redirection vers la page de paiement...', 'info');
         setTimeout(function() {
@@ -760,6 +796,8 @@
 
   async function handleDepositSubmit(e) {
     e.preventDefault();
+
+    if (!validateShipping()) return;
 
     var form = e.target;
     var submitBtn = document.getElementById('deposit-submit-btn') || form.querySelector('button[type="submit"]');
@@ -868,6 +906,8 @@
   async function handleOneySubmit(e) {
     e.preventDefault();
 
+    if (!validateShipping()) return;
+
     var form = e.target;
     var submitBtn = document.getElementById('oney-submit-btn') || form.querySelector('button[type="submit"]');
     var originalText = submitBtn.innerHTML;
@@ -926,7 +966,7 @@
         return;
       }
 
-      var totalCents = orderData.price * 100;
+      var totalCents = getTotalWithShipping() * 100;
       var order = buildOrderObject();
       order.metadata = buildOrderMetadata();
 
@@ -935,7 +975,7 @@
       );
 
       if (result.success && result.paymentUrl) {
-        savePendingOrder(result.reference, customer, 'oney_' + selectedInstallments + 'x', orderData.price);
+        savePendingOrder(result.reference, customer, 'oney_' + selectedInstallments + 'x', getTotalWithShipping());
 
         showMessage('Redirection vers Oney...', 'info');
         setTimeout(function() {
@@ -965,6 +1005,8 @@
       product: orderData,
       paymentType: paymentType,
       paidAmount: paidAmount,
+      shippingMethod: orderData.shippingMethod,
+      shippingCost: getShippingCost(),
       createdAt: new Date().toISOString()
     };
 
@@ -997,10 +1039,16 @@
       typeLabel = 'Commande avec acompte';
     }
 
+    var shippingLabel = orderData.shippingMethod === 'colissimo'
+      ? 'Livraison Colissimo (+' + formatPrice(SHIPPING_COST) + ')'
+      : 'Retrait à l\'atelier';
+
     var lines = [
       typeLabel + ' - ' + orderData.productName,
       '',
-      'Prix total: ' + formatPrice(orderData.price),
+      'Prix articles: ' + formatPrice(orderData.price),
+      'Livraison: ' + shippingLabel,
+      'Total: ' + formatPrice(getTotalWithShipping()),
     ];
 
     if (paymentType === 'full') {
@@ -1009,7 +1057,7 @@
       lines.push('Paiement en ' + selectedInstallments + 'x');
     } else {
       lines.push('Acompte (30%): ' + formatPrice(deposit));
-      lines.push('Reste à payer: ' + formatPrice(orderData.price - deposit));
+      lines.push('Reste à payer: ' + formatPrice(getTotalWithShipping() - deposit));
     }
 
     // Mode panier : lister les items
@@ -1307,6 +1355,64 @@
       '@keyframes slideDown{from{transform:translateX(-50%) translateY(-100%);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}' +
       '@keyframes slideUp{from{transform:translateX(-50%) translateY(0);opacity:1}to{transform:translateX(-50%) translateY(-100%);opacity:0}}';
     document.head.appendChild(style);
+  }
+
+  // ============================================================================
+  // SÉLECTION MODE DE LIVRAISON (exposé globalement pour onclick)
+  // ============================================================================
+
+  window.selectShipping = function(method) {
+    orderData.shippingMethod = method;
+
+    // Mise à jour visuelle
+    document.querySelectorAll('.shipping-option').forEach(function(el) {
+      el.classList.remove('selected');
+    });
+    var selected = document.querySelector('[data-shipping="' + method + '"]');
+    if (selected) selected.classList.add('selected');
+
+    // Masquer l'erreur
+    var error = document.getElementById('shipping-error');
+    if (error) error.style.display = 'none';
+
+    // Adapter les champs adresse
+    updateAddressFields();
+
+    // Recalculer tous les affichages
+    updateOrderDisplay();
+  };
+
+  function validateShipping() {
+    if (!orderData.shippingMethod) {
+      var error = document.getElementById('shipping-error');
+      if (error) error.style.display = '';
+      var selector = document.getElementById('shipping-selector');
+      if (selector) selector.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return false;
+    }
+    return true;
+  }
+
+  function updateAddressFields() {
+    var isRetrait = orderData.shippingMethod === 'retrait';
+
+    // Formulaires deposit et full : adapter le champ adresse
+    ['deposit', 'full'].forEach(function(prefix) {
+      var addressField = document.getElementById(prefix + '-address');
+      if (!addressField) return;
+
+      if (isRetrait) {
+        addressField.value = 'Retrait à l\'atelier';
+        addressField.readOnly = true;
+        addressField.style.opacity = '0.6';
+      } else {
+        if (addressField.value === 'Retrait à l\'atelier') {
+          addressField.value = '';
+        }
+        addressField.readOnly = false;
+        addressField.style.opacity = '';
+      }
+    });
   }
 
   // ============================================================================
