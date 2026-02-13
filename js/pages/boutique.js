@@ -609,6 +609,22 @@
     renderPlayer();
   }
 
+  // ===== CTA BUTTONS STATE =====
+  function updateCtaButtons() {
+    const btnAddCart = document.getElementById('btn-add-cart');
+    const btnOrder = document.getElementById('btn-order');
+    const accessoires = getAccessoiresForConfigurateur(state.size);
+    const housseRequired = accessoires.some(a => a.categorie === 'housse');
+    const canOrder = !housseRequired || !!state.housse;
+
+    [btnAddCart, btnOrder].forEach(btn => {
+      if (!btn) return;
+      btn.disabled = !canOrder;
+      btn.style.opacity = canOrder ? '' : '0.5';
+      btn.style.cursor = canOrder ? '' : 'not-allowed';
+    });
+  }
+
   // ===== UPDATE PRICE DISPLAY =====
   function updatePriceDisplay() {
     const instrumentPrice = state._instrumentPrice || 0;
@@ -656,6 +672,8 @@
 
     // Store order params for legacy fallback
     state._orderParams = orderParams;
+
+    updateCtaButtons();
   }
 
   // ===== RENDER MATERIAL CHIPS =====
@@ -802,7 +820,8 @@
       a.statut === 'en_ligne' &&
       a.visible_configurateur === true &&
       a.tailles_compatibles &&
-      a.tailles_compatibles.includes(size)
+      a.tailles_compatibles.includes(size) &&
+      a.stock !== 0 // stock: -1 = infini, >0 = dispo, 0 = rupture
     );
   }
 
@@ -812,18 +831,28 @@
     if (!section || !container) return;
 
     const accessoires = getAccessoiresForConfigurateur(state.size);
+    const housses = accessoires.filter(a => a.categorie === 'housse');
+    const housseRequired = housses.length > 0;
 
     // Hide section if no accessoires available
     if (accessoires.length === 0) {
       section.style.display = 'none';
-      // Reset housse selection if current housse is not available
       if (state.housse) {
         state.housse = null;
       }
+      updateCtaButtons();
       return;
     }
 
     section.style.display = 'block';
+
+    // Update label based on mandatory status
+    const label = section.querySelector('.option-label');
+    if (label) {
+      label.innerHTML = housseRequired
+        ? 'Choisir une housse <span style="color:var(--color-error,#EF4444);">*</span>'
+        : 'Ajouter une housse';
+    }
 
     // Check if current housse is still available for this size
     if (state.housse && !accessoires.find(a => a.id === state.housse.id)) {
@@ -850,23 +879,35 @@
       `;
     });
 
+    // Add validation hint when housse required but not selected
+    if (housseRequired && !state.housse) {
+      html += '<p class="accessoire-hint" style="color:var(--color-error,#EF4444);font-size:0.85rem;margin:0.5rem 0 0;">Veuillez sélectionner une housse pour continuer</p>';
+    }
+
     container.innerHTML = html;
 
-    // Bind events — clicking an already-active card deselects it
+    // Bind events — housse mandatory: can switch but not deselect
     container.querySelectorAll('.accessoire-card').forEach(card => {
       card.addEventListener('click', () => {
         const id = card.dataset.id;
         if (card.classList.contains('active')) {
+          // If housse is mandatory, don't allow deselection
+          if (housseRequired) return;
           card.classList.remove('active');
           state.housse = null;
         } else {
           container.querySelectorAll('.accessoire-card').forEach(c => c.classList.remove('active'));
           card.classList.add('active');
           state.housse = accessoires.find(a => a.id === id) || null;
+          // Remove validation hint once selected
+          const hint = container.querySelector('.accessoire-hint');
+          if (hint) hint.remove();
         }
         updatePriceDisplay();
       });
     });
+
+    updateCtaButtons();
   }
 
   function escapeHtmlAttr(str) {
@@ -1300,6 +1341,12 @@
 
   // ===== COMMANDER DIRECTEMENT =====
   window.orderDirectly = function() {
+    // Guard: housse obligatoire si disponible
+    var accessoires = getAccessoiresForConfigurateur(state.size);
+    if (accessoires.some(function(a) { return a.categorie === 'housse'; }) && !state.housse) {
+      renderAccessoiresSection();
+      return;
+    }
     // Add current config to cart, then go to checkout
     if (typeof MistralCart !== 'undefined') {
       var config = {
@@ -1324,6 +1371,12 @@
   // ===== PANIER - Ajout configuration sur mesure =====
   window.addConfigToCart = function() {
     if (typeof MistralCart === 'undefined') return;
+    // Guard: housse obligatoire si disponible
+    var accessoires = getAccessoiresForConfigurateur(state.size);
+    if (accessoires.some(function(a) { return a.categorie === 'housse'; }) && !state.housse) {
+      renderAccessoiresSection();
+      return;
+    }
 
     var config = {
       name: (state._rootDisplay || '') + ' ' + (state._scaleData?.name || state.scale || ''),
