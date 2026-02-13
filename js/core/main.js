@@ -147,6 +147,32 @@ function initAfterPartialsLoaded() {
   initHeader();
   initMobileNav();
   initContactModal();
+  initCartIndicator();
+}
+
+/* --------------------------------------------------------------------------
+   Cart Indicator (header badge)
+   -------------------------------------------------------------------------- */
+function initCartIndicator() {
+  function updateBadge() {
+    var cartEl = document.getElementById('nav-cart');
+    var countEl = document.getElementById('nav-cart-count');
+    if (!cartEl || !countEl) return;
+
+    var count = (typeof MistralCart !== 'undefined') ? MistralCart.getItemCount() : 0;
+    if (count > 0) {
+      cartEl.style.display = 'flex';
+      countEl.textContent = count;
+    } else {
+      cartEl.style.display = 'none';
+    }
+  }
+
+  // Initial update
+  updateBadge();
+
+  // Listen for cart changes
+  window.addEventListener('cart-updated', updateBadge);
 }
 
 /* --------------------------------------------------------------------------

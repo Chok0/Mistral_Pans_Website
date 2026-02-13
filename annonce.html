@@ -482,7 +482,7 @@
           <circle cx="12" cy="12" r="10"></circle>
           <polyline points="12 6 12 12 16 14"></polyline>
         </svg>
-        <p>Chargement de l'instrument...</p>
+        <p>Chargement de l'article...</p>
       </div>
     </div>
   </main>
@@ -499,6 +499,8 @@
   var ACCESSOIRES_KEY = 'mistral_accessoires';
 
   var currentInstrument = null;
+  var currentAccessoire = null;
+  var currentItemType = null; // 'instrument' ou 'accessoire'
   var currentGalleryIndex = 0;
 
   // ── Utilitaires ──
@@ -522,55 +524,77 @@
     return params.get('ref') || null;
   }
 
-  // ── Chargement de l'instrument ──
+  function getTypeFromURL() {
+    var params = new URLSearchParams(window.location.search);
+    return params.get('type') || null;
+  }
+
+  // ── Chargement de l'article (instrument OU accessoire) ──
 
   var syncComplete = false;
 
   function loadInstrument() {
     var container = document.getElementById('main-content');
     var id = getIdFromURL();
+    var urlType = getTypeFromURL();
 
     if (!id) {
       showNotFound(container);
       return;
     }
 
+    // Chercher dans les instruments
     var instruments = [];
     if (window.MistralSync && MistralSync.hasKey(INSTRUMENTS_KEY)) {
       instruments = MistralSync.getData(INSTRUMENTS_KEY);
     }
 
-    var instrument = instruments.find(function(i) { return i.id === id; });
+    var instrument = (urlType !== 'accessoire') ? instruments.find(function(i) { return i.id === id; }) : null;
 
-    if (!instrument) {
-      // Avant la fin du sync, afficher un loader plutôt que "non trouvé"
+    // Chercher dans les accessoires si pas trouvé dans les instruments
+    var accessoires = [];
+    if (window.MistralSync && MistralSync.hasKey(ACCESSOIRES_KEY)) {
+      accessoires = MistralSync.getData(ACCESSOIRES_KEY);
+    }
+
+    var accessoire = !instrument ? accessoires.find(function(a) { return a.id === id; }) : null;
+
+    if (!instrument && !accessoire) {
       if (!syncComplete) return;
       showNotFound(container);
       return;
     }
 
-    // Vérifier visibilité (en_ligne pour public, admin voit tout)
     var isAdmin = window.MistralAuth ? window.MistralAuth.isLoggedInSync() : false;
-    if (instrument.statut !== 'en_ligne' && !isAdmin) {
-      showNotFound(container);
-      return;
+
+    if (instrument) {
+      if (instrument.statut !== 'en_ligne' && !isAdmin) {
+        showNotFound(container);
+        return;
+      }
+      currentInstrument = instrument;
+      currentItemType = 'instrument';
+      currentGalleryIndex = 0;
+      updateMeta(instrument);
+      renderInstrument(container, instrument);
+      initGallery(instrument.images || []);
+      initHousse(instrument.taille);
+      initLivraison();
+      initKeyboard();
+      updatePrice();
+    } else if (accessoire) {
+      if (accessoire.statut !== 'en_ligne' && accessoire.statut !== 'actif' && !isAdmin) {
+        showNotFound(container);
+        return;
+      }
+      currentAccessoire = accessoire;
+      currentItemType = 'accessoire';
+      currentGalleryIndex = 0;
+      updateMetaAccessoire(accessoire);
+      renderAccessoire(container, accessoire);
+      initGalleryAccessoire(accessoire);
+      initKeyboard();
     }
-
-    currentInstrument = instrument;
-    currentGalleryIndex = 0;
-
-    // Mettre à jour meta tags
-    updateMeta(instrument);
-
-    // Rendre la page
-    renderInstrument(container, instrument);
-
-    // Initialiser les interactions
-    initGallery(instrument.images || []);
-    initHousse(instrument.taille);
-    initLivraison();
-    initKeyboard();
-    updatePrice();
   }
 
   // ── Meta tags SEO ──
@@ -741,7 +765,8 @@
       '</div>' +
     '</div>';
 
-    var ctaHtml = '<a href="commander.html" class="annonce-cta" id="annonce-order-btn">Commander cet instrument</a>' +
+    var ctaHtml = '<button class="annonce-cta" id="annonce-cart-btn" onclick="addInstrumentToCart()" style="margin-bottom:0.5rem;">Ajouter au panier</button>' +
+      '<a href="commander.html" class="annonce-cta" id="annonce-order-btn" style="background:transparent;color:var(--color-accent);border:2px solid var(--color-accent);">Commander directement</a>' +
       '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
 
     var detailsHtml = '<div class="annonce-details">' +
@@ -973,6 +998,194 @@
     btn.href = 'commander.html?' + params.toString();
   }
 
+  // ── Meta tags accessoire ──
+
+  function updateMetaAccessoire(accessoire) {
+    var displayName = accessoire.nom || 'Accessoire';
+    var categorie = accessoire.categorie || '';
+    var title = displayName + ' | Mistral Pans';
+    var description = categorie.charAt(0).toUpperCase() + categorie.slice(1) + ' ' + displayName + ' - Accessoire pour handpan par Mistral Pans.';
+
+    document.title = title;
+
+    var setMeta = function(selector, attr, value) {
+      var el = document.querySelector(selector);
+      if (el) el.setAttribute(attr, value);
+    };
+
+    setMeta('meta[name="description"]', 'content', description);
+    setMeta('link[rel="canonical"]', 'href', 'https://mistralpans.fr/annonce.html?ref=' + accessoire.id + '&type=accessoire');
+    setMeta('meta[property="og:title"]', 'content', title);
+    setMeta('meta[property="og:description"]', 'content', description);
+    setMeta('meta[property="og:url"]', 'content', 'https://mistralpans.fr/annonce.html?ref=' + accessoire.id + '&type=accessoire');
+    setMeta('meta[name="twitter:title"]', 'content', title);
+    setMeta('meta[name="twitter:description"]', 'content', description);
+
+    if (hasValue(accessoire.image)) {
+      setMeta('meta[property="og:image"]', 'content', accessoire.image);
+      setMeta('meta[name="twitter:image"]', 'content', accessoire.image);
+    }
+  }
+
+  // ── Rendu accessoire ──
+
+  function renderAccessoire(container, accessoire) {
+    var displayName = accessoire.nom || 'Accessoire';
+    var hasImage = hasValue(accessoire.image);
+
+    var categorieLabels = { 'housse': 'Housse', 'huile': 'Huile d\'entretien', 'support': 'Support', 'accessoire': 'Accessoire' };
+    var categorie = categorieLabels[accessoire.categorie] || accessoire.categorie || 'Accessoire';
+
+    var galleryHtml = '<div class="annonce-gallery">' +
+      '<div class="annonce-gallery__main" id="annonce-gallery-main">' +
+        (hasImage
+          ? '<img alt="' + escapeHtml(displayName) + '" id="annonce-main-image" src="' + accessoire.image + '">'
+          : '<span class="annonce-gallery__no-image" id="annonce-no-image">' +
+              '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>' +
+                '<circle cx="8.5" cy="8.5" r="1.5"></circle>' +
+                '<polyline points="21 15 16 10 5 21"></polyline>' +
+              '</svg>' +
+              '<span>Aucune photo</span>' +
+            '</span>'
+        ) +
+      '</div>' +
+    '</div>';
+
+    var descHtml = '';
+    if (hasValue(accessoire.description)) {
+      descHtml = '<div class="annonce-description"><p>' + escapeHtml(accessoire.description) + '</p></div>';
+    }
+
+    var compatHtml = '';
+    if (accessoire.tailles_compatibles && accessoire.tailles_compatibles.length > 0) {
+      compatHtml = '<div class="annonce-notes-layout">' +
+        '<span class="annonce-notes-layout__label">Tailles compatibles</span>' +
+        '<span class="annonce-notes-layout__value">' + accessoire.tailles_compatibles.map(function(t) { return t + ' cm'; }).join(', ') + '</span>' +
+      '</div>';
+    }
+
+    var stockHtml = '';
+    if (accessoire.stock !== null && accessoire.stock !== undefined && accessoire.stock >= 0) {
+      var stockLabel = accessoire.stock > 0 ? 'En stock (' + accessoire.stock + ')' : 'Rupture de stock';
+      var stockColor = accessoire.stock > 0 ? 'var(--color-success, #4A7C59)' : 'var(--color-error, #EF4444)';
+      stockHtml = '<div class="annonce-spec">' +
+        '<span class="annonce-spec__label">Disponibilité</span>' +
+        '<span class="annonce-spec__value" style="color: ' + stockColor + ';">' + stockLabel + '</span>' +
+      '</div>';
+    }
+
+    var specsHtml = '<div class="annonce-specs">' +
+      '<div class="annonce-spec"><span class="annonce-spec__label">Catégorie</span><span class="annonce-spec__value">' + escapeHtml(categorie) + '</span></div>' +
+      stockHtml +
+    '</div>';
+
+    var priceHtml = '<div class="annonce-price">' +
+      '<div class="annonce-price__total">' +
+        '<span class="annonce-price__label">Prix</span>' +
+        '<span class="annonce-price__value" id="annonce-price-total">' + formatPrice(accessoire.prix) + '</span>' +
+      '</div>' +
+    '</div>';
+
+    var canBuy = accessoire.stock === null || accessoire.stock === undefined || accessoire.stock > 0;
+    var ctaHtml = canBuy
+      ? '<button class="annonce-cta" id="annonce-add-cart-btn" onclick="addAccessoireToCart()">Ajouter au panier</button>'
+      : '<button class="annonce-cta" disabled style="opacity:0.5;cursor:not-allowed;">Rupture de stock</button>';
+    ctaHtml += '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
+
+    var detailsHtml = '<div class="annonce-details">' +
+      '<h1 class="annonce-details__title">' + escapeHtml(displayName) + '</h1>' +
+      specsHtml + compatHtml + descHtml + priceHtml + ctaHtml +
+    '</div>';
+
+    var navHtml = '<nav class="annonce-nav">' +
+      '<a href="boutique.html#flash-sales" class="annonce-nav__link">' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+          '<line x1="19" y1="12" x2="5" y2="12"></line>' +
+          '<polyline points="12 19 5 12 12 5"></polyline>' +
+        '</svg>' +
+        'Retour à la boutique' +
+      '</a>' +
+    '</nav>';
+
+    var statusBadge = '';
+    if (accessoire.statut !== 'en_ligne' && accessoire.statut !== 'actif') {
+      statusBadge = '<div style="position:fixed;bottom:1rem;left:1rem;background:#f59e0b;color:white;padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.875rem;font-weight:500;">' +
+        'Statut : ' + escapeHtml(accessoire.statut) + ' (non visible publiquement)' +
+      '</div>';
+    }
+
+    container.innerHTML = '<div class="annonce-container">' +
+      '<div class="annonce-layout">' + galleryHtml + detailsHtml + '</div>' +
+      navHtml + statusBadge +
+    '</div>';
+  }
+
+  function initGalleryAccessoire(accessoire) {
+    // Accessoire n'a qu'une seule image, pas de galerie à initialiser
+  }
+
+  // ── Ajouter instrument au panier (global pour onclick) ──
+
+  window.addInstrumentToCart = function() {
+    if (!currentInstrument || typeof MistralCart === 'undefined') return;
+
+    var housseSelect = document.getElementById('annonce-housse-select');
+    var livraisonCheckbox = document.getElementById('annonce-livraison-checkbox');
+
+    var options = {};
+    if (housseSelect && housseSelect.value) {
+      var opt = housseSelect.options[housseSelect.selectedIndex];
+      options.housse = {
+        id: housseSelect.value,
+        nom: opt.textContent.split(' (+')[0],
+        prix: parseFloat(opt.dataset.prix) || 0
+      };
+    }
+    if (livraisonCheckbox && livraisonCheckbox.checked) {
+      options.livraison = true;
+    }
+
+    var id = MistralCart.addInstrument(currentInstrument, options);
+    if (id) {
+      var btn = document.getElementById('annonce-cart-btn');
+      if (btn) {
+        btn.textContent = 'Ajouté au panier !';
+        btn.style.background = 'var(--color-success, #4A7C59)';
+        setTimeout(function() {
+          if (MistralCart.hasItem(currentInstrument.id)) {
+            btn.textContent = 'Déjà dans le panier';
+          } else {
+            btn.textContent = 'Ajouter au panier';
+            btn.style.background = '';
+          }
+        }, 2000);
+      }
+    }
+  };
+
+  // ── Ajouter accessoire au panier (global pour onclick) ──
+
+  window.addAccessoireToCart = function() {
+    if (!currentAccessoire || typeof MistralCart === 'undefined') return;
+    var id = MistralCart.addAccessoire(currentAccessoire);
+    if (id) {
+      var btn = document.getElementById('annonce-add-cart-btn');
+      if (btn) {
+        btn.textContent = 'Ajouté au panier !';
+        btn.style.background = 'var(--color-success, #4A7C59)';
+        setTimeout(function() {
+          if (MistralCart.hasItem(currentAccessoire.id)) {
+            btn.textContent = 'Déjà dans le panier';
+          } else {
+            btn.textContent = 'Ajouter au panier';
+            btn.style.background = '';
+          }
+        }, 2000);
+      }
+    }
+  };
+
   // ── Not found ──
 
   function showNotFound(container) {
@@ -1004,6 +1217,7 @@
 </script>
 
 <!-- Scripts -->
+<script src="js/features/cart.js"></script>
 <script src="js/core/cookie-consent.js"></script>
 <script src="js/core/main.js"></script>
 <script src="js/data/materiaux-data.js" defer></script>

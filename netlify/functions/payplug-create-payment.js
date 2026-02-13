@@ -228,7 +228,23 @@ exports.handler = async (event, context) => {
     const isOney = installments && [3, 4].includes(installments);
 
     // Validation prix côté serveur pour instruments en stock
-    if (metadata?.source === 'stock' && metadata?.instrumentId) {
+    if (metadata?.cartMode && metadata?.items) {
+      // Mode panier multi-items : valider chaque instrument en stock
+      for (const item of metadata.items) {
+        if (item.type === 'instrument' && item.sourceId) {
+          const itemPriceCents = (item.total || item.prix) * 100;
+          const priceCheck = await validateStockPrice(itemPriceCents, item.sourceId, paymentType);
+          if (!priceCheck.valid) {
+            console.error('Prix invalide (cart item):', priceCheck.reason, item.sourceId);
+            return {
+              statusCode: 400,
+              headers,
+              body: JSON.stringify({ error: 'Montant invalide pour l\'instrument ' + (item.nom || item.sourceId) })
+            };
+          }
+        }
+      }
+    } else if (metadata?.source === 'stock' && metadata?.instrumentId) {
       const priceCheck = await validateStockPrice(amount, metadata.instrumentId, paymentType);
       if (!priceCheck.valid) {
         console.error('Prix invalide:', priceCheck.reason);
@@ -321,7 +337,28 @@ exports.handler = async (event, context) => {
         cancel_url: cancelUrl || `${baseUrl}/commander.html?status=cancelled&ref=${reference}`
       },
       notification_url: `${baseUrl}/.netlify/functions/payplug-webhook`,
-      metadata: {
+      metadata: metadata?.cartMode ? {
+        // Mode panier multi-items
+        order_reference: reference,
+        payment_type: paymentType || 'full',
+        source: metadata?.source || 'mixed',
+        cart_mode: true,
+        items: JSON.stringify((metadata?.items || []).map(item => ({
+          type: item.type,
+          sourceId: item.sourceId,
+          nom: sanitize(item.nom, 60),
+          prix: item.prix,
+          quantite: item.quantite || 1,
+          total: item.total,
+          gamme: item.gamme || null,
+          taille: item.taille || null,
+          options: item.options || []
+        }))),
+        product_name: sanitize(metadata?.productName, 100) || null,
+        total_price_cents: metadata?.totalPrice ? metadata.totalPrice * 100 : amount,
+        instrument_id: metadata?.instrumentId || null
+      } : {
+        // Mode legacy single item
         order_reference: reference,
         payment_type: paymentType || 'full',
         source: metadata?.source || 'custom',
@@ -375,8 +412,23 @@ exports.handler = async (event, context) => {
       paymentPayload.shipping.company_name = 'Mistral Pans';
 
       // payment_context requis pour Oney
-      paymentPayload.payment_context = {
-        cart: [{
+      const oneyCartItems = [];
+      if (metadata?.cartMode && metadata?.items) {
+        metadata.items.forEach((item, idx) => {
+          oneyCartItems.push({
+            brand: 'Mistral Pans',
+            expected_delivery_date: getExpectedDeliveryDate(),
+            delivery_label: 'Retrait atelier Mistral Pans',
+            delivery_type: 'storepickup',
+            merchant_item_id: item.sourceId || (reference + '-' + idx),
+            name: sanitize(item.nom, 50) || 'Article',
+            price: Math.round((item.total || item.prix) * 100),
+            quantity: item.quantite || 1,
+            total_amount: Math.round((item.total || item.prix) * 100)
+          });
+        });
+      } else {
+        oneyCartItems.push({
           brand: 'Mistral Pans',
           expected_delivery_date: getExpectedDeliveryDate(),
           delivery_label: 'Retrait atelier Mistral Pans',
@@ -386,8 +438,9 @@ exports.handler = async (event, context) => {
           price: Math.round(amount),
           quantity: 1,
           total_amount: Math.round(amount)
-        }]
-      };
+        });
+      }
+      paymentPayload.payment_context = { cart: oneyCartItems };
     } else {
       paymentPayload.amount = Math.round(amount);
     }
