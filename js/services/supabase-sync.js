@@ -256,14 +256,19 @@
         }
         break;
 
-      case 'accessoires':
-        // Remove 'categorie' field - not in Supabase schema
-        delete transformed.categorie;
-        // Ensure tailles_compatibles is stored as JSON array
+      case 'accessoires': {
+        // Whitelist: only keep columns that exist in Supabase schema
+        const allowedCols = ['id', 'nom', 'prix', 'description', 'image', 'statut',
+                             'visible_configurateur', 'tailles_compatibles', 'created_at', 'updated_at'];
+        Object.keys(transformed).forEach(key => {
+          if (!allowedCols.includes(key)) delete transformed[key];
+        });
+        // Ensure tailles_compatibles is stored as JSON string
         if (Array.isArray(transformed.tailles_compatibles)) {
           transformed.tailles_compatibles = JSON.stringify(transformed.tailles_compatibles);
         }
         break;
+      }
     }
 
     if (!transformed.created_at) {
