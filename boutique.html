@@ -246,8 +246,11 @@
           </div>
         </div>
 
-        <a href="commander.html" class="btn btn-primary" id="btn-order">
-          Commander cet instrument
+        <button class="btn btn-primary" id="btn-add-cart" onclick="addConfigToCart()" style="width:100%;margin-bottom:0.5rem;">
+          Ajouter au panier
+        </button>
+        <a href="commander.html" class="btn btn-primary" id="btn-order" style="background:transparent;color:var(--color-accent);border:2px solid var(--color-accent);">
+          Commander directement
         </a>
 
         <p class="config-note">
@@ -337,6 +340,7 @@
 
   <!-- Scripts -->
 
+  <script src="js/features/cart.js"></script>
   <script src="js/core/cookie-consent.js"></script>
   <script src="js/core/main.js"></script>
   <script src="js/features/handpan-player.js" defer></script>

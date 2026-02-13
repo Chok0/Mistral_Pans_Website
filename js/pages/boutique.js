@@ -1299,6 +1299,40 @@
     window.addEventListener('resize', checkDesktopScroll);
   })();
 
+  // ===== PANIER - Ajout configuration sur mesure =====
+  window.addConfigToCart = function() {
+    if (typeof MistralCart === 'undefined') return;
+
+    var config = {
+      name: (state._rootDisplay || '') + ' ' + (state._scaleData?.name || state.scale || ''),
+      price: state._instrumentPrice || 0,
+      gamme: state.scale,
+      tonalite: state.tonality,
+      notes: state.notes,
+      accordage: state.tuning,
+      taille: state.size,
+      materiau: state.material,
+      housse: state.housse ? { id: state.housse.id, nom: state.housse.nom, prix: state.housse.prix } : null
+    };
+
+    var id = MistralCart.addCustom(config);
+    if (id) {
+      var btn = document.getElementById('btn-add-cart');
+      if (btn) {
+        btn.textContent = 'Ajouté au panier !';
+        btn.style.background = 'var(--color-success, #4A7C59)';
+        btn.style.color = 'white';
+        btn.style.borderColor = 'var(--color-success, #4A7C59)';
+        setTimeout(function() {
+          btn.textContent = 'Ajouter au panier';
+          btn.style.background = '';
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }, 2500);
+      }
+    }
+  };
+
   // ===== INIT =====
   document.addEventListener('DOMContentLoaded', () => {
     renderScaleChips();      // Render scale chips from MistralGammes
