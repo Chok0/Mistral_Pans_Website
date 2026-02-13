@@ -1415,7 +1415,7 @@ body[data-page="boutique"] {
 }
 
 /* ===== Flash Card Clickable Overlay ===== */
-.flash-card::after {
+.flash-card > a::after {
   content: 'Voir le détail';
   position: absolute;
   bottom: 0;
@@ -1430,9 +1430,14 @@ body[data-page="boutique"] {
   opacity: 0;
   transition: opacity 0.2s ease;
   pointer-events: none;
+  z-index: 1;
 }
 
-.flash-card:hover::after {
+.flash-card > a {
+  position: relative;
+}
+
+.flash-card:hover > a::after {
   opacity: 1;
 }
 
