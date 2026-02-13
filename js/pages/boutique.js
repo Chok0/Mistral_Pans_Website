@@ -800,7 +800,7 @@
       ? MistralSync.getData('mistral_accessoires')
       : [];
     return accessoires.filter(a =>
-      a.statut === 'actif' &&
+      a.statut === 'en_ligne' &&
       a.visible_configurateur === true &&
       a.tailles_compatibles &&
       a.tailles_compatibles.includes(size)
