@@ -4,7 +4,7 @@
    
    Utilise les mêmes sources de données que l'admin:
    - Instruments: mistral_gestion_instruments (statut: 'en_ligne')
-   - Accessoires: mistral_accessoires (statut: 'actif')
+   - Accessoires: mistral_accessoires (statut: 'en_ligne')
    ========================================================================== */
 
 (function() {
@@ -60,7 +60,7 @@
     const accessoires = (window.MistralSync && MistralSync.hasKey(ACCESSOIRES_KEY))
       ? MistralSync.getData(ACCESSOIRES_KEY)
       : [];
-    return accessoires.filter(a => a.statut === 'actif');
+    return accessoires.filter(a => a.statut === 'en_ligne');
   }
 
   function updateInstrumentStatut(id, statut) {
