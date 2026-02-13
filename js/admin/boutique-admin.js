@@ -273,7 +273,7 @@
     });
     
     if (confirmed) {
-      if (updateAccessoireStatut(id, 'masque')) {
+      if (updateAccessoireStatut(id, 'disponible')) {
         renderFlashCards();
         Toast.success('Accessoire masqué');
       }

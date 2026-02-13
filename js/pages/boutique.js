@@ -1328,6 +1328,18 @@
       renderSizeCards();
       updateDisplay();
     });
+
+    // Re-render accessoires when Supabase data arrives
+    window.addEventListener('mistral-sync-complete', () => {
+      renderAccessoiresSection();
+      updatePriceDisplay();
+    });
+    window.addEventListener('mistral-data-change', (e) => {
+      if (e.detail?.key === 'mistral_accessoires') {
+        renderAccessoiresSection();
+        updatePriceDisplay();
+      }
+    });
   });
 
 })(window);
