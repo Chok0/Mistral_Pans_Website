@@ -374,11 +374,14 @@
   function saveAccessoire() {
     const id = $('#accessoire-id')?.value;
 
-    // Collect compatible sizes
+    // Collect compatible sizes dynamically from checkboxes
     const taillesCompatibles = [];
-    if ($('#accessoire-taille-45')?.checked) taillesCompatibles.push('45');
-    if ($('#accessoire-taille-50')?.checked) taillesCompatibles.push('50');
-    if ($('#accessoire-taille-53')?.checked) taillesCompatibles.push('53');
+    const container = $('#accessoire-tailles-container');
+    if (container) {
+      container.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+        taillesCompatibles.push(cb.dataset.taille);
+      });
+    }
 
     const data = {
       nom: $('#accessoire-nom')?.value.trim(),
@@ -448,17 +451,35 @@
     $('#accessoire-visible-config').checked = visibleConfig;
     toggleAccessoireConfigOptions(visibleConfig);
 
-    // Load compatible sizes
-    const tailles = accessoire.tailles_compatibles || [];
-    $('#accessoire-taille-45').checked = tailles.includes('45');
-    $('#accessoire-taille-50').checked = tailles.includes('50');
-    $('#accessoire-taille-53').checked = tailles.includes('53');
+    // Load compatible sizes dynamically
+    renderAccessoireTailles(accessoire.tailles_compatibles || []);
 
     AdminUI.showModal('accessoire');
 
     // Initialiser l'upload et charger l'image existante
     initAccessoireUpload();
     loadAccessoireImageForEdit(accessoire);
+  }
+
+  /**
+   * Render tailles checkboxes dynamically from MistralTailles
+   * @param {Array} selected - Array of taille codes to pre-check (e.g. ['45', '53'])
+   */
+  function renderAccessoireTailles(selected = []) {
+    const container = $('#accessoire-tailles-container');
+    if (!container) return;
+
+    const tailles = typeof MistralTailles !== 'undefined'
+      ? MistralTailles.getDisponibles()
+      : [{ code: '45', label: '45 cm' }, { code: '50', label: '50 cm' }, { code: '53', label: '53 cm' }];
+
+    container.innerHTML = tailles.map(t => {
+      const checked = selected.includes(t.code) ? ' checked' : '';
+      return `<label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+        <input type="checkbox" data-taille="${t.code}"${checked} style="width: 16px; height: 16px;">
+        <span>${t.label || t.code + ' cm'}</span>
+      </label>`;
+    }).join('');
   }
 
   function toggleAccessoireConfigOptions(show) {
@@ -519,6 +540,7 @@
     initAccessoireUpload,
     initAccessoireConfigToggle,
     toggleAccessoireConfigOptions,
+    renderAccessoireTailles,
     saveAccessoire,
     editAccessoire,
     toggleAccessoire,

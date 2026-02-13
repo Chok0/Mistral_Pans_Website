@@ -116,12 +116,11 @@
           if (AdminUI.initAccessoireUpload) AdminUI.initAccessoireUpload();
           // Initialiser le toggle des options configurateur
           if (AdminUI.initAccessoireConfigToggle) AdminUI.initAccessoireConfigToggle();
+          // Render dynamic tailles checkboxes and reset
+          if (AdminUI.renderAccessoireTailles) AdminUI.renderAccessoireTailles();
           // Reset config options
           $('#accessoire-visible-config').checked = false;
           if (AdminUI.toggleAccessoireConfigOptions) AdminUI.toggleAccessoireConfigOptions(false);
-          $('#accessoire-taille-45').checked = false;
-          $('#accessoire-taille-50').checked = false;
-          $('#accessoire-taille-53').checked = false;
         }
         
         if (name === 'media') {
