@@ -766,7 +766,7 @@
     '</div>';
 
     var ctaHtml = '<button class="annonce-cta" id="annonce-cart-btn" onclick="addInstrumentToCart()" style="margin-bottom:0.5rem;">Ajouter au panier</button>' +
-      '<a href="commander.html" class="annonce-cta" id="annonce-order-btn" style="background:transparent;color:var(--color-accent);border:2px solid var(--color-accent);">Commander directement</a>' +
+      '<button class="annonce-cta" id="annonce-order-btn" onclick="orderInstrumentDirectly()" style="background:transparent;color:var(--color-accent);border:2px solid var(--color-accent);cursor:pointer;">Commander directement</button>' +
       '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
 
     var detailsHtml = '<div class="annonce-details">' +
@@ -966,37 +966,34 @@
     updateOrderUrl(totalPrice, housseSelect ? housseSelect.value : null, housseName, houssePrice, livraisonCheckbox ? livraisonCheckbox.checked : false);
   }
 
-  function updateOrderUrl(totalPrice, housseId, housseName, houssePrice, livraison) {
-    if (!currentInstrument) return;
-    var btn = document.getElementById('annonce-order-btn');
-    if (!btn) return;
-
-    var params = new URLSearchParams({
-      type: 'stock',
-      instrument_id: currentInstrument.id,
-      name: currentInstrument.nom || ((currentInstrument.tonalite || '') + ' ' + (currentInstrument.gamme || '')).trim(),
-      gamme: currentInstrument.gamme || '',
-      tonalite: currentInstrument.tonalite || '',
-      notes: currentInstrument.nombre_notes || '',
-      accordage: currentInstrument.accordage || '',
-      taille: currentInstrument.taille || '',
-      materiau: currentInstrument.materiau || '',
-      price: totalPrice,
-      instrument_price: currentInstrument.prix_vente || 0
-    });
-
-    if (housseId) {
-      params.set('housse_id', housseId);
-      if (housseName) params.set('housse_nom', housseName);
-      params.set('housse_prix', houssePrice);
-    }
-
-    if (livraison) {
-      params.set('livraison', '1');
-    }
-
-    btn.href = 'commander.html?' + params.toString();
+  function updateOrderUrl() {
+    // No-op: order URL is now handled by orderInstrumentDirectly()
   }
+
+  // ── Commander directement (global pour onclick) ──
+
+  window.orderInstrumentDirectly = function() {
+    if (!currentInstrument || typeof MistralCart === 'undefined') return;
+
+    var housseSelect = document.getElementById('annonce-housse-select');
+    var livraisonCheckbox = document.getElementById('annonce-livraison-checkbox');
+
+    var options = {};
+    if (housseSelect && housseSelect.value) {
+      var opt = housseSelect.options[housseSelect.selectedIndex];
+      options.housse = {
+        id: housseSelect.value,
+        nom: opt.textContent.split(' (+')[0],
+        prix: parseFloat(opt.dataset.prix) || 0
+      };
+    }
+    if (livraisonCheckbox && livraisonCheckbox.checked) {
+      options.livraison = true;
+    }
+
+    MistralCart.addInstrument(currentInstrument, options);
+    window.location.href = 'commander.html?from=cart';
+  };
 
   // ── Meta tags accessoire ──
 

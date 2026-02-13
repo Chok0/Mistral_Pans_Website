@@ -1414,31 +1414,23 @@ body[data-page="boutique"] {
   }
 }
 
-/* ===== Flash Card Clickable Overlay ===== */
-.flash-card > a::after {
-  content: 'Voir le détail';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 0.75rem;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-  color: white;
+/* ===== Flash Card "Voir le détail" label (below cart button) ===== */
+.flash-card::after {
+  content: 'Voir le détail →';
+  display: block;
+  text-align: center;
   font-size: 0.8125rem;
   font-weight: 500;
-  text-align: center;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-  z-index: 1;
+  color: var(--color-accent, #0d7377);
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 0.75rem;
+  transition: max-height 0.2s ease, padding 0.2s ease;
 }
 
-.flash-card > a {
-  position: relative;
-}
-
-.flash-card:hover > a::after {
-  opacity: 1;
+.flash-card:hover::after {
+  max-height: 2rem;
+  padding: 0.25rem 0.75rem 0.5rem;
 }
 
 .flash-card__image {
