@@ -652,9 +652,12 @@
     }
 
     if (hasValue(instrument.prix_vente)) {
+      var ldPrice = instrument.promo_percent > 0
+        ? Math.floor(instrument.prix_vente * (1 - instrument.promo_percent / 100) / 5) * 5
+        : instrument.prix_vente;
       ld.offers = {
         '@type': 'Offer',
-        'price': instrument.prix_vente,
+        'price': ldPrice,
         'priceCurrency': 'EUR',
         'availability': 'https://schema.org/InStock',
         'seller': { '@type': 'Organization', 'name': 'Mistral Pans' }
@@ -760,8 +763,8 @@
       '<button class="annonce-cta" id="annonce-order-btn" onclick="orderInstrumentDirectly()" style="background:transparent;color:var(--color-accent);border:2px solid var(--color-accent);cursor:pointer;">Commander directement</button>' +
       '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
 
-    var promoBadgeHtml = hasValue(instrument.promo_label)
-      ? ' <span style="display:inline-block;font-size:0.8125rem;font-weight:600;color:white;background:var(--color-accent,#0D7377);padding:0.375rem 0.75rem;border-radius:6px;vertical-align:middle;white-space:nowrap;">' + escapeHtml(instrument.promo_label) + '</span>'
+    var promoBadgeHtml = instrument.promo_percent > 0
+      ? ' <span style="display:inline-block;font-size:0.8125rem;font-weight:600;color:white;background:var(--color-accent,#0D7377);padding:0.375rem 0.75rem;border-radius:6px;vertical-align:middle;white-space:nowrap;">-' + instrument.promo_percent + '%</span>'
       : '';
 
     var detailsHtml = '<div class="annonce-details">' +
@@ -919,7 +922,12 @@
   function updatePrice() {
     if (!currentInstrument) return;
 
-    var instrumentPrice = currentInstrument.prix_vente || 0;
+    var originalPrice = currentInstrument.prix_vente || 0;
+    var promoPercent = currentInstrument.promo_percent || 0;
+    var instrumentPrice = promoPercent > 0
+      ? Math.floor(originalPrice * (1 - promoPercent / 100) / 5) * 5
+      : originalPrice;
+
     var housseSelect = document.getElementById('annonce-housse-select');
 
     var houssePrice = 0;
@@ -933,7 +941,13 @@
     var totalPrice = instrumentPrice + houssePrice;
 
     var priceInstrument = document.getElementById('annonce-price-instrument');
-    if (priceInstrument) priceInstrument.textContent = formatPrice(instrumentPrice);
+    if (priceInstrument) {
+      if (promoPercent > 0) {
+        priceInstrument.innerHTML = '<span style="text-decoration:line-through;opacity:0.5;font-size:0.8em;">' + formatPrice(originalPrice) + '</span> ' + formatPrice(instrumentPrice);
+      } else {
+        priceInstrument.textContent = formatPrice(instrumentPrice);
+      }
+    }
 
     var housseLine = document.getElementById('annonce-price-housse-line');
     var housseEl = document.getElementById('annonce-price-housse');
@@ -1062,10 +1076,20 @@
       stockHtml +
     '</div>';
 
+    var accOriginalPrice = accessoire.prix || 0;
+    var accPromoPercent = accessoire.promo_percent || 0;
+    var accFinalPrice = accPromoPercent > 0
+      ? Math.floor(accOriginalPrice * (1 - accPromoPercent / 100) / 5) * 5
+      : accOriginalPrice;
+
     var priceHtml = '<div class="annonce-price">' +
       '<div class="annonce-price__total">' +
         '<span class="annonce-price__label">Prix</span>' +
-        '<span class="annonce-price__value" id="annonce-price-total">' + formatPrice(accessoire.prix) + '</span>' +
+        '<span class="annonce-price__value" id="annonce-price-total">' +
+          (accPromoPercent > 0
+            ? '<span style="text-decoration:line-through;opacity:0.5;font-size:0.65em;">' + formatPrice(accOriginalPrice) + '</span> ' + formatPrice(accFinalPrice)
+            : formatPrice(accOriginalPrice)) +
+        '</span>' +
       '</div>' +
     '</div>';
 
@@ -1075,8 +1099,8 @@
       : '<button class="annonce-cta" disabled style="opacity:0.5;cursor:not-allowed;">Rupture de stock</button>';
     ctaHtml += '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
 
-    var accPromoBadgeHtml = hasValue(accessoire.promo_label)
-      ? ' <span style="display:inline-block;font-size:0.8125rem;font-weight:600;color:white;background:var(--color-accent,#0D7377);padding:0.375rem 0.75rem;border-radius:6px;vertical-align:middle;white-space:nowrap;">' + escapeHtml(accessoire.promo_label) + '</span>'
+    var accPromoBadgeHtml = accessoire.promo_percent > 0
+      ? ' <span style="display:inline-block;font-size:0.8125rem;font-weight:600;color:white;background:var(--color-accent,#0D7377);padding:0.375rem 0.75rem;border-radius:6px;vertical-align:middle;white-space:nowrap;">-' + accessoire.promo_percent + '%</span>'
       : '';
 
     var detailsHtml = '<div class="annonce-details">' +

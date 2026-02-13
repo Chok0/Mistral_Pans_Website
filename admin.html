@@ -587,9 +587,9 @@
               <input type="number" class="admin-form__input" id="instrument-prix" min="0" step="5">
             </div>
             <div class="admin-form__group">
-              <label class="admin-form__label">Promo (badge)</label>
-              <input type="text" class="admin-form__input" id="instrument-promo" placeholder="ex: -20%, Promo, Nouveau..." maxlength="20">
-              <small style="color: var(--admin-text-muted); font-size: 0.75rem;">Laisser vide = pas de badge promo</small>
+              <label class="admin-form__label">Promo (%)</label>
+              <input type="number" class="admin-form__input" id="instrument-promo" min="0" max="99" step="1" placeholder="ex: 20">
+              <small style="color: var(--admin-text-muted); font-size: 0.75rem;">Réduction en %. Laisser vide ou 0 = pas de promo</small>
             </div>
           </div>
 
@@ -731,9 +731,9 @@
 
           <div class="form-row">
             <div class="admin-form__group">
-              <label class="admin-form__label">Promo (badge)</label>
-              <input type="text" class="admin-form__input" id="accessoire-promo" placeholder="ex: -20%, Promo, Nouveau..." maxlength="20">
-              <small style="color: var(--admin-text-muted); font-size: 0.75rem;">Laisser vide = pas de badge promo</small>
+              <label class="admin-form__label">Promo (%)</label>
+              <input type="number" class="admin-form__input" id="accessoire-promo" min="0" max="99" step="1" placeholder="ex: 20">
+              <small style="color: var(--admin-text-muted); font-size: 0.75rem;">Réduction en %. Laisser vide ou 0 = pas de promo</small>
             </div>
             <div class="admin-form__group"></div>
           </div>
