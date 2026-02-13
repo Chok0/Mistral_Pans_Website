@@ -766,7 +766,7 @@
     '</div>';
 
     var ctaHtml = '<button class="annonce-cta" id="annonce-cart-btn" onclick="addInstrumentToCart()" style="margin-bottom:0.5rem;">Ajouter au panier</button>' +
-      '<a href="commander.html" class="annonce-cta" id="annonce-order-btn" style="background:transparent;color:var(--color-accent);border:2px solid var(--color-accent);">Commander directement</a>' +
+      '<button class="annonce-cta" id="annonce-order-btn" onclick="orderInstrumentDirectly()" style="background:transparent;color:var(--color-accent);border:2px solid var(--color-accent);cursor:pointer;">Commander directement</button>' +
       '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
 
     var detailsHtml = '<div class="annonce-details">' +
@@ -966,37 +966,34 @@
     updateOrderUrl(totalPrice, housseSelect ? housseSelect.value : null, housseName, houssePrice, livraisonCheckbox ? livraisonCheckbox.checked : false);
   }
 
-  function updateOrderUrl(totalPrice, housseId, housseName, houssePrice, livraison) {
-    if (!currentInstrument) return;
-    var btn = document.getElementById('annonce-order-btn');
-    if (!btn) return;
-
-    var params = new URLSearchParams({
-      type: 'stock',
-      instrument_id: currentInstrument.id,
-      name: currentInstrument.nom || ((currentInstrument.tonalite || '') + ' ' + (currentInstrument.gamme || '')).trim(),
-      gamme: currentInstrument.gamme || '',
-      tonalite: currentInstrument.tonalite || '',
-      notes: currentInstrument.nombre_notes || '',
-      accordage: currentInstrument.accordage || '',
-      taille: currentInstrument.taille || '',
-      materiau: currentInstrument.materiau || '',
-      price: totalPrice,
-      instrument_price: currentInstrument.prix_vente || 0
-    });
-
-    if (housseId) {
-      params.set('housse_id', housseId);
-      if (housseName) params.set('housse_nom', housseName);
-      params.set('housse_prix', houssePrice);
-    }
-
-    if (livraison) {
-      params.set('livraison', '1');
-    }
-
-    btn.href = 'commander.html?' + params.toString();
+  function updateOrderUrl() {
+    // No-op: order URL is now handled by orderInstrumentDirectly()
   }
+
+  // ── Commander directement (global pour onclick) ──
+
+  window.orderInstrumentDirectly = function() {
+    if (!currentInstrument || typeof MistralCart === 'undefined') return;
+
+    var housseSelect = document.getElementById('annonce-housse-select');
+    var livraisonCheckbox = document.getElementById('annonce-livraison-checkbox');
+
+    var options = {};
+    if (housseSelect && housseSelect.value) {
+      var opt = housseSelect.options[housseSelect.selectedIndex];
+      options.housse = {
+        id: housseSelect.value,
+        nom: opt.textContent.split(' (+')[0],
+        prix: parseFloat(opt.dataset.prix) || 0
+      };
+    }
+    if (livraisonCheckbox && livraisonCheckbox.checked) {
+      options.livraison = true;
+    }
+
+    MistralCart.addInstrument(currentInstrument, options);
+    window.location.href = 'commander.html?from=cart';
+  };
 
   // ── Meta tags accessoire ──
 
@@ -1066,13 +1063,24 @@
     }
 
     var stockHtml = '';
-    if (accessoire.stock !== null && accessoire.stock !== undefined && accessoire.stock >= 0) {
-      var stockLabel = accessoire.stock > 0 ? 'En stock (' + accessoire.stock + ')' : 'Rupture de stock';
-      var stockColor = accessoire.stock > 0 ? 'var(--color-success, #4A7C59)' : 'var(--color-error, #EF4444)';
-      stockHtml = '<div class="annonce-spec">' +
-        '<span class="annonce-spec__label">Disponibilité</span>' +
-        '<span class="annonce-spec__value" style="color: ' + stockColor + ';">' + stockLabel + '</span>' +
-      '</div>';
+    var stock = accessoire.stock;
+    if (stock !== null && stock !== undefined) {
+      if (stock === -1) {
+        stockHtml = '<div class="annonce-spec">' +
+          '<span class="annonce-spec__label">Disponibilité</span>' +
+          '<span class="annonce-spec__value" style="color: var(--color-success, #4A7C59);">En stock</span>' +
+        '</div>';
+      } else if (stock > 0) {
+        stockHtml = '<div class="annonce-spec">' +
+          '<span class="annonce-spec__label">Disponibilité</span>' +
+          '<span class="annonce-spec__value" style="color: var(--color-success, #4A7C59);">En stock (' + stock + ')</span>' +
+        '</div>';
+      } else if (stock === 0) {
+        stockHtml = '<div class="annonce-spec">' +
+          '<span class="annonce-spec__label">Disponibilité</span>' +
+          '<span class="annonce-spec__value" style="color: var(--color-error, #EF4444);">Rupture de stock</span>' +
+        '</div>';
+      }
     }
 
     var specsHtml = '<div class="annonce-specs">' +
@@ -1087,7 +1095,7 @@
       '</div>' +
     '</div>';
 
-    var canBuy = accessoire.stock === null || accessoire.stock === undefined || accessoire.stock > 0;
+    var canBuy = stock === null || stock === undefined || stock === -1 || stock > 0;
     var ctaHtml = canBuy
       ? '<button class="annonce-cta" id="annonce-add-cart-btn" onclick="addAccessoireToCart()">Ajouter au panier</button>'
       : '<button class="annonce-cta" disabled style="opacity:0.5;cursor:not-allowed;">Rupture de stock</button>';

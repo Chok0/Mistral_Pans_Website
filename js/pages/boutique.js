@@ -654,9 +654,8 @@
       orderParams.set('housse_prix', state.housse.prix);
     }
 
-    const orderUrl = `commander.html?${orderParams.toString()}`;
-    document.getElementById('btn-order').href = orderUrl;
-    document.getElementById('btn-order').dataset.originalHref = orderUrl;
+    // Store order params for legacy fallback
+    state._orderParams = orderParams;
   }
 
   // ===== RENDER MATERIAL CHIPS =====
@@ -1298,6 +1297,29 @@
     });
     window.addEventListener('resize', checkDesktopScroll);
   })();
+
+  // ===== COMMANDER DIRECTEMENT =====
+  window.orderDirectly = function() {
+    // Add current config to cart, then go to checkout
+    if (typeof MistralCart !== 'undefined') {
+      var config = {
+        name: (state._rootDisplay || '') + ' ' + (state._scaleData?.name || state.scale || ''),
+        price: state._instrumentPrice || 0,
+        gamme: state.scale,
+        tonalite: state.tonality,
+        notes: state.notes,
+        accordage: state.tuning,
+        taille: state.size,
+        materiau: state.material,
+        housse: state.housse ? { id: state.housse.id, nom: state.housse.nom, prix: state.housse.prix } : null
+      };
+      MistralCart.addCustom(config);
+      window.location.href = 'commander.html?from=cart';
+    } else {
+      // Fallback: legacy URL params
+      window.location.href = 'commander.html?' + (state._orderParams || '').toString();
+    }
+  };
 
   // ===== PANIER - Ajout configuration sur mesure =====
   window.addConfigToCart = function() {
