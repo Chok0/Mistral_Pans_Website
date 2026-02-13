@@ -211,7 +211,7 @@
       ? '<p class="flash-card__desc" style="font-size:0.875rem;color:var(--color-text-muted);margin:0.5rem 0;line-height:1.4;">' + utils.escapeHtml(accessoire.description.substring(0, 80)) + (accessoire.description.length > 80 ? '...' : '') + '</p>'
       : '';
     
-    return '<div class="flash-card flash-card--accessoire" data-type="accessoire" data-id="' + accessoire.id + '">' +
+    return '<a class="flash-card flash-card--accessoire" data-type="accessoire" data-id="' + accessoire.id + '" href="javascript:void(0)" onclick="BoutiqueAdmin.contacterPourAccessoire(\'' + accessoire.id + '\')" style="text-decoration:none;color:inherit;cursor:pointer;">' +
       '<div class="flash-card__image flash-card__image--small" style="position:relative; height: 150px;">' + imageContent + '</div>' +
       '<div class="flash-card__content">' +
         '<span class="flash-card__category" style="font-size:0.75rem;color:var(--color-accent);text-transform:uppercase;letter-spacing:0.05em;">' + categorie + '</span>' +
@@ -220,9 +220,9 @@
         '<div class="flash-card__footer" style="margin-top:auto;">' +
           '<span class="flash-card__price">' + formatPrice(accessoire.prix) + '</span>' +
           stockHtml +
-          '<button class="flash-card__cta" onclick="BoutiqueAdmin.contacterPourAccessoire(\'' + accessoire.id + '\')">Commander</button>' +
+          '<span class="flash-card__cta-hint" style="font-size:0.75rem;color:var(--color-text-muted);">Cliquez pour commander</span>' +
         '</div>' +
-      '</div></div>';
+      '</div></a>';
   }
 
   function updateStockCounters(count) {
