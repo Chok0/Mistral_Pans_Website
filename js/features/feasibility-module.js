@@ -294,51 +294,47 @@ const FeasibilityModule = (function() {
   // ===========================================================================
   
   function updateOrderButton(result, size, buttonSelector, configName) {
-    const orderBtn = document.querySelector(buttonSelector);
-    if (!orderBtn) return;
-    
-    // Sauvegarder le href original
-    if (!orderBtn.dataset.originalHref) {
-      orderBtn.dataset.originalHref = orderBtn.href || '';
-    }
-    
+    var orderBtn = document.querySelector(buttonSelector);
+    var cartBtn = document.querySelector('#btn-add-cart');
+
     if (result.status === 'impossible') {
-      // Config impossible: bouton grisé
-      orderBtn.textContent = 'Configuration non réalisable';
-      orderBtn.classList.add('btn--disabled');
-      orderBtn.removeAttribute('href');
-      orderBtn.onclick = (e) => {
-        e.preventDefault();
-        if (result.impossibleNotes?.length > 0) {
-          const notesList = result.impossibleNotes.map(n => `${n.note}${n.octave}`).join(', ');
-          showNotice(`Configuration non réalisable : la note ${notesList} est incompatible avec une taille de ${size}cm. Essayez une autre taille ou une tonalité différente.`);
-        } else {
-          showNotice('Configuration non réalisable. Essayez une tonalité plus aiguë ou réduisez le nombre de notes.');
-        }
-      };
+      // Config impossible: boutons grisés
+      if (orderBtn) {
+        orderBtn.textContent = 'Configuration non réalisable';
+        orderBtn.classList.add('btn--disabled');
+        orderBtn.dataset.blocked = 'true';
+      }
+      if (cartBtn) {
+        cartBtn.textContent = 'Configuration non réalisable';
+        cartBtn.classList.add('btn--disabled');
+        cartBtn.dataset.blocked = 'true';
+      }
     } else if (result.status === 'difficult') {
       // Config difficile: bouton "Vérifier la faisabilité" qui ouvre la modale
-      orderBtn.textContent = 'Vérifier la faisabilité';
-      orderBtn.classList.remove('btn--disabled');
-      orderBtn.removeAttribute('href');
-      orderBtn.onclick = (e) => {
-        e.preventDefault();
-        // Pré-remplir le message de contact
-        const messageField = document.getElementById('contact-message');
-        if (messageField) {
-          messageField.value = `Bonjour,\n\nJe serais intéressé par un ${configName || 'handpan'} (${size}cm).\n\nPouvez-vous me renseigner sur la faisabilité de cette configuration ?\n\nMerci !`;
-        }
-        // Ouvrir la modale de contact
-        if (typeof openContactModal === 'function') {
-          openContactModal();
-        }
-      };
+      if (orderBtn) {
+        orderBtn.textContent = 'Vérifier la faisabilité';
+        orderBtn.classList.remove('btn--disabled');
+        orderBtn.dataset.blocked = 'contact';
+        orderBtn.dataset.contactMessage = 'Bonjour,\n\nJe serais intéressé par un ' + (configName || 'handpan') + ' (' + size + 'cm).\n\nPouvez-vous me renseigner sur la faisabilité de cette configuration ?\n\nMerci !';
+      }
+      if (cartBtn) {
+        cartBtn.textContent = 'Vérifier la faisabilité';
+        cartBtn.classList.remove('btn--disabled');
+        cartBtn.dataset.blocked = 'contact';
+        cartBtn.dataset.contactMessage = orderBtn ? orderBtn.dataset.contactMessage : '';
+      }
     } else {
       // Config OK ou warning: comportement normal
-      orderBtn.textContent = 'Commander cet instrument';
-      orderBtn.classList.remove('btn--disabled');
-      orderBtn.href = orderBtn.dataset.originalHref;
-      orderBtn.onclick = null;
+      if (orderBtn) {
+        orderBtn.textContent = 'Commander directement';
+        orderBtn.classList.remove('btn--disabled');
+        delete orderBtn.dataset.blocked;
+      }
+      if (cartBtn) {
+        cartBtn.textContent = 'Ajouter au panier';
+        cartBtn.classList.remove('btn--disabled');
+        delete cartBtn.dataset.blocked;
+      }
     }
   }
   
