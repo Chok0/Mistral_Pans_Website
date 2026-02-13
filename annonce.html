@@ -760,8 +760,12 @@
       '<button class="annonce-cta" id="annonce-order-btn" onclick="orderInstrumentDirectly()" style="background:transparent;color:var(--color-accent);border:2px solid var(--color-accent);cursor:pointer;">Commander directement</button>' +
       '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
 
+    var promoBadgeHtml = hasValue(instrument.promo_label)
+      ? ' <span style="display:inline-block;font-size:0.8125rem;font-weight:600;color:white;background:var(--color-accent,#0D7377);padding:0.375rem 0.75rem;border-radius:6px;vertical-align:middle;white-space:nowrap;">' + escapeHtml(instrument.promo_label) + '</span>'
+      : '';
+
     var detailsHtml = '<div class="annonce-details">' +
-      '<h1 class="annonce-details__title">' + escapeHtml(displayName) + '</h1>' +
+      '<h1 class="annonce-details__title">' + escapeHtml(displayName) + promoBadgeHtml + '</h1>' +
       specsHtml + notesLayoutHtml + descHtml + videoHtml + handpanerHtml +
       optionsHtml + priceHtml + ctaHtml +
     '</div>';
@@ -1071,8 +1075,12 @@
       : '<button class="annonce-cta" disabled style="opacity:0.5;cursor:not-allowed;">Rupture de stock</button>';
     ctaHtml += '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
 
+    var accPromoBadgeHtml = hasValue(accessoire.promo_label)
+      ? ' <span style="display:inline-block;font-size:0.8125rem;font-weight:600;color:white;background:var(--color-accent,#0D7377);padding:0.375rem 0.75rem;border-radius:6px;vertical-align:middle;white-space:nowrap;">' + escapeHtml(accessoire.promo_label) + '</span>'
+      : '';
+
     var detailsHtml = '<div class="annonce-details">' +
-      '<h1 class="annonce-details__title">' + escapeHtml(displayName) + '</h1>' +
+      '<h1 class="annonce-details__title">' + escapeHtml(displayName) + accPromoBadgeHtml + '</h1>' +
       specsHtml + compatHtml + descHtml + priceHtml + ctaHtml +
     '</div>';
 

@@ -772,6 +772,20 @@ body[data-page="boutique"] {
   border-radius: var(--radius-full);
 }
 
+.flash-card__promo {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: var(--color-accent);
+  color: white;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  z-index: 1;
+}
+
 .flash-card__content {
   padding: 1.5rem;
 }
