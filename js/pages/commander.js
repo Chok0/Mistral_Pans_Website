@@ -32,6 +32,10 @@
     livraison: false
   };
 
+  // Mode panier (multi-items)
+  let cartMode = false;
+  let cartData = null;  // { items[], totalPrice, itemCount, source }
+
   // État du paiement intégré
   let integratedFormReady = false;
   let pendingPaymentId = null;
@@ -74,7 +78,7 @@
   // ============================================================================
 
   document.addEventListener('DOMContentLoaded', function() {
-    parseUrlParams();
+    initCart();
     initForms();
     initOneySelector();
     initIntegratedPaymentForm();
@@ -83,7 +87,43 @@
   });
 
   /**
-   * Parse les paramètres URL (configurateur + stock modal)
+   * Détecte le mode panier ou URL params
+   */
+  function initCart() {
+    var params = new URLSearchParams(window.location.search);
+
+    // Mode panier : arrivée depuis le bouton panier header ou from=cart
+    if (params.get('from') === 'cart' && typeof MistralCart !== 'undefined' && !MistralCart.isEmpty()) {
+      cartMode = true;
+      cartData = MistralCart.getCheckoutData();
+
+      // Synchroniser orderData avec le panier pour la compatibilité
+      orderData.price = cartData.totalPrice;
+      orderData.source = cartData.source;
+      orderData.productName = cartData.items.map(function(i) { return i.nom; }).join(', ');
+
+      // Si un seul instrument, remplir les détails
+      if (cartData.items.length === 1) {
+        var single = cartData.items[0];
+        orderData.instrumentId = single.sourceId;
+        orderData.instrumentPrice = single.prix;
+        orderData.gamme = single.details.gamme || '';
+        orderData.taille = single.details.taille || '';
+        orderData.tonalite = single.details.tonalite || '';
+        orderData.materiau = single.details.materiau || '';
+        orderData.accordage = single.details.accordage || '';
+      }
+
+      renderCartItems();
+      updateOrderDisplay();
+    } else {
+      // Mode legacy URL params
+      parseUrlParams();
+    }
+  }
+
+  /**
+   * Parse les paramètres URL (configurateur + stock modal) - mode legacy
    */
   function parseUrlParams() {
     const params = new URLSearchParams(window.location.search);
@@ -129,6 +169,94 @@
 
     updateOrderDisplay();
   }
+
+  /**
+   * Affiche les items du panier dans le récapitulatif
+   */
+  function renderCartItems() {
+    var cartSummary = document.getElementById('cart-items-summary');
+    var singleSummary = document.getElementById('single-product-summary');
+    var accessoriesSummary = document.getElementById('order-accessories');
+
+    if (!cartSummary || !cartData) return;
+
+    // Masquer le résumé single, afficher le résumé panier
+    if (singleSummary) singleSummary.style.display = 'none';
+    if (accessoriesSummary) accessoriesSummary.style.display = 'none';
+    cartSummary.style.display = '';
+
+    var listEl = document.getElementById('cart-items-list');
+    if (!listEl) return;
+
+    if (cartData.items.length === 0) {
+      listEl.innerHTML = '<div class="cart-empty"><p>Votre panier est vide.</p><p><a href="boutique.html">Retourner à la boutique</a></p></div>';
+      return;
+    }
+
+    var html = '';
+    cartData.items.forEach(function(item) {
+      var typeLabels = { instrument: 'Instrument', accessoire: 'Accessoire', custom: 'Sur mesure' };
+      var typeLabel = typeLabels[item.type] || '';
+
+      var detailParts = [];
+      if (item.details.gamme) detailParts.push(item.details.gamme);
+      if (item.details.nombre_notes) detailParts.push(item.details.nombre_notes + ' notes');
+      if (item.details.taille) detailParts.push(item.details.taille + ' cm');
+      if (item.details.categorie) detailParts.push(item.details.categorie);
+      var detailStr = detailParts.join(' · ');
+
+      var optionsParts = [];
+      if (item.options && item.options.length > 0) {
+        item.options.forEach(function(opt) {
+          if (opt.type === 'housse') optionsParts.push('+ ' + opt.nom + ' (' + formatPrice(opt.prix) + ')');
+          if (opt.type === 'livraison') optionsParts.push('+ Livraison (' + formatPrice(opt.prix) + ')');
+        });
+      }
+      var optionsStr = optionsParts.join(', ');
+
+      var imageHtml = item.image
+        ? '<img src="' + escapeHtml(item.image) + '" alt="' + escapeHtml(item.nom) + '">'
+        : '<span style="font-size:1.5rem;opacity:0.3;">' + (item.type === 'accessoire' ? '🎒' : '🎵') + '</span>';
+
+      var qtyHtml = item.quantite > 1 ? ' <span style="color:var(--color-text-muted);">x' + item.quantite + '</span>' : '';
+
+      html += '<div class="cart-item" data-cart-id="' + escapeHtml(item.id) + '">' +
+        '<div class="cart-item__image">' + imageHtml + '</div>' +
+        '<div class="cart-item__info">' +
+          '<div class="cart-item__name">' + escapeHtml(item.nom) + qtyHtml + '</div>' +
+          (detailStr ? '<div class="cart-item__details">' + escapeHtml(typeLabel + (detailStr ? ' · ' + detailStr : '')) + '</div>' : '') +
+          (optionsStr ? '<div class="cart-item__options">' + escapeHtml(optionsStr) + '</div>' : '') +
+        '</div>' +
+        '<div class="cart-item__price">' + formatPrice(item.total) + '</div>' +
+        '<button class="cart-item__remove" onclick="removeCartItem(\'' + escapeHtml(item.id) + '\')" title="Retirer">&times;</button>' +
+      '</div>';
+    });
+
+    listEl.innerHTML = html;
+
+    var totalEl = document.getElementById('cart-items-total-price');
+    if (totalEl) totalEl.textContent = formatPrice(cartData.totalPrice);
+  }
+
+  /**
+   * Retirer un item du panier (exposé globalement)
+   */
+  window.removeCartItem = function(itemId) {
+    if (typeof MistralCart === 'undefined') return;
+    MistralCart.removeItem(itemId);
+    cartData = MistralCart.getCheckoutData();
+    orderData.price = cartData.totalPrice;
+    orderData.productName = cartData.items.map(function(i) { return i.nom; }).join(', ');
+
+    if (cartData.items.length === 0) {
+      // Panier vide : rediriger vers la boutique
+      window.location.href = 'boutique.html';
+      return;
+    }
+
+    renderCartItems();
+    updateOrderDisplay();
+  };
 
   /**
    * Adapte l'UI selon stock vs sur-mesure
@@ -378,6 +506,40 @@
    * Construit l'objet metadata pour PayPlug
    */
   function buildOrderMetadata() {
+    if (cartMode && cartData && cartData.items.length > 0) {
+      // Mode panier : envoyer les items dans le metadata
+      var items = cartData.items.map(function(item) {
+        return {
+          type: item.type,
+          sourceId: item.sourceId,
+          nom: item.nom,
+          prix: item.prix,
+          quantite: item.quantite,
+          total: item.total,
+          gamme: item.details.gamme || null,
+          taille: item.details.taille || null,
+          tonalite: item.details.tonalite || null,
+          materiau: item.details.materiau || null,
+          options: item.options || []
+        };
+      });
+
+      return {
+        source: cartData.source,
+        cartMode: true,
+        items: items,
+        productName: cartData.items.length === 1
+          ? cartData.items[0].nom
+          : cartData.items.length + ' articles',
+        totalPrice: cartData.totalPrice,
+        // Premier instrument pour rétrocompatibilité
+        instrumentId: cartData.items[0]?.sourceId || null,
+        gamme: cartData.items[0]?.details?.gamme || null,
+        taille: cartData.items[0]?.details?.taille || null
+      };
+    }
+
+    // Mode legacy (single item via URL)
     return {
       source: orderData.source,
       instrumentId: orderData.instrumentId,
@@ -797,14 +959,27 @@
   // ============================================================================
 
   function savePendingOrder(reference, customer, paymentType, paidAmount) {
-    localStorage.setItem('mistral_pending_order', JSON.stringify({
+    var data = {
       reference: reference,
       customer: customer,
       product: orderData,
       paymentType: paymentType,
       paidAmount: paidAmount,
       createdAt: new Date().toISOString()
-    }));
+    };
+
+    // Sauvegarder les items du panier si en mode panier
+    if (cartMode && cartData) {
+      data.cartItems = cartData.items;
+      data.cartMode = true;
+    }
+
+    localStorage.setItem('mistral_pending_order', JSON.stringify(data));
+
+    // Vider le panier après commande
+    if (cartMode && typeof MistralCart !== 'undefined') {
+      MistralCart.clear();
+    }
   }
 
   // ============================================================================
@@ -837,13 +1012,26 @@
       lines.push('Reste à payer: ' + formatPrice(orderData.price - deposit));
     }
 
-    if (orderData.source === 'stock') {
-      lines.push('', 'Type: Instrument en stock');
-      if (orderData.instrumentId) lines.push('ID instrument: ' + orderData.instrumentId);
-    }
+    // Mode panier : lister les items
+    if (cartMode && cartData && cartData.items.length > 0) {
+      lines.push('', '--- Articles du panier ---');
+      cartData.items.forEach(function(item, idx) {
+        lines.push((idx + 1) + '. ' + item.nom + (item.quantite > 1 ? ' x' + item.quantite : '') + ' - ' + formatPrice(item.total));
+        if (item.options && item.options.length > 0) {
+          item.options.forEach(function(opt) {
+            lines.push('   + ' + (opt.nom || opt.type) + (opt.prix ? ' (' + formatPrice(opt.prix) + ')' : ''));
+          });
+        }
+      });
+    } else {
+      if (orderData.source === 'stock') {
+        lines.push('', 'Type: Instrument en stock');
+        if (orderData.instrumentId) lines.push('ID instrument: ' + orderData.instrumentId);
+      }
 
-    if (orderData.housse) {
-      lines.push('Housse: ' + orderData.housse.nom + ' (' + formatPrice(orderData.housse.prix) + ')');
+      if (orderData.housse) {
+        lines.push('Housse: ' + orderData.housse.nom + ' (' + formatPrice(orderData.housse.prix) + ')');
+      }
     }
 
     lines.push(
@@ -985,10 +1173,24 @@
     if (!container) return;
 
     var safeRef = escapeHtml(reference || 'N/A');
-    var safeProduct = escapeHtml(pendingOrder?.product?.productName || 'Handpan sur mesure');
     var paymentType = pendingOrder?.paymentType || 'acompte';
     var isOney = paymentType.startsWith('oney');
     var isFull = paymentType === 'full';
+
+    // Construire la liste d'articles
+    var productHtml = '';
+    if (pendingOrder?.cartMode && pendingOrder?.cartItems) {
+      productHtml = '<p><strong>Articles :</strong></p><ul style="text-align:left;margin:0.5rem 0;">';
+      pendingOrder.cartItems.forEach(function(item) {
+        productHtml += '<li>' + escapeHtml(item.nom);
+        if (item.quantite > 1) productHtml += ' x' + item.quantite;
+        productHtml += '</li>';
+      });
+      productHtml += '</ul>';
+    } else {
+      var safeProduct = escapeHtml(pendingOrder?.product?.productName || 'Handpan sur mesure');
+      productHtml = '<p><strong>Instrument :</strong> ' + safeProduct + '</p>';
+    }
 
     var amountDetail = '';
     if (isOney) {
@@ -1001,7 +1203,7 @@
 
     var nextSteps = '';
     if (isFull) {
-      nextSteps = '<p>Nous préparons votre instrument pour l\'expédition. Vous recevrez un email avec le suivi.</p>';
+      nextSteps = '<p>Nous préparons votre commande. Vous recevrez un email avec le suivi.</p>';
     } else if (isOney) {
       nextSteps = '<p>Votre paiement sera prélevé selon l\'échéancier Oney. Nous lançons la fabrication.</p>';
     } else {
@@ -1015,7 +1217,7 @@
         '<p>Merci pour votre commande.</p>' +
         '<div class="payment-result__details">' +
           '<p><strong>Référence :</strong> ' + safeRef + '</p>' +
-          '<p><strong>Instrument :</strong> ' + safeProduct + '</p>' +
+          productHtml +
           amountDetail +
         '</div>' +
         nextSteps +
