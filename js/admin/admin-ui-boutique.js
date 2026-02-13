@@ -526,9 +526,7 @@
     });
     
     if (confirmed) {
-      let accessoires = Storage.get('mistral_accessoires', []);
-      accessoires = accessoires.filter(a => a.id !== id);
-      Storage.set('mistral_accessoires', accessoires);
+      Storage.remove('mistral_accessoires', id);
       renderBoutique();
       Toast.success('Accessoire supprimé');
     }
