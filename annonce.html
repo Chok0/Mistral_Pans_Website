@@ -1063,11 +1063,24 @@
     }
 
     var stockHtml = '';
-    if (accessoire.stock !== null && accessoire.stock !== undefined && accessoire.stock > 0) {
-      stockHtml = '<div class="annonce-spec">' +
-        '<span class="annonce-spec__label">Disponibilité</span>' +
-        '<span class="annonce-spec__value" style="color: var(--color-success, #4A7C59);">En stock (' + accessoire.stock + ')</span>' +
-      '</div>';
+    var stock = accessoire.stock;
+    if (stock !== null && stock !== undefined) {
+      if (stock === -1) {
+        stockHtml = '<div class="annonce-spec">' +
+          '<span class="annonce-spec__label">Disponibilité</span>' +
+          '<span class="annonce-spec__value" style="color: var(--color-success, #4A7C59);">En stock</span>' +
+        '</div>';
+      } else if (stock > 0) {
+        stockHtml = '<div class="annonce-spec">' +
+          '<span class="annonce-spec__label">Disponibilité</span>' +
+          '<span class="annonce-spec__value" style="color: var(--color-success, #4A7C59);">En stock (' + stock + ')</span>' +
+        '</div>';
+      } else if (stock === 0) {
+        stockHtml = '<div class="annonce-spec">' +
+          '<span class="annonce-spec__label">Disponibilité</span>' +
+          '<span class="annonce-spec__value" style="color: var(--color-error, #EF4444);">Rupture de stock</span>' +
+        '</div>';
+      }
     }
 
     var specsHtml = '<div class="annonce-specs">' +
@@ -1082,7 +1095,10 @@
       '</div>' +
     '</div>';
 
-    var ctaHtml = '<button class="annonce-cta" id="annonce-add-cart-btn" onclick="addAccessoireToCart()">Ajouter au panier</button>';
+    var canBuy = stock === null || stock === undefined || stock === -1 || stock > 0;
+    var ctaHtml = canBuy
+      ? '<button class="annonce-cta" id="annonce-add-cart-btn" onclick="addAccessoireToCart()">Ajouter au panier</button>'
+      : '<button class="annonce-cta" disabled style="opacity:0.5;cursor:not-allowed;">Rupture de stock</button>';
     ctaHtml += '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
 
     var detailsHtml = '<div class="annonce-details">' +
