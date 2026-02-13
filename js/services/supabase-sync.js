@@ -50,7 +50,7 @@
     // via des filtres differents (ex: professeurs -> teachers + pending_teachers)
     publicPageTables: {
       'boutique':  ['instruments', 'accessoires'],
-      'annonce':   ['instruments'],
+      'annonce':   ['instruments', 'accessoires'],
       'apprendre': ['professeurs'],
       'galerie':   ['galerie'],
       'blog':      ['articles'],
