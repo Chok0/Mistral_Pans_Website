@@ -256,16 +256,12 @@
         }
         break;
 
-      case 'accessoires': {
-        // Whitelist: only keep columns that exist in Supabase schema
-        // Note: categorie, stock, tailles_compatibles are local-only fields
-        const allowedCols = ['id', 'nom', 'prix', 'description', 'image', 'statut',
-                             'visible_configurateur', 'created_at', 'updated_at'];
-        Object.keys(transformed).forEach(key => {
-          if (!allowedCols.includes(key)) delete transformed[key];
-        });
+      case 'accessoires':
+        // Ensure tailles_compatibles is stored as JSON for Supabase jsonb column
+        if (Array.isArray(transformed.tailles_compatibles)) {
+          transformed.tailles_compatibles = JSON.stringify(transformed.tailles_compatibles);
+        }
         break;
-      }
     }
 
     if (!transformed.created_at) {
