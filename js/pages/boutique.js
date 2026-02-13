@@ -610,19 +610,20 @@
   }
 
   // ===== CTA BUTTONS STATE =====
-  function updateCtaButtons() {
-    const btnAddCart = document.getElementById('btn-add-cart');
-    const btnOrder = document.getElementById('btn-order');
-    const accessoires = getAccessoiresForConfigurateur(state.size);
-    const housseRequired = accessoires.some(a => a.categorie === 'housse');
-    const canOrder = !housseRequired || !!state.housse;
+  function isHousseRequired() {
+    var accessoires = getAccessoiresForConfigurateur(state.size);
+    return accessoires.some(function(a) { return a.categorie === 'housse'; });
+  }
 
-    [btnAddCart, btnOrder].forEach(btn => {
-      if (!btn) return;
-      btn.disabled = !canOrder;
-      btn.style.opacity = canOrder ? '' : '0.5';
-      btn.style.cursor = canOrder ? '' : 'not-allowed';
-    });
+  function scrollToHousseSection() {
+    var section = document.getElementById('accessoires-section');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      section.style.outline = '2px solid var(--color-error, #EF4444)';
+      section.style.outlineOffset = '4px';
+      section.style.borderRadius = '8px';
+      setTimeout(function() { section.style.outline = ''; section.style.outlineOffset = ''; }, 2000);
+    }
   }
 
   // ===== UPDATE PRICE DISPLAY =====
@@ -673,7 +674,6 @@
     // Store order params for legacy fallback
     state._orderParams = orderParams;
 
-    updateCtaButtons();
   }
 
   // ===== RENDER MATERIAL CHIPS =====
@@ -840,8 +840,7 @@
       if (state.housse) {
         state.housse = null;
       }
-      updateCtaButtons();
-      return;
+        return;
     }
 
     section.style.display = 'block';
@@ -907,7 +906,6 @@
       });
     });
 
-    updateCtaButtons();
   }
 
   function escapeHtmlAttr(str) {
@@ -1342,9 +1340,8 @@
   // ===== COMMANDER DIRECTEMENT =====
   window.orderDirectly = function() {
     // Guard: housse obligatoire si disponible
-    var accessoires = getAccessoiresForConfigurateur(state.size);
-    if (accessoires.some(function(a) { return a.categorie === 'housse'; }) && !state.housse) {
-      renderAccessoiresSection();
+    if (isHousseRequired() && !state.housse) {
+      scrollToHousseSection();
       return;
     }
     // Add current config to cart, then go to checkout
@@ -1372,9 +1369,8 @@
   window.addConfigToCart = function() {
     if (typeof MistralCart === 'undefined') return;
     // Guard: housse obligatoire si disponible
-    var accessoires = getAccessoiresForConfigurateur(state.size);
-    if (accessoires.some(function(a) { return a.categorie === 'housse'; }) && !state.housse) {
-      renderAccessoiresSection();
+    if (isHousseRequired() && !state.housse) {
+      scrollToHousseSection();
       return;
     }
 

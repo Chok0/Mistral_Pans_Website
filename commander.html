@@ -494,6 +494,83 @@
       color: var(--color-accent);
     }
 
+    /* ---- Shipping method selector ---- */
+    .shipping-selector {
+      margin-bottom: var(--space-3xl);
+    }
+    .shipping-selector__title {
+      margin-bottom: var(--space-lg);
+    }
+    .shipping-selector__options {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-lg);
+    }
+    @media (max-width: 500px) {
+      .shipping-selector__options {
+        grid-template-columns: 1fr;
+      }
+    }
+    .shipping-option {
+      background: var(--color-white);
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+      cursor: pointer;
+      transition: all var(--transition-base);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+    .shipping-option:hover {
+      border-color: var(--color-accent);
+      box-shadow: var(--shadow-md);
+    }
+    .shipping-option.selected {
+      border-color: var(--color-accent);
+      background: linear-gradient(180deg, rgba(13, 115, 119, 0.04) 0%, transparent 100%);
+    }
+    .shipping-option__header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+    .shipping-option__icon {
+      width: 40px;
+      height: 40px;
+      background: var(--color-bg-warm);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+    .shipping-option__title {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+    .shipping-option__description {
+      color: var(--color-text-light);
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    .shipping-option__price {
+      font-family: var(--font-display);
+      font-size: 1.125rem;
+      color: var(--color-accent);
+      font-weight: 600;
+    }
+    .shipping-option__price--free {
+      color: var(--color-success);
+    }
+    .shipping-error {
+      color: var(--color-error);
+      font-size: 0.875rem;
+      margin-top: var(--space-sm);
+      display: none;
+    }
+
     .card-form__loading {
       display: none;
       text-align: center;
@@ -556,9 +633,33 @@
         </div>
       </div>
 
-      <!-- Accessory summary (populated by JS if housse/livraison present) -->
+      <!-- Accessory summary (populated by JS if housse present) -->
       <div id="order-accessories" class="order-accessories" style="display:none;">
         <div class="order-accessories__list" id="accessories-list"></div>
+      </div>
+
+      <!-- Shipping method selector -->
+      <div class="shipping-selector" id="shipping-selector">
+        <h2 class="shipping-selector__title">Mode de livraison *</h2>
+        <div class="shipping-selector__options">
+          <div class="shipping-option" data-shipping="colissimo" onclick="selectShipping('colissimo')" onkeydown="if(event.key==='Enter'||event.key===' ')selectShipping('colissimo')" tabindex="0" role="button" aria-label="Livraison La Poste Colissimo">
+            <div class="shipping-option__header">
+              <div class="shipping-option__icon">📦</div>
+              <div class="shipping-option__title">Livraison Colissimo</div>
+            </div>
+            <p class="shipping-option__description">Livraison à domicile par La Poste Colissimo avec suivi. Délai : 2-4 jours ouvrés.</p>
+            <div class="shipping-option__price" id="shipping-colissimo-price">+ 50 €</div>
+          </div>
+          <div class="shipping-option" data-shipping="retrait" onclick="selectShipping('retrait')" onkeydown="if(event.key==='Enter'||event.key===' ')selectShipping('retrait')" tabindex="0" role="button" aria-label="Retrait à l'atelier">
+            <div class="shipping-option__header">
+              <div class="shipping-option__icon">🏠</div>
+              <div class="shipping-option__title">Retrait à l'atelier</div>
+            </div>
+            <p class="shipping-option__description">Récupérez votre instrument directement à l'atelier en Île-de-France. Sur rendez-vous.</p>
+            <div class="shipping-option__price shipping-option__price--free">Gratuit</div>
+          </div>
+        </div>
+        <p class="shipping-error" id="shipping-error">Veuillez choisir un mode de livraison.</p>
       </div>
 
       <h2 style="margin-bottom: var(--space-lg);">Choisissez votre option</h2>
@@ -635,6 +736,10 @@
             <span>Instrument</span>
             <span id="summary-product">D Kurd 9 notes</span>
           </div>
+          <div class="order-summary__row" id="summary-deposit-shipping-row" style="display:none;">
+            <span>Livraison</span>
+            <span id="summary-deposit-shipping">—</span>
+          </div>
           <div class="order-summary__row">
             <span>Prix total</span>
             <span id="summary-total">1 400 €</span>
@@ -683,7 +788,7 @@
           
           <div class="form-group">
             <label class="form-label" for="deposit-address">Adresse de livraison *</label>
-            <textarea id="deposit-address" name="address" class="form-textarea" rows="3" placeholder="Adresse complète ou 'Retrait atelier'" required></textarea>
+            <textarea id="deposit-address" name="address" class="form-textarea" rows="3" placeholder="Adresse complète de livraison" required></textarea>
           </div>
           
           <div class="form-group">
@@ -760,6 +865,10 @@
             <span>Housse</span>
             <span id="summary-full-housse">—</span>
           </div>
+          <div class="order-summary__row" id="summary-full-shipping-row" style="display:none;">
+            <span>Livraison</span>
+            <span id="summary-full-shipping">—</span>
+          </div>
           <div class="order-summary__row total">
             <span>Total à payer</span>
             <span id="summary-full-total">1 400 €</span>
@@ -800,7 +909,7 @@
 
           <div class="form-group">
             <label class="form-label" for="full-address">Adresse de livraison *</label>
-            <textarea id="full-address" name="address" class="form-textarea" rows="3" placeholder="Adresse complète ou 'Retrait atelier'" required></textarea>
+            <textarea id="full-address" name="address" class="form-textarea" rows="3" placeholder="Adresse complète de livraison" required></textarea>
           </div>
 
           <div class="form-group">
