@@ -161,8 +161,12 @@
       ? '<span class="flash-card__video-badge" style="position:absolute;bottom:0.5rem;left:0.5rem;background:rgba(0,0,0,0.7);color:white;padding:0.25rem 0.5rem;border-radius:4px;font-size:0.75rem;">▶ Vidéo</span>'
       : '';
 
+    const promoLabel = hasValue(instrument.promo_label)
+      ? '<span class="flash-card__promo">' + utils.escapeHtml(instrument.promo_label) + '</span>'
+      : '';
+
     const photoCount = (instrument.images && instrument.images.length > 1)
-      ? '<span class="flash-card__photo-count" style="position:absolute;top:0.5rem;right:0.5rem;background:rgba(0,0,0,0.7);color:white;padding:0.25rem 0.5rem;border-radius:4px;font-size:0.75rem;">' + instrument.images.length + ' photos</span>'
+      ? '<span class="flash-card__photo-count" style="position:absolute;top:' + (hasValue(instrument.promo_label) ? '3rem' : '0.5rem') + ';right:0.5rem;background:rgba(0,0,0,0.7);color:white;padding:0.25rem 0.5rem;border-radius:4px;font-size:0.75rem;">' + instrument.images.length + ' photos</span>'
       : '';
 
     const specs = [];
@@ -198,7 +202,7 @@
 
     return '<div class="flash-card" data-type="instrument" data-id="' + instrument.id + '" style="position:relative;text-decoration:none;color:inherit;">' +
       '<a href="annonce.html?ref=' + instrument.id + '" style="text-decoration:none;color:inherit;display:block;">' +
-        '<div class="flash-card__image" style="position:relative;">' + imageContent + videoIndicator + photoCount + '</div>' +
+        '<div class="flash-card__image" style="position:relative;">' + imageContent + promoLabel + videoIndicator + photoCount + '</div>' +
         '<div class="flash-card__content">' +
           '<h3 class="flash-card__name">' + utils.escapeHtml(displayName) + '</h3>' +
           specsHtml + notesHtml + descHtml +
@@ -215,28 +219,32 @@
 
   function renderAccessoireCard(accessoire) {
     const hasImage = hasValue(accessoire.image);
-    const imageContent = hasImage 
+    const imageContent = hasImage
       ? '<img src="' + accessoire.image + '" alt="' + utils.escapeHtml(accessoire.nom || '') + '" style="width:100%;height:100%;object-fit:cover;">'
       : '<span style="font-size: 3rem; opacity: 0.3;">🎒</span>';
-    
+
+    const accPromoLabel = hasValue(accessoire.promo_label)
+      ? '<span class="flash-card__promo">' + utils.escapeHtml(accessoire.promo_label) + '</span>'
+      : '';
+
     const categorieLabels = { 'housse': 'Housse', 'huile': 'Huile d\'entretien', 'support': 'Support', 'accessoire': 'Accessoire' };
     const categorie = categorieLabels[accessoire.categorie] || accessoire.categorie || 'Accessoire';
-    
-    const stockHtml = accessoire.stock >= 0 
+
+    const stockHtml = accessoire.stock >= 0
       ? '<span style="font-size:0.75rem;color:var(--color-text-muted);">Stock: ' + accessoire.stock + '</span>'
       : '';
-    
+
     const descHtml = hasValue(accessoire.description)
       ? '<p class="flash-card__desc" style="font-size:0.875rem;color:var(--color-text-muted);margin:0.5rem 0;line-height:1.4;">' + utils.escapeHtml(accessoire.description.substring(0, 80)) + (accessoire.description.length > 80 ? '...' : '') + '</p>'
       : '';
-    
+
     var inCart = (typeof MistralCart !== 'undefined' && MistralCart.hasItem(accessoire.id));
     var cartBtnLabel = inCart ? 'Dans le panier' : 'Ajouter au panier';
     var cartBtnStyle = inCart ? 'background:var(--color-success, #4A7C59);color:white;' : 'background:var(--color-accent);color:white;';
 
     return '<div class="flash-card flash-card--accessoire" data-type="accessoire" data-id="' + accessoire.id + '" style="text-decoration:none;color:inherit;">' +
       '<a href="annonce.html?ref=' + accessoire.id + '&type=accessoire" style="text-decoration:none;color:inherit;display:block;">' +
-        '<div class="flash-card__image flash-card__image--small" style="position:relative; height: 150px;">' + imageContent + '</div>' +
+        '<div class="flash-card__image flash-card__image--small" style="position:relative; height: 150px;">' + imageContent + accPromoLabel + '</div>' +
         '<div class="flash-card__content">' +
           '<span class="flash-card__category" style="font-size:0.75rem;color:var(--color-accent);text-transform:uppercase;letter-spacing:0.05em;">' + categorie + '</span>' +
           '<h3 class="flash-card__name" style="font-size:1rem;margin:0.25rem 0;">' + utils.escapeHtml(accessoire.nom) + '</h3>' +
