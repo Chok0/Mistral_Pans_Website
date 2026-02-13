@@ -420,7 +420,7 @@
       Toast.success('Accessoire modifié');
     } else {
       // Création
-      data.id = 'acc_' + Date.now();
+      data.id = crypto.randomUUID();
       data.created_at = new Date().toISOString();
       accessoires.push(data);
       Toast.success('Accessoire créé');
