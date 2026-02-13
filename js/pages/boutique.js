@@ -626,6 +626,21 @@
     }
   }
 
+  // ===== FEASIBILITY HELPERS =====
+  function showFeasibilityNotice() {
+    if (window.MistralAdmin && MistralAdmin.Toast) {
+      MistralAdmin.Toast.warning('Configuration non réalisable. Essayez une autre taille ou tonalité.');
+    }
+  }
+
+  function openFeasibilityContact(message) {
+    var messageField = document.getElementById('contact-message');
+    if (messageField && message) messageField.value = message;
+    if (typeof openContactModal === 'function') {
+      openContactModal();
+    }
+  }
+
   // ===== UPDATE PRICE DISPLAY =====
   function updatePriceDisplay() {
     const instrumentPrice = state._instrumentPrice || 0;
@@ -1339,6 +1354,16 @@
 
   // ===== COMMANDER DIRECTEMENT =====
   window.orderDirectly = function() {
+    var btn = document.getElementById('btn-order');
+    // Guard: feasibility blocked
+    if (btn && btn.dataset.blocked === 'true') {
+      showFeasibilityNotice();
+      return;
+    }
+    if (btn && btn.dataset.blocked === 'contact') {
+      openFeasibilityContact(btn.dataset.contactMessage);
+      return;
+    }
     // Guard: housse obligatoire si disponible
     if (isHousseRequired() && !state.housse) {
       scrollToHousseSection();
@@ -1368,6 +1393,16 @@
   // ===== PANIER - Ajout configuration sur mesure =====
   window.addConfigToCart = function() {
     if (typeof MistralCart === 'undefined') return;
+    var cartBtn = document.getElementById('btn-add-cart');
+    // Guard: feasibility blocked
+    if (cartBtn && cartBtn.dataset.blocked === 'true') {
+      showFeasibilityNotice();
+      return;
+    }
+    if (cartBtn && cartBtn.dataset.blocked === 'contact') {
+      openFeasibilityContact(cartBtn.dataset.contactMessage);
+      return;
+    }
     // Guard: housse obligatoire si disponible
     if (isHousseRequired() && !state.housse) {
       scrollToHousseSection();
