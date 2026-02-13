@@ -2193,7 +2193,7 @@
     }
     
     // Générer un ID unique
-    data.id = 'teacher_' + Date.now();
+    data.id = crypto.randomUUID();
     data.created_at = new Date().toISOString();
     
     // Ajouter aux professeurs actifs

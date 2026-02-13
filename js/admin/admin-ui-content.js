@@ -201,7 +201,7 @@
       }
       Toast.success('Média modifié');
     } else {
-      data.id = 'media_' + Date.now();
+      data.id = crypto.randomUUID();
       data.created_at = new Date().toISOString();
       gallery.push(data);
       Toast.success('Média ajouté');
@@ -453,7 +453,7 @@
       }
       Toast.success('Article modifié');
     } else {
-      data.id = 'article_' + Date.now();
+      data.id = crypto.randomUUID();
       data.createdAt = new Date().toISOString();
       data.slug = generateSlug(data.title);
       articles.push(data);
