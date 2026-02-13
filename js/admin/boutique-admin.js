@@ -140,6 +140,15 @@
     }
 
     container.innerHTML = html;
+
+    // Make entire card clickable (::after "Voir le détail" is outside <a>)
+    container.querySelectorAll('.flash-card').forEach(function(card) {
+      card.addEventListener('click', function(e) {
+        if (e.target.closest('button')) return;
+        var link = card.querySelector('a');
+        if (link) window.location.href = link.href;
+      });
+    });
   }
 
   function renderInstrumentCard(instrument) {

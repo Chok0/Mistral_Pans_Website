@@ -579,7 +579,6 @@
       renderInstrument(container, instrument);
       initGallery(instrument.images || []);
       initHousse(instrument.taille);
-      initLivraison();
       initKeyboard();
       updatePrice();
     } else if (accessoire) {
@@ -744,20 +743,12 @@
         '<label class="annonce-option__label" for="annonce-housse-select">Ajouter une housse</label>' +
         '<select class="annonce-option__select" id="annonce-housse-select"><option value="">Sans housse</option></select>' +
       '</div>' +
-      '<div>' +
-        '<label class="annonce-option__checkbox">' +
-          '<input type="checkbox" id="annonce-livraison-checkbox">' +
-          '<span class="annonce-option__checkmark"></span>' +
-          '<span>Livraison (+50€)</span>' +
-        '</label>' +
-      '</div>' +
     '</div>';
 
     var priceHtml = '<div class="annonce-price">' +
       '<div class="annonce-price__breakdown">' +
         '<div class="annonce-price__line"><span>Instrument</span><span id="annonce-price-instrument">0 €</span></div>' +
         '<div class="annonce-price__line" id="annonce-price-housse-line" style="display:none;"><span>Housse</span><span id="annonce-price-housse">0 €</span></div>' +
-        '<div class="annonce-price__line" id="annonce-price-livraison-line" style="display:none;"><span>Livraison</span><span>50 €</span></div>' +
       '</div>' +
       '<div class="annonce-price__total">' +
         '<span class="annonce-price__label">Prix total</span>' +
@@ -910,15 +901,6 @@
     select.addEventListener('change', updatePrice);
   }
 
-  // ── Livraison ──
-
-  function initLivraison() {
-    var checkbox = document.getElementById('annonce-livraison-checkbox');
-    if (checkbox) {
-      checkbox.addEventListener('change', updatePrice);
-    }
-  }
-
   // ── Keyboard ──
 
   function initKeyboard() {
@@ -935,7 +917,6 @@
 
     var instrumentPrice = currentInstrument.prix_vente || 0;
     var housseSelect = document.getElementById('annonce-housse-select');
-    var livraisonCheckbox = document.getElementById('annonce-livraison-checkbox');
 
     var houssePrice = 0;
     var housseName = null;
@@ -945,8 +926,7 @@
       housseName = opt.textContent.split(' (+')[0];
     }
 
-    var livraisonPrice = (livraisonCheckbox && livraisonCheckbox.checked) ? 50 : 0;
-    var totalPrice = instrumentPrice + houssePrice + livraisonPrice;
+    var totalPrice = instrumentPrice + houssePrice;
 
     var priceInstrument = document.getElementById('annonce-price-instrument');
     if (priceInstrument) priceInstrument.textContent = formatPrice(instrumentPrice);
@@ -956,14 +936,8 @@
     if (housseLine) housseLine.style.display = houssePrice > 0 ? 'flex' : 'none';
     if (housseEl) housseEl.textContent = formatPrice(houssePrice);
 
-    var livraisonLine = document.getElementById('annonce-price-livraison-line');
-    if (livraisonLine) livraisonLine.style.display = livraisonPrice > 0 ? 'flex' : 'none';
-
     var totalEl = document.getElementById('annonce-price-total');
     if (totalEl) totalEl.textContent = formatPrice(totalPrice);
-
-    // Mettre à jour le lien commander
-    updateOrderUrl(totalPrice, housseSelect ? housseSelect.value : null, housseName, houssePrice, livraisonCheckbox ? livraisonCheckbox.checked : false);
   }
 
   function updateOrderUrl() {
@@ -976,7 +950,6 @@
     if (!currentInstrument || typeof MistralCart === 'undefined') return;
 
     var housseSelect = document.getElementById('annonce-housse-select');
-    var livraisonCheckbox = document.getElementById('annonce-livraison-checkbox');
 
     var options = {};
     if (housseSelect && housseSelect.value) {
@@ -986,9 +959,6 @@
         nom: opt.textContent.split(' (+')[0],
         prix: parseFloat(opt.dataset.prix) || 0
       };
-    }
-    if (livraisonCheckbox && livraisonCheckbox.checked) {
-      options.livraison = true;
     }
 
     MistralCart.addInstrument(currentInstrument, options);
@@ -1139,7 +1109,6 @@
     if (!currentInstrument || typeof MistralCart === 'undefined') return;
 
     var housseSelect = document.getElementById('annonce-housse-select');
-    var livraisonCheckbox = document.getElementById('annonce-livraison-checkbox');
 
     var options = {};
     if (housseSelect && housseSelect.value) {
@@ -1149,9 +1118,6 @@
         nom: opt.textContent.split(' (+')[0],
         prix: parseFloat(opt.dataset.prix) || 0
       };
-    }
-    if (livraisonCheckbox && livraisonCheckbox.checked) {
-      options.livraison = true;
     }
 
     var id = MistralCart.addInstrument(currentInstrument, options);
