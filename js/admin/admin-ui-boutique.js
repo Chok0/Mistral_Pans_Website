@@ -94,7 +94,7 @@
     };
     
     grid.innerHTML = accessoires.map(a => `
-      <div class="dashboard__card" style="position: relative; ${a.statut === 'masque' ? 'opacity: 0.6;' : ''}">
+      <div class="dashboard__card" style="position: relative; ${a.statut !== 'en_ligne' ? 'opacity: 0.6;' : ''}">
         ${a.image ? `
           <div style="margin: -1rem -1rem 1rem -1rem; height: 100px; overflow: hidden; border-radius: 8px 8px 0 0;">
             <img src="${a.image}" alt="${escapeHtml(a.nom)}" style="width: 100%; height: 100%; object-fit: cover;">
@@ -113,14 +113,14 @@
           <div style="font-size: 1.25rem; font-weight: 600; color: var(--admin-accent);">
             ${formatPrice(a.prix || 0)}
           </div>
-          <span class="admin-badge admin-badge--${a.statut === 'actif' ? 'success' : 'neutral'}">
-            ${a.statut === 'actif' ? 'Actif' : 'Masqué'}
+          <span class="admin-badge admin-badge--${a.statut === 'en_ligne' ? 'success' : a.statut === 'rupture' ? 'error' : 'neutral'}">
+            ${a.statut === 'en_ligne' ? 'En ligne' : a.statut === 'rupture' ? 'Rupture' : 'Masqué'}
           </span>
         </div>
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
           <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editAccessoire('${a.id}')">Modifier</button>
           <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.toggleAccessoire('${a.id}')">
-            ${a.statut === 'actif' ? 'Masquer' : 'Afficher'}
+            ${a.statut === 'en_ligne' ? 'Masquer' : 'Mettre en ligne'}
           </button>
           <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.deleteAccessoire('${a.id}')">Supprimer</button>
         </div>
@@ -390,7 +390,7 @@
       stock: parseInt($('#accessoire-stock')?.value),
       description: $('#accessoire-description')?.value.trim(),
       image: getAccessoireImageForSave(),
-      statut: $('#accessoire-statut')?.value || 'actif',
+      statut: $('#accessoire-statut')?.value || 'en_ligne',
       visible_configurateur: $('#accessoire-visible-config')?.checked || false,
       tailles_compatibles: taillesCompatibles
     };
@@ -444,7 +444,7 @@
     $('#accessoire-prix').value = accessoire.prix || '';
     $('#accessoire-stock').value = accessoire.stock ?? -1;
     $('#accessoire-description').value = accessoire.description || '';
-    $('#accessoire-statut').value = accessoire.statut || 'actif';
+    $('#accessoire-statut').value = accessoire.statut || 'en_ligne';
 
     // Load configurator options
     const visibleConfig = accessoire.visible_configurateur || false;
@@ -503,10 +503,10 @@
     const index = accessoires.findIndex(a => a.id === id);
     if (index === -1) return;
     
-    accessoires[index].statut = accessoires[index].statut === 'actif' ? 'masque' : 'actif';
+    accessoires[index].statut = accessoires[index].statut === 'en_ligne' ? 'disponible' : 'en_ligne';
     Storage.set('mistral_accessoires', accessoires);
     renderBoutique();
-    Toast.info(accessoires[index].statut === 'actif' ? 'Accessoire affiché' : 'Accessoire masqué');
+    Toast.info(accessoires[index].statut === 'en_ligne' ? 'Accessoire en ligne' : 'Accessoire masqué');
   }
   
   async function deleteAccessoire(id) {
