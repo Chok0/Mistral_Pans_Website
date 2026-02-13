@@ -376,7 +376,7 @@
     if (AdminUI.populateTaillesSelect) AdminUI.populateTaillesSelect(instrument.taille || '53');
     $('#instrument-accordage').value = instrument.accordage || '440';
     $('#instrument-prix').value = instrument.prix_vente || '';
-    if ($('#instrument-promo')) $('#instrument-promo').value = instrument.promo_label || '';
+    if ($('#instrument-promo')) $('#instrument-promo').value = instrument.promo_percent || '';
     $('#instrument-statut').value = instrument.statut || 'disponible';
     if ($('#instrument-disponible-location')) $('#instrument-disponible-location').checked = !!instrument.disponible_location;
     $('#instrument-layout').value = instrument.notes_layout || '';
@@ -1051,7 +1051,7 @@
       materiau: $('#instrument-materiau')?.value,
       accordage: $('#instrument-accordage')?.value || '440',
       prix_vente: parseFloat($('#instrument-prix')?.value) || null,
-      promo_label: $('#instrument-promo')?.value.trim() || null,
+      promo_percent: parseInt($('#instrument-promo')?.value) || null,
       statut: $('#instrument-statut')?.value || 'disponible',
       disponible_location: $('#instrument-disponible-location')?.checked || false,
       notes_layout: $('#instrument-layout')?.value.trim(),

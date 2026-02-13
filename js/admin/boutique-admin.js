@@ -161,12 +161,13 @@
       ? '<span class="flash-card__video-badge" style="position:absolute;bottom:0.5rem;left:0.5rem;background:rgba(0,0,0,0.7);color:white;padding:0.25rem 0.5rem;border-radius:4px;font-size:0.75rem;">▶ Vidéo</span>'
       : '';
 
-    const promoLabel = hasValue(instrument.promo_label)
-      ? '<span class="flash-card__promo">' + utils.escapeHtml(instrument.promo_label) + '</span>'
+    const hasPromo = instrument.promo_percent > 0;
+    const promoLabel = hasPromo
+      ? '<span class="flash-card__promo">-' + instrument.promo_percent + '%</span>'
       : '';
 
     const photoCount = (instrument.images && instrument.images.length > 1)
-      ? '<span class="flash-card__photo-count" style="position:absolute;top:' + (hasValue(instrument.promo_label) ? '3rem' : '0.5rem') + ';right:0.5rem;background:rgba(0,0,0,0.7);color:white;padding:0.25rem 0.5rem;border-radius:4px;font-size:0.75rem;">' + instrument.images.length + ' photos</span>'
+      ? '<span class="flash-card__photo-count" style="position:absolute;top:' + (hasPromo ? '3rem' : '0.5rem') + ';right:0.5rem;background:rgba(0,0,0,0.7);color:white;padding:0.25rem 0.5rem;border-radius:4px;font-size:0.75rem;">' + instrument.images.length + ' photos</span>'
       : '';
 
     const specs = [];
@@ -190,9 +191,15 @@
       ? '<p class="flash-card__desc" style="font-size:0.875rem;color:var(--color-text-muted);margin:0.5rem 0;line-height:1.4;">' + utils.escapeHtml(instrument.description.substring(0, 100)) + (instrument.description.length > 100 ? '...' : '') + '</p>'
       : '';
 
-    const priceHtml = hasValue(instrument.prix_vente)
-      ? '<span class="flash-card__price">' + formatPrice(instrument.prix_vente) + '</span>'
-      : '<span class="flash-card__price" style="font-size:0.875rem;">Prix sur demande</span>';
+    var priceHtml;
+    if (!hasValue(instrument.prix_vente)) {
+      priceHtml = '<span class="flash-card__price" style="font-size:0.875rem;">Prix sur demande</span>';
+    } else if (hasPromo) {
+      var promoPrice = Math.floor(instrument.prix_vente * (1 - instrument.promo_percent / 100) / 5) * 5;
+      priceHtml = '<span class="flash-card__price"><span class="flash-card__price--original">' + formatPrice(instrument.prix_vente) + '</span> ' + formatPrice(promoPrice) + '</span>';
+    } else {
+      priceHtml = '<span class="flash-card__price">' + formatPrice(instrument.prix_vente) + '</span>';
+    }
 
     const displayName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || instrument.reference || 'Instrument';
 
@@ -223,8 +230,9 @@
       ? '<img src="' + accessoire.image + '" alt="' + utils.escapeHtml(accessoire.nom || '') + '" style="width:100%;height:100%;object-fit:cover;">'
       : '<span style="font-size: 3rem; opacity: 0.3;">🎒</span>';
 
-    const accPromoLabel = hasValue(accessoire.promo_label)
-      ? '<span class="flash-card__promo">' + utils.escapeHtml(accessoire.promo_label) + '</span>'
+    const accHasPromo = accessoire.promo_percent > 0;
+    const accPromoLabel = accHasPromo
+      ? '<span class="flash-card__promo">-' + accessoire.promo_percent + '%</span>'
       : '';
 
     const categorieLabels = { 'housse': 'Housse', 'huile': 'Huile d\'entretien', 'support': 'Support', 'accessoire': 'Accessoire' };
@@ -250,7 +258,9 @@
           '<h3 class="flash-card__name" style="font-size:1rem;margin:0.25rem 0;">' + utils.escapeHtml(accessoire.nom) + '</h3>' +
           descHtml +
           '<div class="flash-card__footer" style="margin-top:auto;">' +
-            '<span class="flash-card__price">' + formatPrice(accessoire.prix) + '</span>' +
+            (accHasPromo
+              ? '<span class="flash-card__price"><span class="flash-card__price--original">' + formatPrice(accessoire.prix) + '</span> ' + formatPrice(Math.floor(accessoire.prix * (1 - accessoire.promo_percent / 100) / 5) * 5) + '</span>'
+              : '<span class="flash-card__price">' + formatPrice(accessoire.prix) + '</span>') +
             stockHtml +
           '</div>' +
         '</div>' +

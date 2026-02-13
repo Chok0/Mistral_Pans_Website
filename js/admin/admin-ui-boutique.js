@@ -58,10 +58,10 @@
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div style="font-size: 1.25rem; font-weight: 600; color: var(--admin-accent);">
-            ${formatPrice(i.prix_vente || 0)}
+            ${i.promo_percent > 0 ? `<span style="text-decoration: line-through; opacity: 0.5; font-size: 0.875rem; font-weight: 400;">${formatPrice(i.prix_vente || 0)}</span> ${formatPrice(Math.floor((i.prix_vente || 0) * (1 - i.promo_percent / 100) / 5) * 5)}` : formatPrice(i.prix_vente || 0)}
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
-            ${i.promo_label ? `<span class="admin-badge" style="background: var(--admin-accent); color: white;">${escapeHtml(i.promo_label)}</span>` : ''}
+            ${i.promo_percent > 0 ? `<span class="admin-badge" style="background: var(--admin-accent); color: white;">-${i.promo_percent}%</span>` : ''}
             <span class="admin-badge admin-badge--success">En ligne</span>
           </div>
         </div>
@@ -114,10 +114,10 @@
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div style="font-size: 1.25rem; font-weight: 600; color: var(--admin-accent);">
-            ${formatPrice(a.prix || 0)}
+            ${a.promo_percent > 0 ? `<span style="text-decoration: line-through; opacity: 0.5; font-size: 0.875rem; font-weight: 400;">${formatPrice(a.prix || 0)}</span> ${formatPrice(Math.floor((a.prix || 0) * (1 - a.promo_percent / 100) / 5) * 5)}` : formatPrice(a.prix || 0)}
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
-            ${a.promo_label ? `<span class="admin-badge" style="background: var(--admin-accent); color: white;">${escapeHtml(a.promo_label)}</span>` : ''}
+            ${a.promo_percent > 0 ? `<span class="admin-badge" style="background: var(--admin-accent); color: white;">-${a.promo_percent}%</span>` : ''}
             <span class="admin-badge admin-badge--${a.statut === 'en_ligne' ? 'success' : a.statut === 'rupture' ? 'error' : 'neutral'}">
               ${a.statut === 'en_ligne' ? 'En ligne' : a.statut === 'rupture' ? 'Rupture' : 'Masqué'}
             </span>
@@ -397,7 +397,7 @@
       description: $('#accessoire-description')?.value.trim(),
       image: getAccessoireImageForSave(),
       statut: $('#accessoire-statut')?.value || 'en_ligne',
-      promo_label: $('#accessoire-promo')?.value.trim() || null,
+      promo_percent: parseInt($('#accessoire-promo')?.value) || null,
       visible_configurateur: $('#accessoire-visible-config')?.checked || false,
       tailles_compatibles: taillesCompatibles
     };
@@ -451,7 +451,7 @@
     $('#accessoire-prix').value = accessoire.prix || '';
     $('#accessoire-stock').value = accessoire.stock ?? -1;
     $('#accessoire-description').value = accessoire.description || '';
-    if ($('#accessoire-promo')) $('#accessoire-promo').value = accessoire.promo_label || '';
+    if ($('#accessoire-promo')) $('#accessoire-promo').value = accessoire.promo_percent || '';
     $('#accessoire-statut').value = accessoire.statut || 'en_ligne';
 
     // Load configurator options
