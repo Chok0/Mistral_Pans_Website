@@ -538,6 +538,13 @@
   var currentItemType = null; // 'instrument' ou 'accessoire'
   var currentGalleryIndex = 0;
 
+  // ── Notation ──
+
+  function getNotation() {
+    return (typeof MistralScales !== 'undefined' && MistralScales.getNotationMode)
+      ? MistralScales.getNotationMode() : 'american';
+  }
+
   // ── Utilitaires ──
 
   function escapeHtml(str) {
@@ -612,6 +619,7 @@
       currentGalleryIndex = 0;
       updateMeta(instrument);
       renderInstrument(container, instrument);
+      bindNotationToggle();
       var hasPlayerSlide = initVirtualPlayer(instrument);
       initGallery(instrument.images || [], hasPlayerSlide);
       initHousse(instrument.taille);
@@ -705,8 +713,15 @@
 
   // ── Rendu principal ──
 
+  function convertNotes(str) {
+    if (!str) return str;
+    return (typeof MistralScales !== 'undefined' && MistralScales.convertNotesInString)
+      ? MistralScales.convertNotesInString(str) : str;
+  }
+
   function renderInstrument(container, instrument) {
-    var displayName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || 'Instrument';
+    var rawName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || 'Instrument';
+    var displayName = convertNotes(rawName);
 
     var hasImages = instrument.images && instrument.images.length > 0;
     var hasPlayer = hasValue(instrument.notes_layout) && typeof HandpanPlayer !== 'undefined' && HandpanPlayer.parseLayout(instrument.notes_layout);
@@ -746,7 +761,7 @@
     var specsHtml = '<div class="annonce-specs">' +
       renderSpec('Gamme', instrument.gamme) +
       renderSpec('Notes', instrument.nombre_notes ? instrument.nombre_notes + ' notes' : null) +
-      renderSpec('Tonalité', instrument.tonalite) +
+      renderSpec('Tonalité', convertNotes(instrument.tonalite)) +
       renderSpec('Accordage', instrument.accordage ? instrument.accordage + ' Hz' : null) +
       renderSpec('Taille', instrument.taille ? instrument.taille + ' cm' : null) +
       renderSpec('Matériau', matLabel) +
@@ -756,7 +771,7 @@
     if (hasValue(instrument.notes_layout)) {
       notesLayoutHtml = '<div class="annonce-notes-layout">' +
         '<span class="annonce-notes-layout__label">Disposition des notes</span>' +
-        '<span class="annonce-notes-layout__value">' + escapeHtml(instrument.notes_layout) + '</span>' +
+        '<span class="annonce-notes-layout__value">' + escapeHtml(convertNotes(instrument.notes_layout)) + '</span>' +
       '</div>';
     }
 
@@ -809,8 +824,14 @@
       ? ' <span style="display:inline-block;font-size:0.8125rem;font-weight:600;color:white;background:var(--color-accent,#0D7377);padding:0.375rem 0.75rem;border-radius:6px;vertical-align:middle;white-space:nowrap;">-' + instrument.promo_percent + '%</span>'
       : '';
 
+    var notationToggleHtml = '<div class="notation-toggle" id="notation-toggle" style="display:inline-flex;border:1px solid #e5e7eb;border-radius:999px;overflow:hidden;margin-bottom:0.75rem;font-size:0.6875rem;background:white;">' +
+      '<button class="notation-toggle__opt' + (getNotation() === 'american' ? ' active' : '') + '" data-mode="american" style="padding:0.25rem 0.625rem;border:none;background:' + (getNotation() === 'american' ? 'var(--color-accent,#0D7377);color:white' : 'transparent;color:#6b7280') + ';cursor:pointer;font-family:inherit;font-size:inherit;font-weight:500;white-space:nowrap;">C D E</button>' +
+      '<button class="notation-toggle__opt' + (getNotation() === 'french' ? ' active' : '') + '" data-mode="french" style="padding:0.25rem 0.625rem;border:none;background:' + (getNotation() === 'french' ? 'var(--color-accent,#0D7377);color:white' : 'transparent;color:#6b7280') + ';cursor:pointer;font-family:inherit;font-size:inherit;font-weight:500;white-space:nowrap;">Do Ré Mi</button>' +
+    '</div>';
+
     var detailsHtml = '<div class="annonce-details">' +
       '<h1 class="annonce-details__title">' + escapeHtml(displayName) + promoBadgeHtml + '</h1>' +
+      notationToggleHtml +
       specsHtml + notesLayoutHtml + descHtml + videoHtml + handpanerHtml +
       optionsHtml + priceHtml + ctaHtml +
     '</div>';
@@ -1337,6 +1358,27 @@
 
     return true;
   }
+
+  // ── Notation toggle binding ──
+
+  function bindNotationToggle() {
+    var toggle = document.getElementById('notation-toggle');
+    if (!toggle) return;
+
+    toggle.querySelectorAll('.notation-toggle__opt').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var mode = btn.dataset.mode;
+        if (typeof MistralScales !== 'undefined' && MistralScales.setNotationMode) {
+          MistralScales.setNotationMode(mode);
+        }
+      });
+    });
+  }
+
+  // Re-render on notation change
+  window.addEventListener('notation-mode-change', function() {
+    loadInstrument();
+  });
 
   // ── Init ──
 

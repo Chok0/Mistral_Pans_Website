@@ -183,8 +183,12 @@
     }
     const specsHtml = specs.length > 0 ? '<p class="flash-card__specs">' + specs.join(' · ') + '</p>' : '';
 
-    const notesHtml = hasValue(instrument.notes_layout)
-      ? '<p class="flash-card__notes">' + instrument.notes_layout.split(' ').filter(function(n) { return n.trim(); }).join(' · ') + '</p>'
+    var notesRaw = hasValue(instrument.notes_layout) ? instrument.notes_layout : '';
+    if (notesRaw && typeof MistralScales !== 'undefined' && MistralScales.convertNotesInString) {
+      notesRaw = MistralScales.convertNotesInString(notesRaw);
+    }
+    const notesHtml = notesRaw
+      ? '<p class="flash-card__notes">' + notesRaw.split(' ').filter(function(n) { return n.trim(); }).join(' · ') + '</p>'
       : '';
 
     const descHtml = hasValue(instrument.description)
@@ -201,7 +205,9 @@
       priceHtml = '<span class="flash-card__price">' + formatPrice(instrument.prix_vente) + '</span>';
     }
 
-    const displayName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || instrument.reference || 'Instrument';
+    var rawName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || instrument.reference || 'Instrument';
+    const displayName = (typeof MistralScales !== 'undefined' && MistralScales.convertNotesInString)
+      ? MistralScales.convertNotesInString(rawName) : rawName;
 
     var instrInCart = (typeof MistralCart !== 'undefined' && MistralCart.hasItem(instrument.id));
     var instrCartLabel = instrInCart ? 'Dans le panier' : 'Ajouter au panier';
@@ -437,6 +443,11 @@
       if (e.detail && (e.detail.key === INSTRUMENTS_KEY || e.detail.key === ACCESSOIRES_KEY)) {
         renderFlashCards();
       }
+    });
+
+    // Re-render when notation mode changes
+    window.addEventListener('notation-mode-change', function() {
+      renderFlashCards();
     });
 
   }

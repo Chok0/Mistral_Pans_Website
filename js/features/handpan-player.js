@@ -59,6 +59,14 @@ class HandpanPlayer {
     // Web Audio API context (shared across instances)
     this.audioContext = null;
 
+    // Listen for notation mode changes
+    this._onNotationChange = () => {
+      this.scales = this._buildScalesFromMistralScales();
+      this.render();
+      this.bindEvents();
+    };
+    window.addEventListener('notation-mode-change', this._onNotationChange);
+
     this.init();
   }
 
@@ -67,14 +75,15 @@ class HandpanPlayer {
     // Use MistralScales if available (from scales-data.js)
     if (typeof MistralScales !== 'undefined' && MistralScales.SCALES_DATA) {
       const scales = {};
+      const userNotation = MistralScales.toUserNotation || MistralScales.toDisplayNotation;
       for (const [key, data] of Object.entries(MistralScales.SCALES_DATA)) {
         if (data.baseNotes && data.baseNotes.length > 0) {
           // Use proper music theory to determine sharp/flat for base tonality
           const baseTonality = data.baseRoot + data.baseOctave;
           const useFlats = MistralScales.shouldUseFlats(baseTonality, data);
-          const notes = data.baseNotes.map(n => MistralScales.toDisplayNotation(n, useFlats));
+          const notes = data.baseNotes.map(n => userNotation(n, useFlats));
           scales[key] = {
-            name: `${MistralScales.toDisplayNotation(data.baseRoot, useFlats)} ${data.name}`,
+            name: `${userNotation(data.baseRoot, useFlats)} ${data.name}`,
             description: data.description || '',
             mood: data.mood || '',
             notes: notes
@@ -166,13 +175,18 @@ class HandpanPlayer {
     return scale ? scale.notes : [];
   }
 
-  // Convert internal sharp notation to display (flats when appropriate)
+  // Convert internal sharp notation to display (flats when appropriate, French if preferred)
   _toDisplayName(noteName) {
     if (typeof MistralScales !== 'undefined' && MistralScales.SHARPS_TO_FLATS) {
       const m = noteName.match(/^([A-G]#?)(\d)?$/);
+      let display = noteName;
       if (m && m[1].includes('#') && MistralScales.SHARPS_TO_FLATS[m[1]]) {
-        return MistralScales.SHARPS_TO_FLATS[m[1]] + (m[2] || '');
+        display = MistralScales.SHARPS_TO_FLATS[m[1]] + (m[2] || '');
       }
+      if (MistralScales.getNotationMode && MistralScales.getNotationMode() === 'french') {
+        display = MistralScales.toFrenchNotation(display);
+      }
+      return display;
     }
     return noteName;
   }
@@ -1159,6 +1173,9 @@ class HandpanPlayer {
 
     // Remove event listeners
     this.unbindEvents();
+    if (this._onNotationChange) {
+      window.removeEventListener('notation-mode-change', this._onNotationChange);
+    }
 
     // Remove overlay if enlarged
     const overlay = document.querySelector('.handpan-overlay');

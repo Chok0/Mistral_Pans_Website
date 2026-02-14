@@ -23,6 +23,12 @@
     'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb'
   };
 
+  // French solfège notation mapping
+  const AMERICAN_TO_FRENCH = {
+    'C': 'Do', 'D': 'Ré', 'E': 'Mi', 'F': 'Fa',
+    'G': 'Sol', 'A': 'La', 'B': 'Si'
+  };
+
   // ============================================================================
   // MUSIC THEORY: CIRCLE OF FIFTHS & KEY SIGNATURES
   // ============================================================================
@@ -456,6 +462,74 @@
   }
 
   // ============================================================================
+  // NOTATION MODE (American / French solfège)
+  // ============================================================================
+
+  let _notationMode = null;
+
+  /**
+   * Get current notation mode ('american' or 'french')
+   */
+  function getNotationMode() {
+    if (_notationMode === null) {
+      try { _notationMode = localStorage.getItem('mistral_notation_mode') || 'american'; }
+      catch (e) { _notationMode = 'american'; }
+    }
+    return _notationMode;
+  }
+
+  /**
+   * Set notation mode and persist preference
+   * @param {'american'|'french'} mode
+   */
+  function setNotationMode(mode) {
+    _notationMode = mode;
+    try { localStorage.setItem('mistral_notation_mode', mode); } catch (e) {}
+    window.dispatchEvent(new CustomEvent('notation-mode-change', { detail: { mode } }));
+  }
+
+  /**
+   * Convert a single note to French solfège notation
+   * @param {string} noteWithOctave - Note like "Bb3", "C#4", "D3"
+   * @returns {string} - French notation like "Sib3", "Do#4", "Ré3"
+   */
+  function toFrenchNotation(noteWithOctave) {
+    const match = noteWithOctave.match(/^([A-G])([#b]?)(\d?)$/);
+    if (!match) return noteWithOctave;
+    const base = AMERICAN_TO_FRENCH[match[1]] || match[1];
+    return base + match[2] + match[3];
+  }
+
+  /**
+   * Convert a note to user-preferred notation (American or French)
+   * Applies sharp/flat conversion first, then French if needed
+   * @param {string} noteWithOctave - Note like "A#3"
+   * @param {boolean} useFlats - Whether to display as flats
+   * @returns {string} - Note in user's preferred notation
+   */
+  function toUserNotation(noteWithOctave, useFlats) {
+    let note = toDisplayNotation(noteWithOctave, useFlats);
+    if (getNotationMode() === 'french') {
+      note = toFrenchNotation(note);
+    }
+    return note;
+  }
+
+  /**
+   * Convert all note names within a string (e.g., notes_layout pattern)
+   * Respects current notation mode
+   * @param {string} str - String containing note names
+   * @returns {string} - String with notes converted to user notation
+   */
+  function convertNotesInString(str) {
+    if (!str || getNotationMode() !== 'french') return str;
+    return str.replace(/([A-G])([#b]?)(\d?)/g, function(match, letter, accidental, octave) {
+      const french = AMERICAN_TO_FRENCH[letter] || letter;
+      return french + accidental + octave;
+    });
+  }
+
+  // ============================================================================
   // EXPORT
   // ============================================================================
 
@@ -482,7 +556,15 @@
     getScaleDisplayName: getScaleDisplayName,
     hasConfiguratorSupport: hasConfiguratorSupport,
     getConfiguratorScales: getConfiguratorScales,
-    getAllScales: getAllScales
+    getAllScales: getAllScales,
+
+    // Notation mode (American / French)
+    AMERICAN_TO_FRENCH: AMERICAN_TO_FRENCH,
+    toFrenchNotation: toFrenchNotation,
+    toUserNotation: toUserNotation,
+    convertNotesInString: convertNotesInString,
+    getNotationMode: getNotationMode,
+    setNotationMode: setNotationMode
   };
 
   // Also expose SCALES_DATA directly for backward compatibility
