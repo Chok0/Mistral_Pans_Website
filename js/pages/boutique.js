@@ -1509,7 +1509,7 @@
     renderSizeCards();       // Render size cards from MistralTailles
     renderMaterialCards();   // Render material chips from MistralMateriaux
     bindEvents();
-    initNotationToggle();    // Notation toggle (American / French)
+    try { initNotationToggle(); } catch (e) { console.error('Notation toggle init error:', e); }
     updateTonalityChipsLabels();  // Set chip labels based on default scale (Kurd = flats)
     updateDisplay();
 

@@ -103,8 +103,23 @@
           <p class="player-info__notes" id="display-notes">D3 • A3 • Bb3 • C4 • D4 • E4 • F4 • G4 • A4</p>
           <p class="player-info__mood" id="display-mood">9 notes</p>
           <div class="notation-toggle" id="notation-toggle">
-            <button class="notation-toggle__opt active" data-mode="american">C D E</button>
-            <button class="notation-toggle__opt" data-mode="french">Do Ré Mi</button>
+            <button class="notation-toggle__opt active" data-mode="american" title="C D E">
+              <svg class="notation-flag" viewBox="0 0 60 40" aria-hidden="true">
+                <rect fill="#B22234" width="60" height="40"/>
+                <rect fill="#fff" y="6" width="60" height="4"/>
+                <rect fill="#fff" y="14" width="60" height="4"/>
+                <rect fill="#fff" y="22" width="60" height="4"/>
+                <rect fill="#fff" y="30" width="60" height="4"/>
+                <rect fill="#3C3B6E" width="25" height="22"/>
+              </svg>
+            </button>
+            <button class="notation-toggle__opt" data-mode="french" title="Do Ré Mi">
+              <svg class="notation-flag" viewBox="0 0 3 2" aria-hidden="true">
+                <rect fill="#002654" width="1" height="2"/>
+                <rect fill="#fff" x="1" width="1" height="2"/>
+                <rect fill="#CE1126" x="2" width="1" height="2"/>
+              </svg>
+            </button>
           </div>
         </div>
         
