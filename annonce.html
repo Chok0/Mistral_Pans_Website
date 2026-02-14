@@ -720,8 +720,14 @@
   }
 
   function renderInstrument(container, instrument) {
-    var rawName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || 'Instrument';
-    var displayName = convertNotes(rawName);
+    var displayName;
+    if (instrument.nom) {
+      displayName = instrument.nom;
+    } else {
+      var tonaliteDisplay = instrument.tonalite ? convertNotes(instrument.tonalite) : '';
+      var gammeDisplay = instrument.gamme || '';
+      displayName = (tonaliteDisplay + ' ' + gammeDisplay).trim() || 'Instrument';
+    }
 
     var hasImages = instrument.images && instrument.images.length > 0;
     var hasPlayer = hasValue(instrument.notes_layout) && typeof HandpanPlayer !== 'undefined' && HandpanPlayer.parseLayout(instrument.notes_layout);
