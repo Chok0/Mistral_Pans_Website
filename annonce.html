@@ -245,6 +245,38 @@
       word-break: break-word;
     }
 
+    /* Virtual instrument player */
+    .annonce-player-container {
+      margin-top: 0.75rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .annonce-player-container .handpan-player {
+      max-width: 260px;
+    }
+
+    .annonce-player-container .handpan-info {
+      margin-bottom: 0.5rem;
+    }
+
+    .annonce-player-container .handpan-scale-notes {
+      font-size: 0.6875rem;
+    }
+
+    .annonce-player-container .handpan-controls {
+      gap: 0.375rem;
+    }
+
+    .annonce-player-container .handpan-btn {
+      padding: 0.4rem 0.875rem;
+      font-size: 0.8125rem;
+    }
+
+    .annonce-player-container .handpan-btn-resize {
+      padding: 0.4rem;
+    }
+
     /* Description */
     .annonce-description {
       font-size: 0.9375rem;
@@ -581,6 +613,7 @@
       initHousse(instrument.taille);
       initKeyboard();
       updatePrice();
+      initVirtualPlayer(instrument);
     } else if (accessoire) {
       if (accessoire.statut !== 'en_ligne' && accessoire.statut !== 'actif' && !isAdmin) {
         showNotFound(container);
@@ -715,7 +748,8 @@
       notesLayoutHtml = '<div class="annonce-notes-layout">' +
         '<span class="annonce-notes-layout__label">Disposition des notes</span>' +
         '<span class="annonce-notes-layout__value">' + escapeHtml(instrument.notes_layout) + '</span>' +
-      '</div>';
+      '</div>' +
+      '<div class="annonce-player-container" id="annonce-player"></div>';
     }
 
     var descHtml = '';
@@ -1207,6 +1241,39 @@
     '</div>';
   }
 
+  // ── Instrument virtuel ──
+
+  var virtualPlayer = null;
+
+  function initVirtualPlayer(instrument) {
+    if (!hasValue(instrument.notes_layout)) return;
+
+    var container = document.getElementById('annonce-player');
+    if (!container) return;
+
+    // Vérifier que HandpanPlayer est disponible
+    if (typeof HandpanPlayer === 'undefined') return;
+
+    // Vérifier que le layout est parsable
+    var parsed = HandpanPlayer.parseLayout(instrument.notes_layout);
+    if (!parsed) return;
+
+    // Nettoyer l'instance précédente
+    if (virtualPlayer) {
+      virtualPlayer.destroy();
+      virtualPlayer = null;
+    }
+
+    virtualPlayer = new HandpanPlayer(container, {
+      layout: instrument.notes_layout,
+      size: 260,
+      showScaleSelector: false,
+      showNoteNames: true,
+      enableHaptics: true,
+      enableWaveAnimation: true
+    });
+  }
+
   // ── Init ──
 
   window.addEventListener('mistral-sync-complete', function() {
@@ -1224,6 +1291,8 @@
 
 <!-- Scripts -->
 <script src="js/features/cart.js"></script>
+<script src="js/data/scales-data.js"></script>
+<script src="js/features/handpan-player.js"></script>
 <script src="js/core/cookie-consent.js"></script>
 <script src="js/core/main.js"></script>
 <script src="js/data/materiaux-data.js" defer></script>
