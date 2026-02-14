@@ -245,36 +245,39 @@
       word-break: break-word;
     }
 
-    /* Virtual instrument player */
-    .annonce-player-container {
-      margin-top: 0.75rem;
+    /* Virtual instrument player slide in gallery */
+    .annonce-gallery__player-slide {
       display: flex;
+      flex-direction: column;
+      align-items: center;
       justify-content: center;
+      width: 100%;
+      padding: 1.5rem;
     }
 
-    .annonce-player-container .handpan-player {
-      max-width: 260px;
+    .annonce-gallery__player-slide .handpan-player {
+      max-width: 280px;
     }
 
-    .annonce-player-container .handpan-info {
+    .annonce-gallery__player-slide .handpan-info {
       margin-bottom: 0.5rem;
     }
 
-    .annonce-player-container .handpan-scale-notes {
+    .annonce-gallery__player-slide .handpan-scale-notes {
       font-size: 0.6875rem;
     }
 
-    .annonce-player-container .handpan-controls {
-      gap: 0.375rem;
+    /* Player thumbnail icon */
+    .annonce-gallery__thumb--player {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-bg-warm, #f5f5f5);
     }
 
-    .annonce-player-container .handpan-btn {
-      padding: 0.4rem 0.875rem;
-      font-size: 0.8125rem;
-    }
-
-    .annonce-player-container .handpan-btn-resize {
-      padding: 0.4rem;
+    .annonce-gallery__thumb--player svg {
+      width: 100%;
+      height: 100%;
     }
 
     /* Description */
@@ -609,11 +612,11 @@
       currentGalleryIndex = 0;
       updateMeta(instrument);
       renderInstrument(container, instrument);
-      initGallery(instrument.images || []);
+      var hasPlayerSlide = initVirtualPlayer(instrument);
+      initGallery(instrument.images || [], hasPlayerSlide);
       initHousse(instrument.taille);
       initKeyboard();
       updatePrice();
-      initVirtualPlayer(instrument);
     } else if (accessoire) {
       if (accessoire.statut !== 'en_ligne' && accessoire.statut !== 'actif' && !isAdmin) {
         showNotFound(container);
@@ -706,6 +709,7 @@
     var displayName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || 'Instrument';
 
     var hasImages = instrument.images && instrument.images.length > 0;
+    var hasPlayer = hasValue(instrument.notes_layout) && typeof HandpanPlayer !== 'undefined' && HandpanPlayer.parseLayout(instrument.notes_layout);
     var galleryHtml = '<div class="annonce-gallery">' +
       '<div class="annonce-gallery__main" id="annonce-gallery-main">' +
         (hasImages
@@ -719,10 +723,15 @@
               '<span>Aucune photo</span>' +
             '</span>'
         ) +
-        '<button class="annonce-gallery__nav annonce-gallery__nav--prev" id="annonce-gallery-prev" aria-label="Photo précédente" style="display:none;">' +
+        (hasPlayer
+          ? '<div class="annonce-gallery__player-slide" id="annonce-player-slide" style="display:none;">' +
+              '<div id="annonce-player"></div>' +
+            '</div>'
+          : '') +
+        '<button class="annonce-gallery__nav annonce-gallery__nav--prev" id="annonce-gallery-prev" aria-label="Précédent" style="display:none;">' +
           '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>' +
         '</button>' +
-        '<button class="annonce-gallery__nav annonce-gallery__nav--next" id="annonce-gallery-next" aria-label="Photo suivante" style="display:none;">' +
+        '<button class="annonce-gallery__nav annonce-gallery__nav--next" id="annonce-gallery-next" aria-label="Suivant" style="display:none;">' +
           '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
         '</button>' +
       '</div>' +
@@ -748,8 +757,7 @@
       notesLayoutHtml = '<div class="annonce-notes-layout">' +
         '<span class="annonce-notes-layout__label">Disposition des notes</span>' +
         '<span class="annonce-notes-layout__value">' + escapeHtml(instrument.notes_layout) + '</span>' +
-      '</div>' +
-      '<div class="annonce-player-container" id="annonce-player"></div>';
+      '</div>';
     }
 
     var descHtml = '';
@@ -840,14 +848,26 @@
 
   // ── Galerie ──
 
-  function initGallery(images) {
-    if (!images || images.length === 0) return;
+  // Gallery: total slide count = images + player (if available)
+  var galleryHasPlayer = false;
+  var galleryTotalSlides = 0;
+
+  function getGalleryImages() {
+    return currentInstrument && currentInstrument.images ? currentInstrument.images : [];
+  }
+
+  function initGallery(images, hasPlayerSlide) {
+    galleryHasPlayer = !!hasPlayerSlide;
+    var imageCount = images ? images.length : 0;
+    galleryTotalSlides = imageCount + (galleryHasPlayer ? 1 : 0);
+
+    if (galleryTotalSlides <= 1 && imageCount <= 1 && !galleryHasPlayer) return;
 
     var prevBtn = document.getElementById('annonce-gallery-prev');
     var nextBtn = document.getElementById('annonce-gallery-next');
     var thumbsContainer = document.getElementById('annonce-gallery-thumbs');
 
-    if (images.length > 1) {
+    if (galleryTotalSlides > 1) {
       if (prevBtn) prevBtn.style.display = 'flex';
       if (nextBtn) nextBtn.style.display = 'flex';
 
@@ -858,12 +878,32 @@
     // Thumbnails
     if (thumbsContainer) {
       var html = '';
-      images.forEach(function(img, idx) {
-        var activeClass = idx === 0 ? ' active' : '';
-        html += '<div class="annonce-gallery__thumb' + activeClass + '" data-index="' + idx + '">' +
-          '<img src="' + img + '" alt="Photo ' + (idx + 1) + '">' +
+      if (images) {
+        images.forEach(function(img, idx) {
+          var activeClass = idx === 0 ? ' active' : '';
+          html += '<div class="annonce-gallery__thumb' + activeClass + '" data-index="' + idx + '">' +
+            '<img src="' + img + '" alt="Photo ' + (idx + 1) + '">' +
+          '</div>';
+        });
+      }
+
+      // Player thumbnail (last position)
+      if (galleryHasPlayer) {
+        var playerIdx = imageCount;
+        var activeClass = imageCount === 0 ? ' active' : '';
+        html += '<div class="annonce-gallery__thumb annonce-gallery__thumb--player' + activeClass + '" data-index="' + playerIdx + '" title="Instrument virtuel">' +
+          '<svg viewBox="0 0 64 64" width="64" height="64">' +
+            '<circle cx="32" cy="32" r="26" fill="#B8B8B8" stroke="#909090" stroke-width="1.5"/>' +
+            '<circle cx="32" cy="32" r="24" fill="none" stroke="#909090" stroke-width="0.75"/>' +
+            '<circle cx="32" cy="25" r="5" fill="#D0D0D0" stroke="#686868" stroke-width="1"/>' +
+            '<circle cx="22" cy="33" r="4" fill="#A0A0A0" stroke="#686868" stroke-width="1"/>' +
+            '<circle cx="42" cy="33" r="4" fill="#A0A0A0" stroke="#686868" stroke-width="1"/>' +
+            '<circle cx="25" cy="42" r="4" fill="#A0A0A0" stroke="#686868" stroke-width="1"/>' +
+            '<circle cx="39" cy="42" r="4" fill="#A0A0A0" stroke="#686868" stroke-width="1"/>' +
+          '</svg>' +
         '</div>';
-      });
+      }
+
       thumbsContainer.innerHTML = html;
 
       thumbsContainer.addEventListener('click', function(e) {
@@ -874,23 +914,46 @@
       });
     }
 
-    updateGalleryNav();
+    // If no images but has player, show player immediately
+    if (imageCount === 0 && galleryHasPlayer) {
+      setGalleryIndex(0);
+    } else {
+      updateGalleryNav();
+    }
   }
 
   function navigateGallery(direction) {
-    var images = currentInstrument && currentInstrument.images ? currentInstrument.images : [];
-    if (images.length === 0) return;
+    if (galleryTotalSlides === 0) return;
     setGalleryIndex(currentGalleryIndex + direction);
   }
 
   function setGalleryIndex(idx) {
-    var images = currentInstrument && currentInstrument.images ? currentInstrument.images : [];
-    if (idx < 0) idx = images.length - 1;
-    if (idx >= images.length) idx = 0;
+    var images = getGalleryImages();
+    var imageCount = images.length;
+
+    if (idx < 0) idx = galleryTotalSlides - 1;
+    if (idx >= galleryTotalSlides) idx = 0;
     currentGalleryIndex = idx;
 
     var mainImage = document.getElementById('annonce-main-image');
-    if (mainImage) mainImage.src = images[idx];
+    var noImage = document.getElementById('annonce-no-image');
+    var playerSlide = document.getElementById('annonce-player-slide');
+    var isPlayerSlide = galleryHasPlayer && idx === imageCount;
+
+    if (isPlayerSlide) {
+      // Show player, hide image
+      if (mainImage) mainImage.style.display = 'none';
+      if (noImage) noImage.style.display = 'none';
+      if (playerSlide) playerSlide.style.display = 'flex';
+    } else {
+      // Show image, hide player
+      if (playerSlide) playerSlide.style.display = 'none';
+      if (noImage) noImage.style.display = 'none';
+      if (mainImage) {
+        mainImage.style.display = '';
+        mainImage.src = images[idx];
+      }
+    }
 
     document.querySelectorAll('.annonce-gallery__thumb').forEach(function(thumb, i) {
       thumb.classList.toggle('active', i === idx);
@@ -900,11 +963,10 @@
   }
 
   function updateGalleryNav() {
-    var images = currentInstrument && currentInstrument.images ? currentInstrument.images : [];
     var prevBtn = document.getElementById('annonce-gallery-prev');
     var nextBtn = document.getElementById('annonce-gallery-next');
     if (prevBtn) prevBtn.disabled = currentGalleryIndex === 0;
-    if (nextBtn) nextBtn.disabled = currentGalleryIndex === images.length - 1;
+    if (nextBtn) nextBtn.disabled = currentGalleryIndex === galleryTotalSlides - 1;
   }
 
   // ── Housse ──
@@ -1246,17 +1308,17 @@
   var virtualPlayer = null;
 
   function initVirtualPlayer(instrument) {
-    if (!hasValue(instrument.notes_layout)) return;
-
-    var container = document.getElementById('annonce-player');
-    if (!container) return;
+    if (!hasValue(instrument.notes_layout)) return false;
 
     // Vérifier que HandpanPlayer est disponible
-    if (typeof HandpanPlayer === 'undefined') return;
+    if (typeof HandpanPlayer === 'undefined') return false;
 
     // Vérifier que le layout est parsable
     var parsed = HandpanPlayer.parseLayout(instrument.notes_layout);
-    if (!parsed) return;
+    if (!parsed) return false;
+
+    var container = document.getElementById('annonce-player');
+    if (!container) return false;
 
     // Nettoyer l'instance précédente
     if (virtualPlayer) {
@@ -1266,12 +1328,14 @@
 
     virtualPlayer = new HandpanPlayer(container, {
       layout: instrument.notes_layout,
-      size: 260,
+      size: 280,
       showScaleSelector: false,
       showNoteNames: true,
       enableHaptics: true,
       enableWaveAnimation: true
     });
+
+    return true;
   }
 
   // ── Init ──
