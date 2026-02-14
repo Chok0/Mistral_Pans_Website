@@ -33,6 +33,15 @@ class HandpanPlayer {
       ...options
     };
 
+    // Custom notes from layout string (bypasses scale system)
+    this.customNotes = null;
+    if (options.layout) {
+      this.customNotes = HandpanPlayer.parseLayout(options.layout);
+      if (this.customNotes) {
+        this.options.showScaleSelector = false;
+      }
+    }
+
     // Scale definitions - use unified MistralScales if available
     this.scales = this._buildScalesFromMistralScales();
 
@@ -124,12 +133,10 @@ class HandpanPlayer {
     return fileName.replace('#', 's');
   }
 
-  // Preload audio for current scale
+  // Preload audio for current scale or custom notes
   preloadCurrentScale() {
-    const scale = this.scales[this.currentScale];
-    if (scale) {
-      scale.notes.forEach(note => this.preloadAudio(note));
-    }
+    const notes = this._getNoteNames();
+    notes.forEach(note => this.preloadAudio(note));
   }
 
   preloadAudio(noteName) {
@@ -150,7 +157,37 @@ class HandpanPlayer {
     };
   }
 
+  // Get the list of note names for the current state (custom or scale-based)
+  _getNoteNames() {
+    if (this.customNotes) {
+      return this.customNotes.map(n => this._toDisplayName(n.name));
+    }
+    const scale = this.scales[this.currentScale];
+    return scale ? scale.notes : [];
+  }
+
+  // Convert internal sharp notation to display (flats when appropriate)
+  _toDisplayName(noteName) {
+    if (typeof MistralScales !== 'undefined' && MistralScales.SHARPS_TO_FLATS) {
+      const m = noteName.match(/^([A-G]#?)(\d)?$/);
+      if (m && m[1].includes('#') && MistralScales.SHARPS_TO_FLATS[m[1]]) {
+        return MistralScales.SHARPS_TO_FLATS[m[1]] + (m[2] || '');
+      }
+    }
+    return noteName;
+  }
+
   render() {
+    if (this.customNotes) {
+      this._renderTyped();
+    } else {
+      this._renderSimple();
+    }
+    this.addStyles();
+  }
+
+  // Original render for scale-based mode
+  _renderSimple() {
     const scale = this.scales[this.currentScale];
     if (!scale) {
       console.error(`HandpanPlayer: Scale "${this.currentScale}" not found`);
@@ -165,7 +202,6 @@ class HandpanPlayer {
     const noteRadius = size * 0.09;
     const ids = this.getSvgIds();
 
-    // Calculate note positions
     const notePositions = this.calculateNotePositions(notes.length, center, outerRadius, innerRadius);
 
     this.container.innerHTML = `
@@ -174,7 +210,6 @@ class HandpanPlayer {
 
         <div class="handpan-visual">
           <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
-            <!-- Definitions with unique IDs -->
             <defs>
               <radialGradient id="${ids.shellGradient}" cx="30%" cy="30%">
                 <stop offset="0%" stop-color="#E8E8E8"/>
@@ -186,37 +221,25 @@ class HandpanPlayer {
               </filter>
             </defs>
 
-            <!-- Main shell -->
             <circle cx="${center}" cy="${center}" r="${size * 0.46}" fill="url(#${ids.shellGradient})" />
             <circle cx="${center}" cy="${center}" r="${size * 0.44}" fill="none" stroke="#909090" stroke-width="1.5"/>
 
-            <!-- Wave animation container -->
             <g class="wave-container"></g>
 
-            <!-- Notes -->
             ${notePositions.map((pos, i) => `
               <g class="note-group" data-note="${notes[i]}" data-index="${i}" data-x="${pos.x}" data-y="${pos.y}">
                 <circle
-                  cx="${pos.x}"
-                  cy="${pos.y}"
+                  cx="${pos.x}" cy="${pos.y}"
                   r="${i === 0 ? noteRadius * 1.3 : noteRadius}"
                   class="note-circle"
                   fill="${i === 0 ? '#D0D0D0' : '#A0A0A0'}"
-                  stroke="#686868"
-                  stroke-width="1.5"
+                  stroke="#686868" stroke-width="1.5"
                   filter="url(#${ids.noteShadow})"
                 />
                 ${this.options.showNoteNames ? `
-                  <text
-                    x="${pos.x}"
-                    y="${pos.y}"
-                    text-anchor="middle"
-                    dominant-baseline="central"
-                    class="note-label"
-                    fill="#3A3A3A"
-                    font-size="${size * 0.035}px"
-                    font-weight="600"
-                    font-family="system-ui, sans-serif"
+                  <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central"
+                    class="note-label" fill="#3A3A3A" font-size="${size * 0.035}px"
+                    font-weight="600" font-family="system-ui, sans-serif"
                   >${notes[i]}</text>
                 ` : ''}
               </g>
@@ -252,8 +275,270 @@ class HandpanPlayer {
         </div>
       </div>
     `;
+  }
 
-    this.addStyles();
+  // Type-aware render for layout-based mode (ding, tonals, mutants, bottoms)
+  _renderTyped() {
+    const allNotes = this.customNotes;
+    const size = this.options.size;
+    const center = size / 2;
+    const ids = this.getSvgIds();
+
+    const ding = allNotes.find(n => n.type === 'ding');
+    const tonals = allNotes.filter(n => n.type === 'tonal');
+    const mutants = allNotes.filter(n => n.type === 'mutant');
+    const bottoms = allNotes.filter(n => n.type === 'bottom');
+
+    const shellRadius = size * 0.42;
+    const tonalRadius = size * 0.31;
+    const dingSize = size * 0.09;
+    const noteSize = size * 0.065;
+    const mutantRadius = size * 0.18;
+    const mutantNoteSize = noteSize * 0.85;
+    const bottomRadius = size * 0.46;
+    const bottomNoteSize = noteSize * 0.85;
+    const fontSize = size * 0.032;
+
+    const hasBottoms = bottoms.length > 0;
+    const viewH = hasBottoms ? size * 1.15 : size;
+    const viewY = 0;
+
+    let svgNotes = '';
+    let noteIndex = 0;
+
+    // Ding
+    if (ding) {
+      const dName = this._toDisplayName(ding.name);
+      svgNotes += `
+        <g class="note-group" data-note="${ding.name}" data-index="${noteIndex}" data-x="${center}" data-y="${center}">
+          <circle cx="${center}" cy="${center}" r="${dingSize}"
+            class="note-circle note-ding" fill="#D0D0D0" stroke="#686868" stroke-width="1.5"
+            filter="url(#${ids.noteShadow})"/>
+          ${this.options.showNoteNames ? `
+            <text x="${center}" y="${center}" text-anchor="middle" dominant-baseline="central"
+              class="note-label" fill="#3A3A3A" font-size="${fontSize * 1.1}px"
+              font-weight="600" font-family="system-ui, sans-serif">${dName}</text>
+          ` : ''}
+        </g>`;
+      noteIndex++;
+    }
+
+    // Mutants (inner ring, top)
+    mutants.forEach((note, i) => {
+      const pos = this._getMutantPosition(i, mutants.length, mutantRadius, center);
+      const dName = this._toDisplayName(note.name);
+      svgNotes += `
+        <g class="note-group" data-note="${note.name}" data-index="${noteIndex}" data-x="${pos.x}" data-y="${pos.y}">
+          <circle cx="${pos.x}" cy="${pos.y}" r="${mutantNoteSize}"
+            class="note-circle note-mutant" fill="#B8B8B8" stroke="#787878" stroke-width="1.5"
+            filter="url(#${ids.noteShadow})"/>
+          ${this.options.showNoteNames ? `
+            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central"
+              class="note-label" fill="#3A3A3A" font-size="${fontSize * 0.9}px"
+              font-weight="600" font-family="system-ui, sans-serif">${dName}</text>
+          ` : ''}
+        </g>`;
+      noteIndex++;
+    });
+
+    // Tonals (main ring)
+    tonals.forEach((note, i) => {
+      const pos = this._getTonalPosition(i, tonals.length, tonalRadius, center);
+      const dName = this._toDisplayName(note.name);
+      svgNotes += `
+        <g class="note-group" data-note="${note.name}" data-index="${noteIndex}" data-x="${pos.x}" data-y="${pos.y}">
+          <circle cx="${pos.x}" cy="${pos.y}" r="${noteSize}"
+            class="note-circle note-tonal" fill="#A0A0A0" stroke="#686868" stroke-width="1.5"
+            filter="url(#${ids.noteShadow})"/>
+          ${this.options.showNoteNames ? `
+            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central"
+              class="note-label" fill="#3A3A3A" font-size="${fontSize}px"
+              font-weight="600" font-family="system-ui, sans-serif">${dName}</text>
+          ` : ''}
+        </g>`;
+      noteIndex++;
+    });
+
+    // Bottoms (outer ring, bottom half)
+    bottoms.forEach((note, i) => {
+      const pos = this._getBottomPosition(i, bottoms.length, bottomRadius, center);
+      const dName = this._toDisplayName(note.name);
+      svgNotes += `
+        <g class="note-group" data-note="${note.name}" data-index="${noteIndex}" data-x="${pos.x}" data-y="${pos.y}">
+          <circle cx="${pos.x}" cy="${pos.y}" r="${bottomNoteSize}"
+            class="note-circle note-bottom" fill="#505050" stroke="#505050" stroke-width="1.5"
+            stroke-dasharray="3 2" filter="url(#${ids.noteShadow})"/>
+          ${this.options.showNoteNames ? `
+            <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central"
+              class="note-label" fill="#E8E8E8" font-size="${fontSize * 0.9}px"
+              font-weight="600" font-family="system-ui, sans-serif">${dName}</text>
+          ` : ''}
+        </g>`;
+      noteIndex++;
+    });
+
+    // Build note names for info display (ordered: ding, tonals, mutants, bottoms)
+    const displayNotes = allNotes.map(n => this._toDisplayName(n.name));
+    const scaleName = ding ? this._toDisplayName(ding.name).replace(/\d$/, '') : '';
+
+    // Legend
+    let legendHtml = '';
+    if (mutants.length > 0 || bottoms.length > 0) {
+      legendHtml = '<div class="handpan-legend">';
+      legendHtml += '<span class="legend-item"><span class="legend-dot legend-dot--tonal"></span> Tonales</span>';
+      if (mutants.length > 0) {
+        legendHtml += '<span class="legend-item"><span class="legend-dot legend-dot--mutant"></span> Mutants</span>';
+      }
+      if (bottoms.length > 0) {
+        legendHtml += '<span class="legend-item"><span class="legend-dot legend-dot--bottom"></span> Bottoms</span>';
+      }
+      legendHtml += '</div>';
+    }
+
+    this.container.innerHTML = `
+      <div class="handpan-player" style="--accent-color: ${this.options.accentColor}; --size: ${size}px;">
+        <div class="handpan-visual">
+          <svg viewBox="0 ${viewY} ${size} ${viewH}" width="${size}" height="${viewH}" style="overflow: visible;">
+            <defs>
+              <radialGradient id="${ids.shellGradient}" cx="30%" cy="30%">
+                <stop offset="0%" stop-color="#E8E8E8"/>
+                <stop offset="70%" stop-color="#B8B8B8"/>
+                <stop offset="100%" stop-color="#7A7A7A"/>
+              </radialGradient>
+              <filter id="${ids.noteShadow}" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.2"/>
+              </filter>
+            </defs>
+
+            <circle cx="${center}" cy="${center}" r="${shellRadius}" fill="url(#${ids.shellGradient})" />
+            <circle cx="${center}" cy="${center}" r="${shellRadius - 2}" fill="none" stroke="#909090" stroke-width="1.5"/>
+
+            <g class="wave-container"></g>
+
+            ${svgNotes}
+          </svg>
+
+          <div class="handpan-play-hint">
+            <span>Cliquez sur les notes</span>
+          </div>
+        </div>
+
+        ${legendHtml}
+
+        <div class="handpan-info">
+          <p class="handpan-scale-notes">${displayNotes.join(' • ')}</p>
+          <p class="handpan-scale-mood">${allNotes.length} notes</p>
+        </div>
+
+        <div class="handpan-controls">
+          <button class="handpan-btn handpan-btn-play" title="Jouer la gamme">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5,3 19,12 5,21"/>
+            </svg>
+            <span>Écouter</span>
+          </button>
+          <button class="handpan-btn handpan-btn-resize" title="Agrandir">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15,3 21,3 21,9"/>
+              <polyline points="9,21 3,21 3,15"/>
+              <line x1="21" y1="3" x2="14" y2="10"/>
+              <line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Tonal positioning (alternating left/right, same as configurator)
+  _getTonalPosition(index, total, radius, center) {
+    let angleDeg;
+    const lastIndex = total - 1;
+    const isEvenTotal = (total % 2 === 0);
+
+    if (total === 1) {
+      angleDeg = 270;
+    } else if (total === 2) {
+      angleDeg = index === 0 ? 250 : 290;
+    } else if (index === lastIndex) {
+      angleDeg = 90;
+    } else if (isEvenTotal && index === 0) {
+      angleDeg = 270;
+    } else {
+      let adjustedIndex, middleCount, isRight, sideIndex, notesPerSide;
+
+      if (isEvenTotal) {
+        adjustedIndex = index - 1;
+        middleCount = total - 2;
+        isRight = (adjustedIndex % 2 === 1);
+        sideIndex = Math.floor(adjustedIndex / 2);
+        notesPerSide = Math.ceil(middleCount / 2);
+
+        if (isRight) {
+          const step = notesPerSide > 1 ? 90 / (notesPerSide - 1) : 0;
+          angleDeg = 315 + sideIndex * step;
+          if (angleDeg >= 360) angleDeg -= 360;
+        } else {
+          const step = notesPerSide > 1 ? 90 / (notesPerSide - 1) : 0;
+          angleDeg = 225 - sideIndex * step;
+        }
+      } else {
+        isRight = (index % 2 === 0);
+        sideIndex = Math.floor(index / 2);
+        notesPerSide = Math.ceil((total - 1) / 2);
+
+        if (isRight) {
+          const range = 120;
+          const step = notesPerSide > 1 ? range / (notesPerSide - 1) : 0;
+          angleDeg = 290 + sideIndex * step;
+          if (angleDeg >= 360) angleDeg -= 360;
+        } else {
+          const range = 120;
+          const step = notesPerSide > 1 ? range / (notesPerSide - 1) : 0;
+          angleDeg = 250 - sideIndex * step;
+        }
+      }
+    }
+
+    const angleRad = angleDeg * Math.PI / 180;
+    return {
+      x: center + Math.cos(angleRad) * radius,
+      y: center - Math.sin(angleRad) * radius
+    };
+  }
+
+  // Mutant positioning (arc at top of shell)
+  _getMutantPosition(index, total, radius, center) {
+    if (total === 1) {
+      return { x: center, y: center - radius };
+    }
+    const arcSpread = Math.min(120, 40 + (total - 1) * 30);
+    const startAngle = 90 + arcSpread / 2;
+    const step = arcSpread / (total - 1);
+    const angleDeg = startAngle - (index * step);
+
+    const angleRad = angleDeg * Math.PI / 180;
+    return {
+      x: center + Math.cos(angleRad) * radius,
+      y: center - Math.sin(angleRad) * radius
+    };
+  }
+
+  // Bottom positioning (arc at bottom of shell)
+  _getBottomPosition(index, total, radius, center) {
+    if (total === 1) {
+      return { x: center, y: center + radius };
+    }
+    const arcSpread = Math.min(140, 40 + (total - 1) * 25);
+    const startAngle = 270 - arcSpread / 2;
+    const step = arcSpread / (total - 1);
+    const angleDeg = startAngle + (index * step);
+
+    const angleRad = angleDeg * Math.PI / 180;
+    return {
+      x: center + Math.cos(angleRad) * radius,
+      y: center - Math.sin(angleRad) * radius
+    };
   }
 
   calculateNotePositions(noteCount, center, outerRadius, innerRadius) {
@@ -528,6 +813,36 @@ class HandpanPlayer {
       .handpan-btn svg {
         flex-shrink: 0;
       }
+
+      /* Legend for typed notes */
+      .handpan-legend {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.6875rem;
+        color: #999;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+
+      .legend-dot--tonal { background: #A0A0A0; border: 1px solid #686868; }
+      .legend-dot--mutant { background: #B8B8B8; border: 1px solid #787878; }
+      .legend-dot--bottom { background: #505050; border: 1px solid #505050; }
+
+      /* Typed note styles */
+      .note-mutant { opacity: 0.85; }
     `;
 
     document.head.appendChild(styles);
@@ -729,17 +1044,26 @@ class HandpanPlayer {
     const playBtn = this.container.querySelector('.handpan-btn-play');
     if (playBtn) {
       playBtn.classList.remove('playing');
-      playBtn.querySelector('span').textContent = 'Écouter la gamme';
+      playBtn.querySelector('span').textContent = this.customNotes ? 'Écouter' : 'Écouter la gamme';
     }
   }
 
   async playScale() {
     if (this.isPlaying) return;
 
-    const scale = this.scales[this.currentScale];
-    const notes = scale.notes;
-    const noteGroups = this.container.querySelectorAll('.note-group');
+    const notes = this._getNoteNames();
     const playBtn = this.container.querySelector('.handpan-btn-play');
+
+    // Build a map of note name -> DOM element for reliable lookup
+    const noteGroupMap = {};
+    this.container.querySelectorAll('.note-group').forEach(g => {
+      const noteName = g.dataset.note;
+      if (noteName) {
+        // Map both internal name and display name
+        noteGroupMap[noteName] = g;
+        noteGroupMap[this._toDisplayName(noteName)] = g;
+      }
+    });
 
     this.isPlaying = true;
     this.playAbortController = new AbortController();
@@ -756,7 +1080,8 @@ class HandpanPlayer {
         if (signal.aborted) return;
         await this.delay(300);
         if (signal.aborted) return;
-        this.triggerNote(noteGroups[i], notes[i]);
+        const group = noteGroupMap[notes[i]];
+        if (group) this.triggerNote(group, notes[i]);
       }
 
       // Play a simple arpeggio back down
@@ -765,7 +1090,8 @@ class HandpanPlayer {
         if (signal.aborted) return;
         await this.delay(250);
         if (signal.aborted) return;
-        this.triggerNote(noteGroups[i], notes[i]);
+        const group = noteGroupMap[notes[i]];
+        if (group) this.triggerNote(group, notes[i]);
       }
     } finally {
       this.stopPlayScale();
@@ -856,6 +1182,139 @@ class HandpanPlayer {
     if (this.audioContext && this.audioContext.state !== 'closed') {
       this.audioContext.close().catch(() => {});
     }
+  }
+
+  // ── Static: Parse a notes_layout string into typed note objects ──
+  // Layout format: "D/-A-Bb-C-D-E-F-G-A_" or "D/(F)-(G)-A-Bb-C-D-E-F-G-A-C-[D]"
+  // Returns array of {name: "D3", type: "ding"|"tonal"|"mutant"|"bottom"}
+  static parseLayout(layout) {
+    if (!layout || typeof layout !== 'string') return null;
+
+    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const FLATS_TO_SHARPS = {
+      'Db': 'C#', 'Eb': 'D#', 'Fb': 'E', 'Gb': 'F#',
+      'Ab': 'G#', 'Bb': 'A#', 'Cb': 'B'
+    };
+
+    function normalizeNote(str) {
+      for (const [flat, sharp] of Object.entries(FLATS_TO_SHARPS)) {
+        if (str.startsWith(flat)) return str.replace(flat, sharp);
+      }
+      return str;
+    }
+
+    function parseNoteStr(str) {
+      str = normalizeNote(str);
+      const m = str.match(/^([A-G]#?)(\d)?$/);
+      if (!m) return null;
+      return { note: m[1], octave: m[2] ? parseInt(m[2]) : null };
+    }
+
+    // Clean up
+    let cleaned = layout.replace(/_$/, '').replace(/\s+/g, ' ').trim();
+    const slashIdx = cleaned.indexOf('/');
+    if (slashIdx === -1) return null;
+
+    // Parse ding (before /)
+    const dingStr = cleaned.substring(0, slashIdx).trim();
+    const dingParsed = parseNoteStr(dingStr);
+    if (!dingParsed) return null;
+
+    const rootOctave = dingParsed.octave || 3;
+    const rootNote = dingParsed.note;
+
+    // Tokenize the rest
+    const notesPart = cleaned.substring(slashIdx + 1).trim();
+    const tokens = [];
+    let current = '';
+    let inParens = false;
+    let inBrackets = false;
+
+    for (let i = 0; i < notesPart.length; i++) {
+      const ch = notesPart[i];
+      if (ch === '(') {
+        if (current.trim()) tokens.push(current.trim());
+        current = '('; inParens = true;
+      } else if (ch === ')') {
+        current += ')'; tokens.push(current.trim());
+        current = ''; inParens = false;
+      } else if (ch === '[') {
+        if (current.trim()) tokens.push(current.trim());
+        current = '['; inBrackets = true;
+      } else if (ch === ']') {
+        current += ']'; tokens.push(current.trim());
+        current = ''; inBrackets = false;
+      } else if ((ch === '-' || ch === ' ') && !inParens && !inBrackets) {
+        if (current.trim()) tokens.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    if (current.trim()) tokens.push(current.trim());
+
+    const results = [];
+
+    // Add ding
+    results.push({
+      name: rootNote + rootOctave,
+      type: 'ding'
+    });
+
+    // Track octave state
+    const rootIndex = NOTE_NAMES.indexOf(rootNote);
+    let tonalOctave = rootOctave;
+    let lastTonalIndex = rootIndex;
+    let isFirstTonal = true;
+    let bottomOctave = rootOctave;
+
+    tokens.filter(t => t.length > 0).forEach(token => {
+      let type = 'tonal';
+      let noteStr = token;
+
+      if (token.startsWith('(') && token.endsWith(')')) {
+        type = 'bottom';
+        noteStr = token.slice(1, -1);
+      } else if (token.startsWith('[') && token.endsWith(']')) {
+        type = 'mutant';
+        noteStr = token.slice(1, -1);
+      }
+
+      const parsed = parseNoteStr(noteStr);
+      if (!parsed) return;
+
+      let noteOctave = parsed.octave;
+      const noteIndex = NOTE_NAMES.indexOf(parsed.note);
+
+      if (noteOctave === null) {
+        if (type === 'tonal' || type === 'mutant') {
+          if (isFirstTonal) {
+            isFirstTonal = false;
+          } else {
+            if (noteIndex <= lastTonalIndex) tonalOctave++;
+          }
+          noteOctave = tonalOctave;
+          lastTonalIndex = noteIndex;
+        } else {
+          noteOctave = bottomOctave;
+        }
+      } else {
+        if (type === 'tonal' || type === 'mutant') {
+          tonalOctave = noteOctave;
+          lastTonalIndex = noteIndex;
+          isFirstTonal = false;
+        } else {
+          bottomOctave = noteOctave;
+        }
+      }
+
+      results.push({
+        name: parsed.note + noteOctave,
+        type: type
+      });
+    });
+
+    return results.length > 1 ? results : null;
   }
 }
 
