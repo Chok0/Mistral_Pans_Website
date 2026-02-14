@@ -159,6 +159,19 @@ body[data-page="boutique"] {
   stroke-dasharray: 3 2;
 }
 
+/* Wave ripple animation on note click */
+.wave-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.6);
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+@keyframes wave-expand {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
 /* Mobile: larger instrument and touch targets */
 @media (max-width: 768px) {
   .player-visual svg {

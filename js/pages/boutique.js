@@ -393,12 +393,14 @@
 
         <circle cx="${center}" cy="${center}" r="${shellRadius}" fill="url(#shell-grad)"/>
         <circle cx="${center}" cy="${center}" r="${shellRadius - 2}" fill="none" stroke="#909090" stroke-width="1.5"/>
+
+        <g class="wave-container"></g>
     `;
 
     if (ding) {
       const dingDisplay = toDisplayNotation(`${ding.note}${ding.octave}`, useFlats);
       svg += `
-        <g class="note-group" data-note="${ding.note}${ding.octave}" data-freq="${ding.freq}">
+        <g class="note-group" data-note="${ding.note}${ding.octave}" data-freq="${ding.freq}" data-x="${center}" data-y="${center}" data-r="${dingSize}">
           <circle cx="${center}" cy="${center}" r="${dingSize}" class="note-circle note-ding" stroke="#686868" stroke-width="1.5"/>
           <text x="${center}" y="${center}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#3A3A3A" font-size="24" font-weight="600" font-family="system-ui">${dingDisplay}</text>
         </g>
@@ -409,7 +411,7 @@
       const pos = getMutantPosition(i, mutants.length, mutantRadius, center);
       const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
       svg += `
-        <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
+        <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}" data-x="${pos.x}" data-y="${pos.y}" data-r="${mutantNoteSize}">
           <circle cx="${pos.x}" cy="${pos.y}" r="${mutantNoteSize}" class="note-circle note-mutant" stroke="#787878" stroke-width="1.5"/>
           <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#3A3A3A" font-size="20" font-weight="600" font-family="system-ui">${noteDisplay}</text>
         </g>
@@ -420,7 +422,7 @@
       const pos = getTonalPosition(i, tonals.length, tonalRadius, center);
       const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
       svg += `
-        <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
+        <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}" data-x="${pos.x}" data-y="${pos.y}" data-r="${noteSize}">
           <circle cx="${pos.x}" cy="${pos.y}" r="${noteSize}" class="note-circle note-tonal" stroke="#686868" stroke-width="1.5"/>
           <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#3A3A3A" font-size="22" font-weight="600" font-family="system-ui">${noteDisplay}</text>
         </g>
@@ -431,7 +433,7 @@
       const pos = getBottomPosition(i, bottoms.length, bottomRadius, center);
       const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
       svg += `
-        <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}">
+        <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}" data-x="${pos.x}" data-y="${pos.y}" data-r="${bottomNoteSize}">
           <circle cx="${pos.x}" cy="${pos.y}" r="${bottomNoteSize}" class="note-circle note-bottom" stroke="#505050" stroke-width="1.5" stroke-dasharray="3 2"/>
           <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="central" class="note-label" fill="#E8E8E8" font-size="20" font-weight="600" font-family="system-ui">${noteDisplay}</text>
         </g>
@@ -460,6 +462,7 @@
         if (noteName) playNote(noteName);
         g.classList.add('active');
         setTimeout(() => g.classList.remove('active'), 300);
+        createWaveAnimation(g);
       });
     });
   }
@@ -552,6 +555,29 @@
     const y = center - Math.sin(angleRad) * radius;
 
     return { x, y };
+  }
+
+  // ===== WAVE ANIMATION =====
+  function createWaveAnimation(noteGroup) {
+    const svg = document.querySelector('#player-visual svg');
+    if (!svg) return;
+    const waveContainer = svg.querySelector('.wave-container');
+    if (!waveContainer) return;
+
+    const x = parseFloat(noteGroup.dataset.x);
+    const y = parseFloat(noteGroup.dataset.y);
+    const r = parseFloat(noteGroup.dataset.r) || 50;
+
+    const wave = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    wave.setAttribute('cx', x);
+    wave.setAttribute('cy', y);
+    wave.setAttribute('r', r);
+    wave.setAttribute('class', 'wave-ring');
+    wave.style.transformOrigin = `${x}px ${y}px`;
+    wave.style.animation = 'wave-expand 0.6s ease-out forwards';
+
+    waveContainer.appendChild(wave);
+    setTimeout(() => wave.remove(), 600);
   }
 
   // ===== UPDATE DISPLAY =====
