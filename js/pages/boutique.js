@@ -13,6 +13,7 @@
   const FLATS_TO_SHARPS = MistralScales.FLATS_TO_SHARPS;
   const SHARPS_TO_FLATS = MistralScales.SHARPS_TO_FLATS;
   const toDisplayNotation = MistralScales.toDisplayNotation;
+  const toUserNotation = MistralScales.toUserNotation;
   const shouldUseFlats = MistralScales.shouldUseFlats;
   const getTonalityChipNotation = MistralScales.getTonalityChipNotation;
 
@@ -23,10 +24,13 @@
   // - F#/Gb depends on scale preference
   function updateTonalityChipsLabels() {
     const scaleData = SCALES_DATA[state.scale];
+    const isFrench = MistralScales.getNotationMode() === 'french';
 
     document.querySelectorAll('#chips-tonality .chip').forEach(chip => {
       const value = chip.dataset.value; // Always stored as sharps internally
-      chip.textContent = getTonalityChipNotation(value, scaleData);
+      let label = getTonalityChipNotation(value, scaleData);
+      if (isFrench) label = MistralScales.toFrenchNotation(label);
+      chip.textContent = label;
     });
   }
 
@@ -398,7 +402,7 @@
     `;
 
     if (ding) {
-      const dingDisplay = toDisplayNotation(`${ding.note}${ding.octave}`, useFlats);
+      const dingDisplay = toUserNotation(`${ding.note}${ding.octave}`, useFlats);
       svg += `
         <g class="note-group" data-note="${ding.note}${ding.octave}" data-freq="${ding.freq}" data-x="${center}" data-y="${center}" data-r="${dingSize}">
           <circle cx="${center}" cy="${center}" r="${dingSize}" class="note-circle note-ding" stroke="#686868" stroke-width="1.5"/>
@@ -409,7 +413,7 @@
 
     mutants.forEach((note, i) => {
       const pos = getMutantPosition(i, mutants.length, mutantRadius, center);
-      const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
+      const noteDisplay = toUserNotation(`${note.note}${note.octave}`, useFlats);
       svg += `
         <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}" data-x="${pos.x}" data-y="${pos.y}" data-r="${mutantNoteSize}">
           <circle cx="${pos.x}" cy="${pos.y}" r="${mutantNoteSize}" class="note-circle note-mutant" stroke="#787878" stroke-width="1.5"/>
@@ -420,7 +424,7 @@
 
     tonals.forEach((note, i) => {
       const pos = getTonalPosition(i, tonals.length, tonalRadius, center);
-      const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
+      const noteDisplay = toUserNotation(`${note.note}${note.octave}`, useFlats);
       svg += `
         <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}" data-x="${pos.x}" data-y="${pos.y}" data-r="${noteSize}">
           <circle cx="${pos.x}" cy="${pos.y}" r="${noteSize}" class="note-circle note-tonal" stroke="#686868" stroke-width="1.5"/>
@@ -431,7 +435,7 @@
 
     bottoms.forEach((note, i) => {
       const pos = getBottomPosition(i, bottoms.length, bottomRadius, center);
-      const noteDisplay = toDisplayNotation(`${note.note}${note.octave}`, useFlats);
+      const noteDisplay = toUserNotation(`${note.note}${note.octave}`, useFlats);
       svg += `
         <g class="note-group" data-note="${note.note}${note.octave}" data-freq="${note.freq}" data-x="${pos.x}" data-y="${pos.y}" data-r="${bottomNoteSize}">
           <circle cx="${pos.x}" cy="${pos.y}" r="${bottomNoteSize}" class="note-circle note-bottom" stroke="#505050" stroke-width="1.5" stroke-dasharray="3 2"/>
@@ -590,13 +594,14 @@
     const rootMatch = state.tonality.match(/^([A-G]#?)(\d)$/);
     const rootNote = rootMatch ? rootMatch[1] : state.tonality;
     // Root display: convert to flat notation if needed (A# -> Bb, G# -> Ab, etc.)
-    const rootDisplay = useFlats ? (SHARPS_TO_FLATS[rootNote] || rootNote) : rootNote;
+    let rootDisplay = useFlats ? (SHARPS_TO_FLATS[rootNote] || rootNote) : rootNote;
+    if (MistralScales.getNotationMode() === 'french') rootDisplay = MistralScales.toFrenchNotation(rootDisplay);
     document.getElementById('display-name').textContent = `${rootDisplay} ${scaleData.name}`;
-    document.getElementById('display-notes').textContent = notes.map(n => toDisplayNotation(`${n.note}${n.octave}`, useFlats)).join(' \u2022 ');
+    document.getElementById('display-notes').textContent = notes.map(n => toUserNotation(`${n.note}${n.octave}`, useFlats)).join(' \u2022 ');
     document.getElementById('display-mood').textContent = `${state.notes} notes`;
 
     // Tonality label: stays as stored (sharps internally), displayed per context
-    document.getElementById('label-tonality').textContent = toDisplayNotation(state.tonality, useFlats);
+    document.getElementById('label-tonality').textContent = toUserNotation(state.tonality, useFlats);
 
     document.getElementById('notes-value').textContent = state.notes;
     document.getElementById('notes-minus').disabled = state.notes <= 9;
@@ -1465,12 +1470,46 @@
     }
   };
 
+  // ===== NOTATION TOGGLE =====
+  function initNotationToggle() {
+    const toggle = document.getElementById('notation-toggle');
+    if (!toggle) return;
+
+    // Set initial state from preference
+    const currentMode = MistralScales.getNotationMode();
+    toggle.querySelectorAll('.notation-toggle__opt').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === currentMode);
+    });
+
+    // Bind click events
+    toggle.querySelectorAll('.notation-toggle__opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.mode;
+        if (mode === MistralScales.getNotationMode()) return;
+        toggle.querySelectorAll('.notation-toggle__opt').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        MistralScales.setNotationMode(mode);
+      });
+    });
+
+    // Listen for notation changes (also from other pages/tabs)
+    window.addEventListener('notation-mode-change', () => {
+      const mode = MistralScales.getNotationMode();
+      toggle.querySelectorAll('.notation-toggle__opt').forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === mode);
+      });
+      updateTonalityChipsLabels();
+      updateDisplay();
+    });
+  }
+
   // ===== INIT =====
   document.addEventListener('DOMContentLoaded', () => {
     renderScaleChips();      // Render scale chips from MistralGammes
     renderSizeCards();       // Render size cards from MistralTailles
     renderMaterialCards();   // Render material chips from MistralMateriaux
     bindEvents();
+    initNotationToggle();    // Notation toggle (American / French)
     updateTonalityChipsLabels();  // Set chip labels based on default scale (Kurd = flats)
     updateDisplay();
 
