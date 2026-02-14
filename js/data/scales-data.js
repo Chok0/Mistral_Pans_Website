@@ -523,7 +523,7 @@
    */
   function convertNotesInString(str) {
     if (!str || getNotationMode() !== 'french') return str;
-    return str.replace(/([A-G])([#b]?)(\d?)/g, function(match, letter, accidental, octave) {
+    return str.replace(/(?<![a-zA-Z])([A-G])([#b]?)(\d?)(?![a-zA-Z])/g, function(match, letter, accidental, octave) {
       const french = AMERICAN_TO_FRENCH[letter] || letter;
       return french + accidental + octave;
     });
