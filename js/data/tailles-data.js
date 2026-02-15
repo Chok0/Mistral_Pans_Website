@@ -1,9 +1,12 @@
 /* ==========================================================================
    MISTRAL PANS - Module Tailles Centralisé
-   Version 1.0
+   Version 2.0
 
    Source unique pour les données des tailles (sizes).
    Utilisé par: configurateur, admin, boutique, feasibility-module
+
+   Stockage: MistralSync (in-memory + Supabase)
+   Fallback: DEFAULT_TAILLES si MistralSync non disponible
    ========================================================================== */
 
 (function() {
@@ -13,7 +16,7 @@
   // CONFIGURATION
   // ============================================================================
 
-  const STORAGE_KEY = 'mistral_tailles';
+  const SYNC_KEY = 'mistral_tailles';
 
   const DEFAULT_TAILLES = [
     {
@@ -86,25 +89,23 @@
     return 'taille-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
   }
 
-  // ============================================================================
-  // GESTION DU STOCKAGE
-  // ============================================================================
-
-  function initTailles() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_TAILLES));
-    }
+  /**
+   * Vérifie si MistralSync est disponible et prêt
+   */
+  function isSyncReady() {
+    return window.MistralSync && MistralSync.isReady() && MistralSync.hasKey(SYNC_KEY);
   }
 
+  // ============================================================================
+  // LECTURE DES DONNÉES
+  // ============================================================================
+
   function getAll() {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
+    if (isSyncReady()) {
+      const data = MistralSync.getData(SYNC_KEY);
+      if (Array.isArray(data) && data.length > 0) {
+        return data.sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
       }
-    } catch (e) {
-      console.error('[Tailles] Erreur lecture:', e);
     }
     return [...DEFAULT_TAILLES];
   }
@@ -119,13 +120,11 @@
 
   function getByCode(code) {
     if (!code) return null;
-    const tailles = getAll();
-    return tailles.find(t => t.code === String(code)) || null;
+    return getAll().find(t => t.code === String(code)) || null;
   }
 
   function getById(id) {
-    const tailles = getAll();
-    return tailles.find(t => t.id === id) || null;
+    return getAll().find(t => t.id === id) || null;
   }
 
   function getPrixMalus(code) {
@@ -139,8 +138,7 @@
   }
 
   function toSelectOptions(selected = '53') {
-    const tailles = getDisponibles();
-    return tailles.map(t => {
+    return getDisponibles().map(t => {
       const isSelected = t.code === String(selected) ? ' selected' : '';
       return `<option value="${t.code}"${isSelected}>${t.label}</option>`;
     }).join('');
@@ -175,7 +173,11 @@
       tailles.push(taille);
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tailles));
+    // Sauvegarder via MistralSync (mémoire + Supabase)
+    if (window.MistralSync) {
+      MistralSync.setData(SYNC_KEY, tailles);
+    }
+
     dispatchUpdate();
     return taille;
   }
@@ -184,7 +186,11 @@
     const tailles = getAll();
     const filtered = tailles.filter(t => t.id !== id);
     if (filtered.length !== tailles.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      if (window.MistralSync) {
+        // Mettre à jour la mémoire sans push (on va supprimer côté Supabase)
+        MistralSync.setDataLocal(SYNC_KEY, filtered);
+        MistralSync.deleteFromSupabase(SYNC_KEY, id);
+      }
       dispatchUpdate();
       return true;
     }
@@ -192,7 +198,9 @@
   }
 
   function reset() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_TAILLES));
+    if (window.MistralSync) {
+      MistralSync.setData(SYNC_KEY, [...DEFAULT_TAILLES]);
+    }
     dispatchUpdate();
   }
 
@@ -210,7 +218,13 @@
   // INITIALISATION
   // ============================================================================
 
-  initTailles();
+  // Quand MistralSync termine le fetch Supabase, notifier les consommateurs
+  window.addEventListener('mistral-sync-complete', () => {
+    dispatchUpdate();
+  });
+
+  // Nettoyer l'ancien localStorage (migration depuis v1.0)
+  try { localStorage.removeItem('mistral_tailles'); } catch (e) { /* Ignorer */ }
 
   // ============================================================================
   // EXPORTS
@@ -234,10 +248,10 @@
     reset,
 
     // Constantes
-    STORAGE_KEY,
+    SYNC_KEY,
     DEFAULT_TAILLES
   };
 
-  console.log('[Tailles] Module initialisé');
+  console.log('[Tailles] Module initialisé (MistralSync)');
 
 })();

@@ -809,6 +809,12 @@
     }
   }
 
+  // Re-render scale chips when gammes change (batch activation, etc.)
+  window.addEventListener('gammesUpdated', function() {
+    renderScaleChips();
+    updateDisplay();
+  });
+
   // ===== RENDER SIZE CARDS =====
   function renderSizeCards() {
     const container = document.getElementById('cards-size');
