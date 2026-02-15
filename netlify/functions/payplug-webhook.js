@@ -461,46 +461,10 @@ exports.handler = async (event, context) => {
 // ============================================================================
 
 /**
- * Pour les instruments en stock, vérifie que le montant payé correspond
- * au prix enregistré en base de données. Empêche la manipulation de prix
- * côté client (paramètres URL).
- * @returns {{ valid: boolean, reason?: string }}
+ * Récupère le prix d'un instrument depuis Supabase.
+ * @returns {{ price: number|null, error?: string }}
  */
-async function validatePaymentAmount(payment, metadata) {
-  const sb = getSupabaseConfig();
-
-  // Pas de Supabase = pas de validation possible, on laisse passer
-  if (!sb) return { valid: true };
-
-  const source = metadata.source;
-  const instrumentId = metadata.instrument_id;
-  const paymentType = metadata.payment_type;
-  const isCart = metadata.cart_mode === true || metadata.cart_mode === 'true';
-
-  // Mode panier : validation individuelle de chaque instrument
-  if (isCart && metadata.items) {
-    let items;
-    try {
-      items = typeof metadata.items === 'string' ? JSON.parse(metadata.items) : metadata.items;
-    } catch (e) {
-      return { valid: true };
-    }
-
-    for (const item of items) {
-      if (item.type === 'instrument' && item.sourceId) {
-        // Vérifier chaque instrument individuellement
-        const fakeMetadata = { source: 'stock', instrument_id: item.sourceId, payment_type: paymentType };
-        const fakePmt = { amount: (item.total || item.prix) * 100 };
-        // Réutilise la logique existante pour un seul instrument
-        // En passant directement au try/catch ci-dessous
-      }
-    }
-    return { valid: true }; // Validation panier simplifiée
-  }
-
-  // Seuls les achats stock avec un ID instrument peuvent être vérifiés
-  if (source !== 'stock' || !instrumentId) return { valid: true };
-
+async function fetchInstrumentPrice(instrumentId, sb) {
   try {
     const response = await fetch(
       `${sb.url}/rest/v1/instruments?id=eq.${instrumentId}&select=prix_vente`,
@@ -515,52 +479,140 @@ async function validatePaymentAmount(payment, metadata) {
     );
 
     if (!response.ok) {
-      console.warn('Impossible de vérifier le prix instrument:', await response.text());
-      return { valid: true }; // Fail open si DB indisponible
+      return { price: null, error: `DB indisponible (HTTP ${response.status})` };
     }
 
     const instruments = await response.json();
     if (!instruments || instruments.length === 0) {
-      console.warn(`Instrument ${instrumentId} non trouvé en base`);
-      return { valid: true };
+      return { price: null, error: 'Instrument non trouvé en base' };
     }
 
-    const dbPrice = instruments[0].prix_vente; // En euros
-    if (!dbPrice) return { valid: true };
+    const dbPrice = instruments[0].prix_vente;
+    if (!dbPrice && dbPrice !== 0) {
+      return { price: null, error: 'Instrument sans prix en base' };
+    }
 
-    const expectedCents = dbPrice * 100;
-    const totalFromMetadata = metadata.total_price_cents || payment.amount;
+    return { price: dbPrice };
+  } catch (error) {
+    return { price: null, error: `Erreur DB: ${error.message}` };
+  }
+}
 
-    // Tolérance : le total peut inclure des accessoires (housse, livraison)
-    // On vérifie juste que le montant n'est pas inférieur au prix instrument
-    if (totalFromMetadata < expectedCents) {
-      const diff = (expectedCents - totalFromMetadata) / 100;
+/**
+ * Pour les instruments en stock, vérifie que le montant payé correspond
+ * au prix enregistré en base de données. Empêche la manipulation de prix
+ * côté client.
+ *
+ * Stratégie fail-closed : si la validation est impossible (DB down, config
+ * manquante, données corrompues), le paiement est rejeté et flaggé pour
+ * vérification manuelle plutôt qu'accepté aveuglément.
+ *
+ * @returns {{ valid: boolean, reason?: string }}
+ */
+async function validatePaymentAmount(payment, metadata) {
+  const sb = getSupabaseConfig();
+
+  // Fail-closed: pas de config Supabase = validation impossible
+  if (!sb) {
+    console.error('VALIDATION PRIX: Config Supabase manquante');
+    return { valid: false, reason: 'Configuration Supabase manquante — validation impossible' };
+  }
+
+  const source = metadata.source;
+  const instrumentId = metadata.instrument_id;
+  const paymentType = metadata.payment_type;
+  const isCart = metadata.cart_mode === true || metadata.cart_mode === 'true';
+
+  // ── Mode panier : validation individuelle de chaque instrument ──
+  if (isCart && metadata.items) {
+    let items;
+    try {
+      items = typeof metadata.items === 'string' ? JSON.parse(metadata.items) : metadata.items;
+    } catch (e) {
+      return { valid: false, reason: 'Données panier invalides (erreur JSON)' };
+    }
+
+    let cartTotalCents = 0;
+
+    for (const item of items) {
+      const itemTotalCents = Math.round((item.total || item.prix || 0) * 100);
+
+      if (item.type === 'instrument' && item.sourceId) {
+        // Vérifier le prix de chaque instrument contre la DB
+        const { price: dbPrice, error } = await fetchInstrumentPrice(item.sourceId, sb);
+        if (error) {
+          console.warn(`Validation instrument ${item.sourceId}: ${error}`);
+          return { valid: false, reason: `${error} (instrument ${item.sourceId})` };
+        }
+
+        const dbPriceCents = dbPrice * 100;
+        if (itemTotalCents < dbPriceCents) {
+          console.error(
+            `ALERTE PRIX PANIER: Instrument ${item.sourceId} prix DB=${dbPrice}€, ` +
+            `item total=${itemTotalCents / 100}€`
+          );
+          return {
+            valid: false,
+            reason: `Prix inférieur au catalogue pour instrument ${item.sourceId} (${dbPrice}€ vs ${itemTotalCents / 100}€)`
+          };
+        }
+      }
+
+      // Cumuler le total (instruments, accessoires, custom)
+      cartTotalCents += itemTotalCents;
+    }
+
+    // Pour paiement intégral, vérifier que le montant payé couvre le total du panier
+    if (paymentType === 'full' && payment.amount < cartTotalCents) {
       console.error(
-        `ALERTE PRIX: Instrument ${instrumentId} prix DB=${dbPrice}€, ` +
-        `metadata total=${totalFromMetadata / 100}€ (écart: -${diff}€)`
+        `ALERTE PRIX PANIER: Paiement ${payment.amount / 100}€ < total panier ${cartTotalCents / 100}€`
       );
       return {
         valid: false,
-        reason: `Montant inférieur au prix catalogue (${dbPrice}€ vs ${totalFromMetadata / 100}€)`
-      };
-    }
-
-    // Pour paiement intégral, vérifier que le montant payé couvre le total
-    if (paymentType === 'full' && payment.amount < expectedCents) {
-      console.error(
-        `ALERTE PRIX: Paiement intégral ${payment.amount / 100}€ < prix instrument ${dbPrice}€`
-      );
-      return {
-        valid: false,
-        reason: `Paiement intégral insuffisant (${payment.amount / 100}€ vs ${dbPrice}€ minimum)`
+        reason: `Paiement panier insuffisant (${payment.amount / 100}€ vs ${cartTotalCents / 100}€)`
       };
     }
 
     return { valid: true };
-  } catch (error) {
-    console.error('Erreur validation prix:', error);
-    return { valid: true }; // Fail open
   }
+
+  // ── Mode single : seuls les achats stock avec un ID instrument ──
+  if (source !== 'stock' || !instrumentId) return { valid: true };
+
+  const { price: dbPrice, error } = await fetchInstrumentPrice(instrumentId, sb);
+  if (error) {
+    console.warn(`Validation instrument ${instrumentId}: ${error}`);
+    return { valid: false, reason: `${error} (instrument ${instrumentId})` };
+  }
+
+  const expectedCents = dbPrice * 100;
+  const totalFromMetadata = metadata.total_price_cents || payment.amount;
+
+  // Le total (incluant accessoires) ne doit pas être inférieur au prix instrument
+  if (totalFromMetadata < expectedCents) {
+    const diff = (expectedCents - totalFromMetadata) / 100;
+    console.error(
+      `ALERTE PRIX: Instrument ${instrumentId} prix DB=${dbPrice}€, ` +
+      `metadata total=${totalFromMetadata / 100}€ (écart: -${diff}€)`
+    );
+    return {
+      valid: false,
+      reason: `Montant inférieur au prix catalogue (${dbPrice}€ vs ${totalFromMetadata / 100}€)`
+    };
+  }
+
+  // Pour paiement intégral, vérifier que le montant payé couvre le prix instrument
+  if (paymentType === 'full' && payment.amount < expectedCents) {
+    console.error(
+      `ALERTE PRIX: Paiement intégral ${payment.amount / 100}€ < prix instrument ${dbPrice}€`
+    );
+    return {
+      valid: false,
+      reason: `Paiement intégral insuffisant (${payment.amount / 100}€ vs ${dbPrice}€ minimum)`
+    };
+  }
+
+  return { valid: true };
 }
 
 // ============================================================================

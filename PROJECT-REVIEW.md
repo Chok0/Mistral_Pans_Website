@@ -14,13 +14,13 @@ Le projet est **globalement solide** avec une architecture bien pensée (vanilla
 
 | Catégorie | Critique | Haute | Moyenne | Basse | Statut |
 |-----------|:--------:|:-----:|:-------:|:-----:|:------:|
-| Sécurité | ~~2~~ 0 + **1 nouveau** | ~~3~~ 1 | ~~4~~ 2 + ~~1 nouveau~~ | 2 | 6 corrigés (dont §2.1 CSP, §7.3 escapeHtml) |
+| Sécurité | ~~2~~ 0 + ~~1 nouveau~~ | ~~3~~ 1 | ~~4~~ 2 + ~~1 nouveau~~ | 2 | 8 corrigés (dont §2.1 CSP, §7.1-7.3 webhook+escapeHtml) |
 | Performance | ~~2~~ 0 | ~~2~~ 0 + **1 nouveau** | ~~3~~ 2 | ~~1~~ 0 | 5 corrigés |
 | SEO / Contenu | ~~3~~ 0 | ~~4~~ 1 | ~~3~~ 1 | 2 | 6 corrigés, sitemap+robots ajoutés |
 | Qualité de code | ~~1~~ 0 | ~~4~~ 2 + ~~1 nouveau~~ | ~~6~~ 4 + **2 nouveaux** | 3 | 9 corrigés (dont §5.5, §7.4 inline JS, items 14/22) |
-| **Total** | **1** | **4** | **11** | **7** | **26 corrigés** |
+| **Total** | **0** | **4** | **10** | **7** | **28 corrigés** |
 
-**Score global : 8/10 — Prêt pour la production avec réserves (validation panier)**
+**Score global : 9/10 — Prêt pour la production (validation panier corrigée, 0 critique restant)**
 
 ### Corrections effectuées (6 commits, audit initial)
 
@@ -487,61 +487,32 @@ Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
 Les évolutions suivantes ont été ajoutées depuis l'audit initial du 9 février. Cette section couvre les **nouveaux problèmes identifiés**.
 
-### 7.1 Validation de prix panier incomplète (CRITIQUE)
+### 7.1 ~~Validation de prix panier incomplète~~ ✅ CORRIGÉ
 
-**Fichier :** `netlify/functions/payplug-webhook.js:480-498`
+**Fichier :** `netlify/functions/payplug-webhook.js`
 
-```javascript
-if (isCart && metadata.items) {
-  let items;
-  try {
-    items = typeof metadata.items === 'string' ? JSON.parse(metadata.items) : metadata.items;
-  } catch (e) {
-    return { valid: true }; // ← Fail open sur erreur JSON
-  }
+**Correction appliquée :** `validatePaymentAmount()` refactorisé avec :
+- `fetchInstrumentPrice()` : helper réutilisable pour récupérer le prix DB
+- Validation de chaque instrument du panier contre le prix catalogue
+- Vérification que le montant total payé couvre le total du panier (paiement intégral)
+- Les 3 seuls `return { valid: true }` restants sont légitimes (validation réussie ou commande custom sans ID)
 
-  for (const item of items) {
-    if (item.type === 'instrument' && item.sourceId) {
-      // Code de validation commenté/incomplet
-    }
-  }
-  return { valid: true }; // ← Toujours vrai, validation non implémentée
-}
-```
+### 7.2 ~~Webhook "fail-open" persistant~~ ✅ CORRIGÉ
 
-**Problème :** La validation de prix en mode panier (multi-articles) est un **no-op**. La boucle `for` itère sur les items mais n'effectue aucune vérification. Le `return { valid: true }` final signifie que n'importe quel montant est accepté pour un paiement panier.
+**Fichier :** `netlify/functions/payplug-webhook.js`
 
-**Impact :** Un utilisateur pourrait modifier le montant côté client et payer moins que le prix réel pour un panier multi-articles.
+**Correction appliquée :** Stratégie fail-closed adoptée. Tous les fail-open convertis :
 
-**Correction :** Implémenter la validation pour chaque item du panier :
-```javascript
-for (const item of items) {
-  if (item.type === 'instrument' && item.sourceId) {
-    const fakeMetadata = { source: 'stock', instrument_id: item.sourceId, payment_type: paymentType };
-    const fakePmt = { amount: (item.total || item.prix) * 100 };
-    const result = await validateSingleInstrumentPrice(fakePmt, fakeMetadata, sb);
-    if (!result.valid) return result;
-  }
-}
-```
+| Condition | Avant | Après |
+|-----------|-------|-------|
+| Config Supabase manquante | `{ valid: true }` | `{ valid: false, reason }` |
+| JSON.parse échoue sur items | `{ valid: true }` | `{ valid: false, reason }` |
+| DB indisponible | `{ valid: true }` | `{ valid: false, reason }` via `fetchInstrumentPrice` |
+| Instrument non trouvé | `{ valid: true }` | `{ valid: false, reason }` via `fetchInstrumentPrice` |
+| Instrument sans prix | `{ valid: true }` | `{ valid: false, reason }` via `fetchInstrumentPrice` |
+| Exception catch-all | `{ valid: true }` | `{ valid: false, reason }` via `fetchInstrumentPrice` |
 
-### 7.2 Webhook "fail-open" persistant (CRITIQUE lié)
-
-**Fichier :** `netlify/functions/payplug-webhook.js:473, 486, 519, 525, 529, 562`
-
-Le webhook contient **9 occurrences** de `return { valid: true }` dans `validatePriceWithDatabase()`. Plusieurs sont des "fail-open" (accepter le paiement si la validation échoue), notamment :
-
-| Ligne | Condition | Risque |
-|-------|-----------|--------|
-| 473 | Pas de config Supabase | Aucune validation si env vars manquantes |
-| 486 | JSON.parse échoue sur items | Panier corrompu accepté |
-| 498 | Fin de la boucle panier | Validation jamais exécutée |
-| 519 | DB indisponible | Tout montant accepté |
-| 562 | Exception catch-all | Tout montant accepté |
-
-**Contexte atténuant :** L'audit initial (§1.5) avait corrigé le fail-open dans `payplug-create-payment.js`, mais le pattern persiste dans le webhook et a été amplifié par l'ajout du mode panier.
-
-**Correction recommandée :** Adopter une stratégie fail-closed cohérente : si la validation est impossible, rejeter le paiement et alerter l'admin.
+Les paiements non validables sont flaggés pour vérification manuelle (le webhook renvoie 200 à PayPlug mais ne crée ni commande ni mise à jour de stock).
 
 ### 7.3 ~~Location.html — rendu HTML sans échappement~~ ✅ CORRIGÉ
 
@@ -701,8 +672,8 @@ Le sitemap liste les pages statiques mais pas les pages dynamiques (articles de 
 
 | # | Action | Priorité | Réf. |
 |---|--------|----------|------|
-| 27 | **Implémenter la validation de prix panier dans le webhook** | **CRITIQUE** | §7.1 |
-| 28 | Convertir les fail-open restants en fail-closed dans le webhook | Haute | §7.2 |
+| 27 | ~~Implémenter la validation de prix panier dans le webhook~~ | ✅ | §7.1 |
+| 28 | ~~Convertir les fail-open restants en fail-closed dans le webhook~~ | ✅ | §7.2 |
 | 29 | ~~Ajouter `escapeHtml()` dans `location.html` renderInstrumentCard~~ | ✅ | §7.3 |
 | 30 | ~~Extraire le script inline de `annonce.html` dans `js/pages/annonce.js`~~ | ✅ | §7.4 |
 | 31 | Ajouter contrôle d'accès admin sur `seo-diagnostic.html` | Basse | §7.7 |
@@ -741,5 +712,5 @@ Le sitemap liste les pages statiques mais pas les pages dynamiques (articles de 
 ---
 
 *Rapport généré le 9 février 2026. Mise à jour v2 le 15 février 2026.*
-*26 items corrigés sur 45 (audit initial + post-audit). 6 nouveaux items identifiés (post-audit), dont 1 critique (§7.1), 4 déjà corrigés (§2.1, §5.5, §7.3, §7.4 + items 14, 22).*
+*28 items corrigés sur 45 (audit initial + post-audit). 6 nouveaux items identifiés (post-audit), tous les critiques corrigés (§7.1 + §7.2), 6 post-audit corrigés (§2.1, §5.5, §7.1-7.4 + items 14, 22).*
 *Prochain audit recommandé : 1 mois après mise en production.*
