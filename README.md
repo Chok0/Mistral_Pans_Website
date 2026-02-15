@@ -737,6 +737,9 @@ Le fichier configure :
 - [x] Suppression CSP unsafe-inline/unsafe-eval (scripts externalises)
 - [x] JSON-LD structured data, @media print, sitemap dynamique
 - [x] Correction securite webhooks (fail-closed, idempotence, escapeHtml)
+- [x] Config admin : dropdown/collapse pour sections longues (gammes, materiaux, tailles)
+- [x] Fix icone hint qui masquait le bouton "ecouter" sur mobile (padding player-visual)
+- [x] Boutique desktop : suppression du scroll gate JS, scroll 100% natif + bandeau teal cliquable sticky
 
 ### A faire
 
@@ -747,16 +750,13 @@ Le fichier configure :
 **Priorite haute :**
 - [ ] Tester et passer PayPlug/Swikly en production
 - [ ] Auto-generation de facture sur paiement confirme
-- [ ] Corriger position de l'icone de swipe dans la boutique en mode telephone (masque le bouton "ecouter" actuellement)
 - [ ] API La Poste Colissimo : generation bordereau retour pour clients location a distance
 - [ ] API La Poste Colissimo cote admin : bordereau envoi pour clients achetant un instrument en stock (option generation + impression pour preparer l'envoi)
 - [ ] Ajouter un favicon
 
 **Priorite moyenne :**
-- [ ] **Config admin : systeme de dropdown/collapse** pour les sections longues (gammes, materiaux, etc.) — actuellement le scroll est trop important
 - [ ] **Batch de gammes** — Concept non implemente pour l'instant. Le systeme actuel gere chaque gamme individuellement (CRUD unitaire dans `admin-ui-config.js`, dropdown selection simple dans le modal instrument). Objectif : pouvoir gerer des lots/batches de gammes dans Config (admin panel) avec effet dans le configurateur d'instrument virtuel (boutique.html). La recherche de gamme dans le champ instrument est deja fonctionnelle
 - [ ] **Acces aux valeurs de tarification cote admin en Config** (prix par note, surcharge octave 2, malus selon espace disponible, surcharge bottom notes) — verifier l'accessibilite actuelle dans Config > Tarification configurateur
-- [ ] Ameliorer le systeme de "swipe-like" dans la boutique en mode PC (desktop)
 - [ ] Logo et mise en page des factures PDF a travailler (`gestion-pdf.js`)
 - [ ] Mise en place de Calendly pour la prise de RDV (recuperation instruments a l'atelier, recuperation location)
 - [ ] Migrer `tailles-data.js` de localStorage vers MistralSync
@@ -794,11 +794,12 @@ Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 
 ## Historique des versions
 
-### v3.5 (9 Fevrier 2026)
+### v3.5 (15 Fevrier 2026)
 - **Admin** : Reorganisation complete de la navigation (groupes Gestion/Contenu/Outils, labels, dashboard toggleable)
 - **Admin** : Suppression onglet Analytics, integre au dashboard
 - **Admin** : Renommage "Boutique" → "Vitrine" dans l'admin
 - **Admin** : Fix bug onglet Config qui ne rendait pas (case 'configuration' → 'config')
+- **Admin** : Dropdown/collapse pour sections longues en Config (gammes, materiaux, tailles)
 - **Tarification** : Prix configurables depuis l'admin (prix/note, bonus octave 2, bonus bottoms, malus difficulte)
 - **Tarification** : Malus taille change de pourcentage a montant fixe EUR (ex: +100 EUR pour 45/50 cm)
 - **Data** : Validation des donnees dans tous les `create()` (gestion.js)
@@ -811,6 +812,8 @@ Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 - **UI** : Erreurs transition statut instrument affichees via Toast
 - **UI** : blog-admin.js ecoute `mistral-data-change` au lieu de `storage`
 - **FAB** : Refactore en raccourci global (admin + deconnexion), auto-injecte sur toutes les pages sauf admin
+- **Boutique** : Fix hint mobile qui masquait le bouton "Ecouter" (padding-bottom sur player-visual)
+- **Boutique** : Suppression du scroll gate JS desktop (~200 lignes) — scroll 100% natif + bandeau teal sticky cliquable
 
 ### v3.4 (8 Fevrier 2026)
 - **Vendor** : Toutes les librairies JS auto-hebergees dans `js/vendor/` (plus de CDN sauf PayPlug)
