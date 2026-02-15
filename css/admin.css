@@ -1691,6 +1691,52 @@ input[type="datetime-local"],
   opacity: 0.7;
 }
 
+/* Collapsible config sections */
+.config-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 1rem;
+}
+
+.config-section__header .dashboard__card-title {
+  margin-bottom: 0;
+}
+
+.config-section__chevron {
+  width: 20px;
+  height: 20px;
+  color: var(--admin-text-muted, #94a3b8);
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+
+.config-section__header:hover .config-section__chevron {
+  color: var(--admin-text, #f5f3ef);
+}
+
+.config-section__header.collapsed .config-section__chevron {
+  transform: rotate(-90deg);
+}
+
+.config-section__header.collapsed {
+  margin-bottom: 0;
+}
+
+.config-section__body {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+  max-height: 5000px;
+  opacity: 1;
+}
+
+.config-section__body.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
 /* Stats grid inside dashboard cards: 2-column layout */
 .dashboard__card .stats-grid {
   grid-template-columns: repeat(2, 1fr);

@@ -1020,6 +1020,51 @@
     }
   }
 
+  // ── Collapsible config sections ──────────────────────────────────────────
+
+  const CONFIG_SECTIONS_KEY = 'mistral_config_sections';
+
+  function getConfigSectionsState() {
+    try {
+      return JSON.parse(localStorage.getItem(CONFIG_SECTIONS_KEY)) || {};
+    } catch { return {}; }
+  }
+
+  function saveConfigSectionsState(state) {
+    localStorage.setItem(CONFIG_SECTIONS_KEY, JSON.stringify(state));
+  }
+
+  function toggleConfigSection(name) {
+    const header = $(`#config-body-${name}`)?.previousElementSibling;
+    const body = $(`#config-body-${name}`);
+    if (!header || !body) return;
+
+    const isCollapsed = body.classList.contains('collapsed');
+    header.classList.toggle('collapsed', !isCollapsed);
+    body.classList.toggle('collapsed', !isCollapsed);
+
+    const state = getConfigSectionsState();
+    state[name] = isCollapsed; // true = open
+    saveConfigSectionsState(state);
+  }
+
+  function initConfigSections() {
+    const state = getConfigSectionsState();
+    const sections = ['materiaux', 'gammes', 'tailles', 'entreprise', 'tarifs', 'tarification', 'emails', 'donnees'];
+    sections.forEach(name => {
+      const header = $(`#config-body-${name}`)?.previousElementSibling;
+      const body = $(`#config-body-${name}`);
+      if (!header || !body) return;
+
+      if (state[name] !== undefined) {
+        // Restore persisted state
+        header.classList.toggle('collapsed', !state[name]);
+        body.classList.toggle('collapsed', !state[name]);
+      }
+      // else: keep the HTML default (collapsed for wide cards, open for small ones)
+    });
+  }
+
   // Export functions to AdminUI
   Object.assign(window.AdminUI, {
     renderConfiguration,
@@ -1051,7 +1096,9 @@
     testEmailAutomation,
     onEmailToggle,
     isEmailAutomationEnabled,
-    getEmailConfig
+    getEmailConfig,
+    toggleConfigSection,
+    initConfigSections
   });
 
   console.log('[admin-ui-config] Module chargé');
