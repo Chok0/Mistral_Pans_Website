@@ -741,6 +741,7 @@ Le fichier configure :
 - [x] Fix icone hint qui masquait le bouton "ecouter" sur mobile (padding player-visual)
 - [x] Boutique desktop : suppression du scroll gate JS, scroll 100% natif + bandeau teal cliquable sticky
 - [x] Favicon (ico + png + apple-touch-icon + webmanifest) sur les 14 pages
+- [x] Acces tarification admin : verifie OK (5 champs editables dans Config > Tarification configurateur)
 
 ### A faire
 
@@ -756,7 +757,6 @@ Le fichier configure :
 
 **Priorite moyenne :**
 - [ ] **Batch de gammes** — Concept non implemente pour l'instant. Le systeme actuel gere chaque gamme individuellement (CRUD unitaire dans `admin-ui-config.js`, dropdown selection simple dans le modal instrument). Objectif : pouvoir gerer des lots/batches de gammes dans Config (admin panel) avec effet dans le configurateur d'instrument virtuel (boutique.html). La recherche de gamme dans le champ instrument est deja fonctionnelle
-- [ ] **Acces aux valeurs de tarification cote admin en Config** (prix par note, surcharge octave 2, malus selon espace disponible, surcharge bottom notes) — verifier l'accessibilite actuelle dans Config > Tarification configurateur
 - [ ] Logo et mise en page des factures PDF a travailler (`gestion-pdf.js`)
 - [ ] Mise en place de Calendly pour la prise de RDV (recuperation instruments a l'atelier, recuperation location)
 - [ ] Migrer `tailles-data.js` de localStorage vers MistralSync
