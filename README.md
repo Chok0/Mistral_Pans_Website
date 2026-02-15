@@ -188,7 +188,7 @@ Navigateur
 |
 |-- netlify.toml              # Config Netlify (build, headers securite, CSP, cache)
 |-- CLAUDE.md                 # Guide pour assistants IA (instructions codebase)
-+-- README.md                 # Ce fichier
++-- README.md                 # Ce fichier (documentation complete du projet)
 ```
 
 ---
@@ -733,24 +733,49 @@ Le fichier configure :
 - [x] Bug fix : onglet Config qui ne se chargeait pas
 - [x] Librairies vendor auto-hebergees (plus de CDN sauf PayPlug)
 - [x] Systeme de gammes/materiaux/tailles dans l'admin
+- [x] Optimisation images (26 Mo -> 1.4 Mo)
+- [x] Suppression CSP unsafe-inline/unsafe-eval (scripts externalises)
+- [x] JSON-LD structured data, @media print, sitemap dynamique
+- [x] Correction securite webhooks (fail-closed, idempotence, escapeHtml)
 
 ### A faire
+
+**Priorite critique (securite) :**
+- [ ] **RLS Supabase : politiques granulaires par table** — Actuellement toutes les policies utilisent `USING (true)`, ce qui signifie que tout utilisateur authentifie peut acceder a TOUTES les donnees. Implementer des policies basees sur les roles (ex: `auth.jwt() ->> 'role' = 'admin'`). Action dans Supabase Dashboard > SQL Editor
+- [ ] **Donnees bancaires (IBAN/BIC) dans la table `configuration`** — Table accessible en lecture publique. Risque de fraude financiere. Soit chiffrer les donnees, soit les deplacer dans une table avec RLS restreint. Action dans Supabase Dashboard
 
 **Priorite haute :**
 - [ ] Tester et passer PayPlug/Swikly en production
 - [ ] Auto-generation de facture sur paiement confirme
-- [ ] Optimiser images (26 Mo -> ~5 Mo avec WebP)
+- [ ] Corriger position de l'icone de swipe dans la boutique en mode telephone (masque le bouton "ecouter" actuellement)
+- [ ] API La Poste Colissimo : generation bordereau retour pour clients location a distance
+- [ ] API La Poste Colissimo cote admin : bordereau envoi pour clients achetant un instrument en stock (option generation + impression pour preparer l'envoi)
 - [ ] Ajouter un favicon
 
 **Priorite moyenne :**
+- [ ] **Config admin : systeme de dropdown/collapse** pour les sections longues (gammes, materiaux, etc.) — actuellement le scroll est trop important
+- [ ] **Batch de gammes** — Concept non implemente pour l'instant. Le systeme actuel gere chaque gamme individuellement (CRUD unitaire dans `admin-ui-config.js`, dropdown selection simple dans le modal instrument). Objectif : pouvoir gerer des lots/batches de gammes dans Config (admin panel) avec effet dans le configurateur d'instrument virtuel (boutique.html). La recherche de gamme dans le champ instrument est deja fonctionnelle
+- [ ] **Acces aux valeurs de tarification cote admin en Config** (prix par note, surcharge octave 2, malus selon espace disponible, surcharge bottom notes) — verifier l'accessibilite actuelle dans Config > Tarification configurateur
+- [ ] Ameliorer le systeme de "swipe-like" dans la boutique en mode PC (desktop)
+- [ ] Logo et mise en page des factures PDF a travailler (`gestion-pdf.js`)
+- [ ] Mise en place de Calendly pour la prise de RDV (recuperation instruments a l'atelier, recuperation location)
 - [ ] Migrer `tailles-data.js` de localStorage vers MistralSync
-- [ ] Audit securite RLS (politiques granulaires par table)
+- [ ] Eliminer les variables globales mutables dans les modals admin (risque de race condition entre modals)
+- [ ] Fallback MP3 pour l'audio (compatibilite Safari/iOS, actuellement FLAC uniquement)
+- [ ] Pagination dans les listes admin (probleme de performance DOM avec 1000+ enregistrements)
+- [ ] Validation de prix panier cote client (`cart.js` utilise sessionStorage modifiable)
 - [ ] Ameliorer indicateurs `:focus-visible` sur tout le site
 - [ ] Unifier l'echelle z-index (actuellement ad hoc)
 
 **Priorite basse :**
+- [ ] Audit code mort, code inutile et doublons — refactorisation et propositions d'optimisation
+- [ ] Passer en philosophie literate coding / commentaires exhaustifs (permettre la maintenance par un dev junior)
+- [ ] Rate limiting persistant sur Netlify Functions (actuellement `Map()` in-memory, perdu au cold start ~15 min)
+- [ ] Validation de longueur sur les champs admin (nom, email, telephone, adresse)
+- [ ] Titres de pages SEO trop courts (`commander.html` 24 chars, `article.html` 22 chars — recommande 50-60)
+- [ ] Alts d'images generiques dans `boutique.html` (meme alt pour 3 cartes differentes)
 - [ ] Hardcoded colors dans boutique.css et admin.css (devraient utiliser les custom properties)
-- [ ] Encoding UTF-8 dans certains commentaires CSS
+- [ ] Redirects www -> non-www + cache-bust fichiers CSS/JS (hash dans le nom de fichier)
 - [ ] Auth state listener Supabase jamais unsubscribed (`supabase-auth.js`)
 
 ### Mettre a jour les librairies
@@ -831,4 +856,4 @@ Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 
 ---
 
-*Documentation mise a jour le 9 fevrier 2026 (v3.5)*
+*Documentation mise a jour le 15 fevrier 2026 (v3.5)*
