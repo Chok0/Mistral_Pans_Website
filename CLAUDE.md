@@ -275,13 +275,18 @@ if (window.MistralAdmin && MistralAdmin.Auth.isLoggedIn()) {
 | `galerie` | Media | type, src, thumbnail, ordre, featured |
 | `articles` | Blog posts | slug, title, content (HTML), status, tags |
 | `accessoires` | Accessories | nom, categorie, prix, stock, statut, visible_configurateur, tailles_compatibles |
-| `configuration` | Settings (key-value) | key, value (JSON), namespace (gestion/compta/email_automations) |
+| `tailles` | Sizes | code, label, description, prix_malus, feasibility (JSON), ordre, disponible, visible_configurateur |
+| `configuration` | Settings (key-value) | key, value (JSON), namespace (gestion/compta/email_automations/configurateur) |
 
-### Row-Level Security
+### Row-Level Security (granulaire)
 
-- **Public read:** Active teachers, published articles, online instruments, gallery, active accessories
-- **Public insert:** Teacher applications (pending status)
-- **Authenticated:** Full CRUD access for admin operations (all tables including configuration)
+- **Admin-only:** `clients`, `locations`, `commandes`, `factures`, `configuration` (protege IBAN/BIC)
+- **Public read (filtre config):** `configuration` (namespace='configurateur' — lots de gammes actifs)
+- **Public read (tout):** `galerie`, `tailles`
+- **Public read (filtre):** `instruments` (statut IN en_ligne/disponible), `articles` (status=published), `accessoires` (statut=en_ligne), `professeurs` (statut=active)
+- **Public insert:** `professeurs` (statut=pending uniquement)
+- **Authenticated:** Full CRUD access sur toutes les tables
+- **Netlify Functions:** Utilisent `SERVICE_KEY` (bypass RLS)
 
 ---
 
@@ -416,6 +421,7 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 | `mistral_gallery` | `galerie` | Array | Gallery media |
 | `mistral_blog_articles` | `articles` | Array | Blog articles |
 | `mistral_accessoires` | `accessoires` | Array | Shop accessories (cases, oils, etc.) |
+| `mistral_tailles` | `tailles` | Array | Size configurations (45/50/53cm) with feasibility data |
 | `mistral_gestion_config` | `configuration` (namespace='gestion') | Object | Admin business config (rates, invoice counter) |
 | `mistral_compta_config` | `configuration` (namespace='compta') | Object | Accounting settings (email dest, report prefs) |
 | `mistral_email_automations` | `configuration` (namespace='email_automations') | Object | Email automation rules |
@@ -433,7 +439,7 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 | Module | Purpose |
 |--------|---------|
 | `MistralMateriaux` | Material specifications (hardcoded defaults) |
-| `MistralGammes` | Scale configurations (hardcoded defaults) |
+| `MistralGammes` | Scale configurations (hardcoded defaults, active batch codes loaded from Supabase namespace=configurateur) |
 
 ### Admin Authentication
 - Authentication is handled via **Supabase Auth** (email + password)

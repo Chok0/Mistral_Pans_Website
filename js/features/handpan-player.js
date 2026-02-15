@@ -50,6 +50,10 @@ class HandpanPlayer {
     this.activeAudioClones = new Set();
     this.audioPath = options.audioPath || 'ressources/audio/';
 
+    // Detect supported audio format: prefer FLAC, fallback to MP3 (Safari/iOS)
+    const probe = new Audio();
+    this.audioExt = (probe.canPlayType('audio/flac') !== '') ? '.flac' : '.mp3';
+
     // State management
     this.isPlaying = false;
     this.playAbortController = null;
@@ -152,7 +156,7 @@ class HandpanPlayer {
     const fileName = this.noteToFileName(noteName);
     if (this.audioCache[fileName]) return;
 
-    const audio = new Audio(`${this.audioPath}${fileName}.flac`);
+    const audio = new Audio(`${this.audioPath}${fileName}${this.audioExt}`);
     audio.preload = 'auto';
     this.audioCache[fileName] = audio;
   }
@@ -1024,7 +1028,7 @@ class HandpanPlayer {
     }
 
     // Load and play
-    const audio = new Audio(`${this.audioPath}${fileName}.flac`);
+    const audio = new Audio(`${this.audioPath}${fileName}${this.audioExt}`);
     audio.volume = 0.7;
     this.audioCache[fileName] = audio;
     audio.play().catch(e => console.warn('Erreur lecture audio:', e));

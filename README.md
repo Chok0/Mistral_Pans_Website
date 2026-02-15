@@ -149,7 +149,7 @@ Navigateur
 |   |-- data/                # Donnees statiques / modules de configuration
 |   |   |-- scales-data.js   # Theorie musicale (modes, intervalles, notes)
 |   |   |-- gammes-data.js   # Gammes du configurateur (in-memory, CRUD admin)
-|   |   |-- tailles-data.js  # Tailles et faisabilite (localStorage, CRUD admin)
+|   |   |-- tailles-data.js  # Tailles et faisabilite (MistralSync/Supabase, CRUD admin)
 |   |   +-- materiaux-data.js # Materiaux et proprietes (in-memory, CRUD admin)
 |   |
 |   |-- features/            # Modules metier reutilisables
@@ -359,6 +359,7 @@ Le flux est :
 | `mistral_gallery` | `galerie` | Array | Medias galerie |
 | `mistral_blog_articles` | `articles` | Array | Articles blog |
 | `mistral_accessoires` | `accessoires` | Array | Accessoires boutique |
+| `mistral_tailles` | `tailles` | Array | Configurations tailles (45/50/53cm) avec donnees faisabilite |
 | `mistral_gestion_config` | `configuration` (namespace='gestion') | Object | Config metier (tarifs, compteur factures) |
 | `mistral_compta_config` | `configuration` (namespace='compta') | Object | Config comptabilite |
 | `mistral_email_automations` | `configuration` (namespace='email_automations') | Object | Config emails automatiques |
@@ -370,7 +371,6 @@ Le flux est :
 | `mistral_cookie_consent` | Preferences consentement cookies RGPD |
 | `mistral_leaflet_consent` | Consentement carte Leaflet |
 | `mistral_stats_anonymous` | Compteurs de pages vues anonymes |
-| `mistral_tailles` | Configuration des tailles (a migrer vers MistralSync) |
 
 ### Donnees in-memory uniquement (pas de persistence)
 
@@ -548,14 +548,15 @@ Chaque taille dans `tailles-data.js` contient un objet `feasibility` avec :
 
 Le configurateur joue les notes en temps reel via Web Audio API.
 
-- **Format** : FLAC
+- **Formats** : FLAC (principal) + MP3 192kbps (fallback Safari/iOS)
+- **Detection** : `canPlayType('audio/flac')` au constructeur, bascule automatique
 - **Dossier** : `ressources/audio/`
-- **Nommage** : `[Note][s][Octave].flac` (s = diese/sharp)
-  - Exemples : `Cs4.flac` = C#4, `As3.flac` = A#3/Bb3, `D3.flac` = D3
-- **Plage** : E2 a F5 (56 samples)
+- **Nommage** : `[Note][s][Octave].flac` et `.mp3` (s = diese/sharp)
+  - Exemples : `Cs4.flac`/`Cs4.mp3` = C#4, `As3.flac`/`As3.mp3` = A#3/Bb3
+- **Plage** : E2 a F5 (56 samples x 2 formats = 112 fichiers)
 - **Module** : `js/features/handpan-player.js` (classe `HandpanPlayer`)
 
-Pour ajouter un sample : convertir en FLAC, nommer selon la convention, placer dans `ressources/audio/`.
+Pour ajouter un sample : convertir en FLAC + MP3, nommer selon la convention, placer dans `ressources/audio/`.
 
 ---
 
@@ -737,31 +738,29 @@ Le fichier configure :
 - [x] Suppression CSP unsafe-inline/unsafe-eval (scripts externalises)
 - [x] JSON-LD structured data, @media print, sitemap dynamique
 - [x] Correction securite webhooks (fail-closed, idempotence, escapeHtml)
+- [x] Config admin : dropdown/collapse pour sections longues (gammes, materiaux, tailles)
+- [x] Fix icone hint qui masquait le bouton "ecouter" sur mobile (padding player-visual)
+- [x] Boutique desktop : suppression du scroll gate JS, scroll 100% natif + bandeau teal cliquable sticky
+- [x] Favicon (ico + png + apple-touch-icon + webmanifest) sur les 14 pages
+- [x] Acces tarification admin : verifie OK (5 champs editables dans Config > Tarification configurateur)
+- [x] Fallback MP3 pour Safari/iOS (56 fichiers MP3 + detection canPlayType dans handpan-player.js)
+- [x] Migration tailles-data.js de localStorage vers MistralSync/Supabase (table `tailles`)
+- [x] RLS Supabase granulaire : policies role-based par table (admin-only, filtre public, insert public professeurs)
+- [x] Securisation IBAN/BIC : table `configuration` en admin-only (RLS bloque les lectures anonymes)
+- [x] PayPlug/Swikly en production (test en cours)
+- [x] Auto-generation facture sur paiement confirme (webhook payplug → findOrCreateClient + generateInvoice)
+- [x] Batch de gammes : collections nommees dans Config admin, activation publie les codes dans namespace=configurateur (lecture publique RLS), configurateur boutique re-render dynamiquement
 
 ### A faire
 
-**Priorite critique (securite) :**
-- [ ] **RLS Supabase : politiques granulaires par table** — Actuellement toutes les policies utilisent `USING (true)`, ce qui signifie que tout utilisateur authentifie peut acceder a TOUTES les donnees. Implementer des policies basees sur les roles (ex: `auth.jwt() ->> 'role' = 'admin'`). Action dans Supabase Dashboard > SQL Editor
-- [ ] **Donnees bancaires (IBAN/BIC) dans la table `configuration`** — Table accessible en lecture publique. Risque de fraude financiere. Soit chiffrer les donnees, soit les deplacer dans une table avec RLS restreint. Action dans Supabase Dashboard
-
 **Priorite haute :**
-- [ ] Tester et passer PayPlug/Swikly en production
-- [ ] Auto-generation de facture sur paiement confirme
-- [ ] Corriger position de l'icone de swipe dans la boutique en mode telephone (masque le bouton "ecouter" actuellement)
 - [ ] API La Poste Colissimo : generation bordereau retour pour clients location a distance
 - [ ] API La Poste Colissimo cote admin : bordereau envoi pour clients achetant un instrument en stock (option generation + impression pour preparer l'envoi)
-- [ ] Ajouter un favicon
 
 **Priorite moyenne :**
-- [ ] **Config admin : systeme de dropdown/collapse** pour les sections longues (gammes, materiaux, etc.) — actuellement le scroll est trop important
-- [ ] **Batch de gammes** — Concept non implemente pour l'instant. Le systeme actuel gere chaque gamme individuellement (CRUD unitaire dans `admin-ui-config.js`, dropdown selection simple dans le modal instrument). Objectif : pouvoir gerer des lots/batches de gammes dans Config (admin panel) avec effet dans le configurateur d'instrument virtuel (boutique.html). La recherche de gamme dans le champ instrument est deja fonctionnelle
-- [ ] **Acces aux valeurs de tarification cote admin en Config** (prix par note, surcharge octave 2, malus selon espace disponible, surcharge bottom notes) — verifier l'accessibilite actuelle dans Config > Tarification configurateur
-- [ ] Ameliorer le systeme de "swipe-like" dans la boutique en mode PC (desktop)
 - [ ] Logo et mise en page des factures PDF a travailler (`gestion-pdf.js`)
 - [ ] Mise en place de Calendly pour la prise de RDV (recuperation instruments a l'atelier, recuperation location)
-- [ ] Migrer `tailles-data.js` de localStorage vers MistralSync
 - [ ] Eliminer les variables globales mutables dans les modals admin (risque de race condition entre modals)
-- [ ] Fallback MP3 pour l'audio (compatibilite Safari/iOS, actuellement FLAC uniquement)
 - [ ] Pagination dans les listes admin (probleme de performance DOM avec 1000+ enregistrements)
 - [ ] Validation de prix panier cote client (`cart.js` utilise sessionStorage modifiable)
 - [ ] Ameliorer indicateurs `:focus-visible` sur tout le site
@@ -794,11 +793,12 @@ Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 
 ## Historique des versions
 
-### v3.5 (9 Fevrier 2026)
+### v3.5 (15 Fevrier 2026)
 - **Admin** : Reorganisation complete de la navigation (groupes Gestion/Contenu/Outils, labels, dashboard toggleable)
 - **Admin** : Suppression onglet Analytics, integre au dashboard
 - **Admin** : Renommage "Boutique" → "Vitrine" dans l'admin
 - **Admin** : Fix bug onglet Config qui ne rendait pas (case 'configuration' → 'config')
+- **Admin** : Dropdown/collapse pour sections longues en Config (gammes, materiaux, tailles)
 - **Tarification** : Prix configurables depuis l'admin (prix/note, bonus octave 2, bonus bottoms, malus difficulte)
 - **Tarification** : Malus taille change de pourcentage a montant fixe EUR (ex: +100 EUR pour 45/50 cm)
 - **Data** : Validation des donnees dans tous les `create()` (gestion.js)
@@ -811,6 +811,15 @@ Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 - **UI** : Erreurs transition statut instrument affichees via Toast
 - **UI** : blog-admin.js ecoute `mistral-data-change` au lieu de `storage`
 - **FAB** : Refactore en raccourci global (admin + deconnexion), auto-injecte sur toutes les pages sauf admin
+- **Boutique** : Fix hint mobile qui masquait le bouton "Ecouter" (padding-bottom sur player-visual)
+- **Boutique** : Suppression du scroll gate JS desktop (~200 lignes) — scroll 100% natif + bandeau teal sticky cliquable
+- **SEO** : Favicon complet (ico, png 16/32, apple-touch-icon 180, android-chrome 192/512, site.webmanifest)
+- **Audio** : Fallback MP3 pour Safari/iOS (56 fichiers MP3 192kbps + detection canPlayType)
+- **Data** : Migration tailles-data.js de localStorage vers MistralSync/Supabase (table `tailles`, fallback DEFAULT_TAILLES)
+- **Securite** : RLS granulaire — policies role-based par table (admin-only pour clients/commandes/factures/locations/configuration, filtre public pour instruments/articles/accessoires/professeurs, lecture publique pour galerie/tailles)
+- **Securite** : IBAN/BIC protege — table `configuration` en admin-only (plus de lecture anonyme)
+- **Facturation** : Auto-generation facture sur paiement confirme (webhook PayPlug → findOrCreateClient + generateInvoice, idempotent)
+- **Configurateur** : Lots de gammes — collections nommees (CRUD admin), activation publie les codes via namespace=configurateur (RLS publique), boutique.js re-render sur `gammesUpdated`
 
 ### v3.4 (8 Fevrier 2026)
 - **Vendor** : Toutes les librairies JS auto-hebergees dans `js/vendor/` (plus de CDN sauf PayPlug)

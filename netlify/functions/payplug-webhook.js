@@ -283,6 +283,282 @@ async function updateInstrumentStock(metadata, paymentType) {
 }
 
 // ============================================================================
+// AUTO-GÉNÉRATION FACTURE
+// ============================================================================
+
+/**
+ * Cherche un client par email, ou en crée un nouveau
+ * @returns {string|null} client_id (UUID)
+ */
+async function findOrCreateClient(payment, sb) {
+  const email = payment.billing?.email;
+  if (!email) return null;
+
+  try {
+    // Chercher par email
+    const searchResp = await fetch(
+      `${sb.url}/rest/v1/clients?email=eq.${encodeURIComponent(email)}&select=id&limit=1`,
+      { method: 'GET', headers: { ...sb.headers, 'Prefer': 'return=representation' } }
+    );
+
+    if (searchResp.ok) {
+      const rows = await searchResp.json();
+      if (rows.length > 0) return rows[0].id;
+    }
+
+    // Créer un nouveau client
+    const now = new Date().toISOString();
+    const createResp = await fetch(
+      `${sb.url}/rest/v1/clients`,
+      {
+        method: 'POST',
+        headers: { ...sb.headers, 'Prefer': 'return=representation' },
+        body: JSON.stringify({
+          nom: (payment.billing?.last_name || '').trim(),
+          prenom: (payment.billing?.first_name || '').trim(),
+          email,
+          telephone: payment.billing?.mobile_phone_number || '',
+          adresse: payment.billing?.address1
+            ? `${payment.billing.address1}, ${payment.billing.postcode || ''} ${payment.billing.city || ''}`.trim()
+            : '',
+          notes: 'Créé automatiquement via paiement en ligne',
+          created_at: now,
+          updated_at: now
+        })
+      }
+    );
+
+    if (createResp.ok) {
+      const created = await createResp.json();
+      return created[0]?.id || null;
+    }
+  } catch (error) {
+    console.error('Erreur findOrCreateClient:', error);
+  }
+
+  return null;
+}
+
+/**
+ * Génère le prochain numéro de facture
+ * Lit et incrémente le compteur dans la table configuration (namespace=gestion)
+ * Format: AAAA-MM-NNN
+ */
+async function generateNextInvoiceNumber(sb) {
+  try {
+    // Lire le compteur actuel
+    const readResp = await fetch(
+      `${sb.url}/rest/v1/configuration?namespace=eq.gestion&key=eq.dernier_numero_facture&select=value`,
+      { method: 'GET', headers: { ...sb.headers, 'Prefer': 'return=representation' } }
+    );
+
+    let currentNumber = 0;
+    if (readResp.ok) {
+      const rows = await readResp.json();
+      if (rows.length > 0) {
+        // value est stocké en JSON stringifié (ex: "42" ou "\"42\"")
+        let raw = rows[0].value;
+        if (typeof raw === 'string') {
+          try { raw = JSON.parse(raw); } catch { /* garder tel quel */ }
+        }
+        currentNumber = parseInt(raw) || 0;
+      }
+    }
+
+    const newNumber = currentNumber + 1;
+
+    // Mettre à jour le compteur
+    await fetch(
+      `${sb.url}/rest/v1/configuration?namespace=eq.gestion&key=eq.dernier_numero_facture`,
+      {
+        method: 'PATCH',
+        headers: sb.headers,
+        body: JSON.stringify({
+          value: JSON.stringify(newNumber.toString()),
+          updated_at: new Date().toISOString()
+        })
+      }
+    );
+
+    const now = new Date();
+    const annee = now.getFullYear();
+    const mois = String(now.getMonth() + 1).padStart(2, '0');
+    return `${annee}-${mois}-${newNumber}`;
+  } catch (error) {
+    console.error('Erreur génération numéro facture:', error);
+    return null;
+  }
+}
+
+/**
+ * Construit les lignes de facture à partir du paiement et metadata
+ * Gère: mode panier, mode single, acompte, solde
+ */
+function buildInvoiceLines(payment, metadata) {
+  const paymentType = metadata.payment_type || 'full';
+  const productName = metadata.product_name || metadata.gamme || 'Handpan sur mesure';
+
+  // Acompte → une seule ligne avec le montant du dépôt
+  if (paymentType === 'acompte') {
+    return [{
+      description: `Acompte — ${productName}`,
+      quantite: 1,
+      prix_unitaire: payment.amount / 100,
+      total: payment.amount / 100
+    }];
+  }
+
+  // Mode panier
+  const isCart = metadata.cart_mode === true || metadata.cart_mode === 'true';
+  if (isCart && metadata.items) {
+    let items;
+    try {
+      items = typeof metadata.items === 'string' ? JSON.parse(metadata.items) : metadata.items;
+    } catch (e) {
+      items = [];
+    }
+
+    if (items.length > 0) {
+      return items.map(item => ({
+        description: item.nom || 'Article',
+        quantite: item.quantite || 1,
+        prix_unitaire: item.prix || item.total || 0,
+        total: item.total || (item.prix || 0) * (item.quantite || 1)
+      }));
+    }
+  }
+
+  // Mode single (legacy)
+  return [{
+    description: productName,
+    quantite: 1,
+    prix_unitaire: payment.amount / 100,
+    total: payment.amount / 100
+  }];
+}
+
+/**
+ * Génère automatiquement une facture pour un paiement confirmé.
+ * Idempotent: vérifie qu'aucune facture n'existe déjà pour cette commande.
+ * Appelé APRÈS createOrUpdateOrder (la commande doit exister).
+ */
+async function generateInvoice(payment, metadata) {
+  const sb = getSupabaseConfig();
+  if (!sb) return;
+
+  const paymentType = metadata.payment_type || 'full';
+  const orderReference = metadata.order_reference;
+
+  // Mapper type de paiement → type de facture
+  const typeMap = { full: 'vente', installments: 'vente', acompte: 'acompte', solde: 'solde' };
+  const factureType = typeMap[paymentType] || 'vente';
+
+  try {
+    // 1. Trouver la commande par référence
+    const findResp = await fetch(
+      `${sb.url}/rest/v1/commandes?reference=eq.${encodeURIComponent(orderReference)}&select=id`,
+      { method: 'GET', headers: { ...sb.headers, 'Prefer': 'return=representation' } }
+    );
+
+    let commandeId = null;
+    if (findResp.ok) {
+      const commandes = await findResp.json();
+      if (commandes.length > 0) commandeId = commandes[0].id;
+    }
+
+    // 2. Vérifier qu'aucune facture n'existe déjà pour cette commande (idempotence)
+    if (commandeId) {
+      const checkResp = await fetch(
+        `${sb.url}/rest/v1/factures?commande_id=eq.${commandeId}&type=eq.${factureType}&select=id`,
+        { method: 'GET', headers: { ...sb.headers, 'Prefer': 'return=representation' } }
+      );
+      if (checkResp.ok) {
+        const existing = await checkResp.json();
+        if (existing.length > 0) {
+          console.log(`Facture ${factureType} déjà existante pour commande ${orderReference}`);
+          return;
+        }
+      }
+    }
+
+    // 3. Trouver ou créer le client
+    const clientId = await findOrCreateClient(payment, sb);
+    if (!clientId) {
+      console.warn('Impossible de trouver/créer le client — facture non générée');
+      return;
+    }
+
+    // 4. Générer le numéro de facture
+    const numero = await generateNextInvoiceNumber(sb);
+    if (!numero) {
+      console.warn('Impossible de générer le numéro de facture');
+      return;
+    }
+
+    // 5. Construire les lignes
+    const lignes = buildInvoiceLines(payment, metadata);
+    const sousTotal = lignes.reduce((sum, l) => sum + (l.total || 0), 0);
+
+    // Pour une facture de solde, déduire les acomptes déjà payés
+    let acomptesDeduits = 0;
+    if (paymentType === 'solde') {
+      const totalCommande = (metadata.total_price_cents || 0) / 100;
+      if (totalCommande > 0) {
+        acomptesDeduits = totalCommande - (payment.amount / 100);
+      }
+    }
+
+    const total = sousTotal - acomptesDeduits;
+
+    // 6. Créer la facture
+    const now = new Date().toISOString();
+    const today = now.split('T')[0];
+    const paidDate = payment.paid_at
+      ? new Date(payment.paid_at * 1000).toISOString().split('T')[0]
+      : today;
+
+    const facture = {
+      numero,
+      date: paidDate,
+      date_emission: paidDate,
+      client_id: clientId,
+      type: factureType,
+      commande_id: commandeId,
+      lignes,
+      sous_total: sousTotal,
+      montant_ht: sousTotal,
+      acomptes_deduits: acomptesDeduits,
+      total,
+      montant_ttc: total,
+      factures_acompte_ids: [],
+      statut_paiement: 'paye',
+      date_paiement: paidDate,
+      mode_paiement: 'payplug',
+      notes: `Auto-générée — Ref: ${orderReference}`,
+      created_at: now,
+      updated_at: now
+    };
+
+    const createResp = await fetch(
+      `${sb.url}/rest/v1/factures`,
+      {
+        method: 'POST',
+        headers: sb.headers,
+        body: JSON.stringify(facture)
+      }
+    );
+
+    if (createResp.ok) {
+      console.log(`Facture ${numero} (${factureType}) auto-générée pour ${orderReference}`);
+    } else {
+      console.warn('Erreur création facture:', await createResp.text());
+    }
+  } catch (error) {
+    console.error('Erreur auto-génération facture:', error);
+  }
+}
+
+// ============================================================================
 // EMAILS
 // ============================================================================
 
@@ -672,6 +948,8 @@ async function handlePaymentNotification(paymentId, secretKey, headers) {
         recordPayment(payment, metadata),
         createOrUpdateOrder(payment, metadata)
       ]);
+      // Tenter la génération de facture (idempotent — skip si elle existe déjà)
+      await generateInvoice(payment, metadata);
       return {
         statusCode: 200,
         headers,
@@ -718,6 +996,9 @@ async function handlePaymentNotification(paymentId, secretKey, headers) {
       // 5. Notification artisan
       sendArtisanNotification(payment, metadata)
     ]);
+
+    // 6. Auto-générer la facture (séquentiel — nécessite la commande créée ci-dessus)
+    await generateInvoice(payment, metadata);
 
     return {
       statusCode: 200,

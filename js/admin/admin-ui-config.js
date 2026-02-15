@@ -850,6 +850,193 @@
   });
 
   // ============================================================================
+  // LOTS DE GAMMES (BATCHES / COLLECTIONS)
+  // ============================================================================
+
+  function renderGammeBatches() {
+    const container = $('#gamme-batches-list');
+    if (!container) return;
+
+    if (typeof MistralGammes === 'undefined') {
+      container.innerHTML = '<p style="color: var(--admin-text-muted);">Module gammes non chargé</p>';
+      return;
+    }
+
+    const batches = MistralGammes.getBatches();
+    const activeBatchId = MistralGammes.getActiveBatchId();
+
+    if (batches.length === 0) {
+      container.innerHTML = '<p style="color: var(--admin-text-muted);">Aucun lot créé. Créez un lot pour grouper les gammes visibles dans le configurateur.</p>';
+      return;
+    }
+
+    let html = '';
+    batches.forEach(b => {
+      const isActive = b.id === activeBatchId;
+      const gammeCount = (b.gammes || []).length;
+      const gammeNames = (b.gammes || []).map(code => {
+        const g = MistralGammes.getByCode(code);
+        return g ? g.nom : code;
+      }).join(', ');
+
+      html += `
+        <div style="background: var(--admin-surface); border: 1px solid ${isActive ? 'var(--admin-accent)' : 'var(--admin-border)'}; border-radius: 8px; padding: 1rem; ${isActive ? 'box-shadow: 0 0 0 1px var(--admin-accent);' : ''}">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <div>
+              <div style="font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                ${escapeHtml(b.nom)}
+                ${isActive ? '<span style="background: var(--admin-accent); color: white; font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px;">Actif</span>' : ''}
+              </div>
+              <div style="font-size: 0.85rem; color: var(--admin-text-muted); margin-top: 0.25rem;">
+                ${gammeCount} gamme${gammeCount > 1 ? 's' : ''} : ${gammeNames || '<em>aucune</em>'}
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--admin-border);">
+            <div>
+              ${isActive
+                ? '<button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="AdminUI.deactivateGammeBatch()">Désactiver</button>'
+                : `<button class="admin-btn admin-btn--sm admin-btn--primary" onclick="AdminUI.activateGammeBatch('${b.id}')">Activer</button>`
+              }
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="AdminUI.editGammeBatch('${b.id}')" title="Modifier">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="admin-btn admin-btn--sm admin-btn--danger" onclick="AdminUI.deleteGammeBatch('${b.id}')" title="Supprimer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  function editGammeBatch(id) {
+    if (typeof MistralGammes === 'undefined') return;
+
+    const batch = id ? MistralGammes.getBatches().find(b => b.id === id) : null;
+
+    $('#modal-gamme-batch-title').textContent = batch ? 'Modifier le lot' : 'Nouveau lot de gammes';
+    $('#gamme-batch-id').value = batch ? batch.id : '';
+    $('#gamme-batch-nom').value = batch ? batch.nom : '';
+
+    // Render checkboxes for all available gammes
+    const allGammes = MistralGammes.getAll();
+    const selectedCodes = batch ? (batch.gammes || []) : [];
+    const checkboxContainer = $('#gamme-batch-gammes');
+    if (checkboxContainer) {
+      let html = '';
+      const grouped = MistralGammes.getGroupedByCategorie();
+      for (const [cat, group] of Object.entries(grouped)) {
+        html += `<div style="margin-bottom: 0.75rem;">
+          <div style="font-weight: 600; font-size: 0.8rem; color: var(--admin-text-muted); text-transform: uppercase; margin-bottom: 0.35rem;">${escapeHtml(group.label)}</div>`;
+        group.gammes.forEach(g => {
+          const checked = selectedCodes.includes(g.code) ? ' checked' : '';
+          html += `<label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; cursor: pointer;">
+            <input type="checkbox" value="${g.code}"${checked}>
+            <span>${escapeHtml(g.nom)}</span>
+            <span style="color: var(--admin-text-muted); font-size: 0.8rem;">${g.baseRoot || ''}${g.baseOctave || ''}</span>
+          </label>`;
+        });
+        html += '</div>';
+      }
+      // Also show gammes not in any category
+      const ungrouped = allGammes.filter(g => !grouped[g.categorie]);
+      if (ungrouped.length > 0) {
+        html += '<div style="margin-bottom: 0.75rem;"><div style="font-weight: 600; font-size: 0.8rem; color: var(--admin-text-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Autre</div>';
+        ungrouped.forEach(g => {
+          const checked = selectedCodes.includes(g.code) ? ' checked' : '';
+          html += `<label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; cursor: pointer;">
+            <input type="checkbox" value="${g.code}"${checked}>
+            <span>${escapeHtml(g.nom)}</span>
+          </label>`;
+        });
+        html += '</div>';
+      }
+      checkboxContainer.innerHTML = html;
+    }
+
+    AdminUI.showModal('gamme-batch');
+  }
+
+  function saveGammeBatch() {
+    if (typeof MistralGammes === 'undefined') {
+      Toast.error('Module gammes non chargé');
+      return;
+    }
+
+    const id = $('#gamme-batch-id')?.value || '';
+    const nom = $('#gamme-batch-nom')?.value?.trim();
+
+    if (!nom) {
+      Toast.error('Le nom du lot est requis');
+      return;
+    }
+
+    // Collecter les gammes cochées
+    const checkboxes = document.querySelectorAll('#gamme-batch-gammes input[type="checkbox"]:checked');
+    const selectedCodes = Array.from(checkboxes).map(cb => cb.value);
+
+    if (selectedCodes.length === 0) {
+      Toast.error('Sélectionnez au moins une gamme');
+      return;
+    }
+
+    const batch = {
+      id: id || null,
+      nom: nom,
+      gammes: selectedCodes
+    };
+
+    MistralGammes.saveBatch(batch);
+    AdminUI.closeModal('gamme-batch');
+    renderGammeBatches();
+    Toast.success(id ? 'Lot modifié' : 'Lot créé');
+  }
+
+  async function deleteGammeBatch(id) {
+    if (typeof MistralGammes === 'undefined') return;
+    const batch = MistralGammes.getBatches().find(b => b.id === id);
+    if (!batch) return;
+
+    const confirmed = await Confirm.show({
+      title: 'Supprimer le lot',
+      message: `Voulez-vous vraiment supprimer le lot "${batch.nom}" ?`,
+      confirmText: 'Supprimer',
+      type: 'danger'
+    });
+
+    if (confirmed) {
+      MistralGammes.removeBatch(id);
+      renderGammeBatches();
+      Toast.success('Lot supprimé');
+    }
+  }
+
+  async function activateGammeBatch(id) {
+    if (typeof MistralGammes === 'undefined') return;
+
+    const success = await MistralGammes.activateBatch(id);
+    if (success) {
+      renderGammeBatches();
+      Toast.success('Lot activé — le configurateur affiche maintenant ces gammes');
+    } else {
+      Toast.error('Erreur lors de l\'activation du lot');
+    }
+  }
+
+  async function deactivateGammeBatch() {
+    if (typeof MistralGammes === 'undefined') return;
+
+    await MistralGammes.deactivateAllBatches();
+    renderGammeBatches();
+    Toast.success('Lot désactivé — le configurateur utilise les gammes par défaut');
+  }
+
+  // ============================================================================
   // TAILLES MANAGEMENT
   // ============================================================================
 
@@ -1085,6 +1272,12 @@
     resetGammes,
     populateGammesSelect,
     filterGammeDropdown,
+    renderGammeBatches,
+    editGammeBatch,
+    saveGammeBatch,
+    deleteGammeBatch,
+    activateGammeBatch,
+    deactivateGammeBatch,
     renderTailles,
     editTaille,
     saveTaille,
