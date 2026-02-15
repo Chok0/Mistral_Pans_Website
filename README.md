@@ -740,6 +740,7 @@ Le fichier configure :
 - [x] Config admin : dropdown/collapse pour sections longues (gammes, materiaux, tailles)
 - [x] Fix icone hint qui masquait le bouton "ecouter" sur mobile (padding player-visual)
 - [x] Boutique desktop : suppression du scroll gate JS, scroll 100% natif + bandeau teal cliquable sticky
+- [x] Favicon (ico + png + apple-touch-icon + webmanifest) sur les 14 pages
 
 ### A faire
 
@@ -752,7 +753,6 @@ Le fichier configure :
 - [ ] Auto-generation de facture sur paiement confirme
 - [ ] API La Poste Colissimo : generation bordereau retour pour clients location a distance
 - [ ] API La Poste Colissimo cote admin : bordereau envoi pour clients achetant un instrument en stock (option generation + impression pour preparer l'envoi)
-- [ ] Ajouter un favicon
 
 **Priorite moyenne :**
 - [ ] **Batch de gammes** — Concept non implemente pour l'instant. Le systeme actuel gere chaque gamme individuellement (CRUD unitaire dans `admin-ui-config.js`, dropdown selection simple dans le modal instrument). Objectif : pouvoir gerer des lots/batches de gammes dans Config (admin panel) avec effet dans le configurateur d'instrument virtuel (boutique.html). La recherche de gamme dans le champ instrument est deja fonctionnelle
@@ -814,6 +814,7 @@ Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 - **FAB** : Refactore en raccourci global (admin + deconnexion), auto-injecte sur toutes les pages sauf admin
 - **Boutique** : Fix hint mobile qui masquait le bouton "Ecouter" (padding-bottom sur player-visual)
 - **Boutique** : Suppression du scroll gate JS desktop (~200 lignes) — scroll 100% natif + bandeau teal sticky cliquable
+- **SEO** : Favicon complet (ico, png 16/32, apple-touch-icon 180, android-chrome 192/512, site.webmanifest)
 
 ### v3.4 (8 Fevrier 2026)
 - **Vendor** : Toutes les librairies JS auto-hebergees dans `js/vendor/` (plus de CDN sauf PayPlug)
