@@ -215,8 +215,40 @@
 
   let gammes = [...DEFAULT_GAMMES];
 
+  // Codes gammes actifs (venant d'un batch activé en admin)
+  // null = pas de batch actif → fallback sur visible_configurateur
+  // [] = batch actif vide → aucune gamme visible
+  // ['kurd', 'amara', ...] = batch actif → ces gammes visibles
+  let activeBatchCodes = null;
+
   // Migration: nettoyer l'ancienne cle localStorage
   try { localStorage.removeItem('mistral_gammes'); } catch (e) {}
+
+  // Charger les codes gammes actifs depuis Supabase (namespace=configurateur)
+  window.addEventListener('mistral-sync-complete', function() {
+    if (!window.MistralDB) return;
+    const client = MistralDB.getClient();
+    if (!client) return;
+
+    client
+      .from('configuration')
+      .select('value')
+      .eq('namespace', 'configurateur')
+      .eq('key', 'active_gammes')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data && data.value != null) {
+          try {
+            const codes = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+            if (Array.isArray(codes)) {
+              activeBatchCodes = codes;
+              dispatchUpdate();
+            }
+          } catch (e) { /* garder null */ }
+        }
+      })
+      .catch(() => {}); // Fail silently
+  });
 
   // ============================================================================
   // FONCTIONS UTILITAIRES
@@ -239,6 +271,10 @@
   }
 
   function getForConfigurateur() {
+    // Si un batch est actif, utiliser ses codes au lieu de visible_configurateur
+    if (activeBatchCodes !== null) {
+      return getAll().filter(g => g.disponible && activeBatchCodes.includes(g.code));
+    }
     return getAll().filter(g => g.disponible && g.visible_configurateur);
   }
 
@@ -382,6 +418,132 @@
   }
 
   // ============================================================================
+  // BATCHES (collections nommées de gammes)
+  // ============================================================================
+
+  /**
+   * Récupère les batches depuis la config gestion
+   * @returns {Array} [{id, nom, gammes: ['kurd',...], active: bool, ordre: int}]
+   */
+  function getBatches() {
+    if (typeof MistralGestion === 'undefined') return [];
+    const config = MistralGestion.getConfig();
+    return config.gamme_batches || [];
+  }
+
+  /**
+   * Sauvegarde un batch (création ou mise à jour)
+   */
+  function saveBatch(batch) {
+    if (typeof MistralGestion === 'undefined') return null;
+    const batches = getBatches();
+
+    if (batch.id) {
+      const index = batches.findIndex(b => b.id === batch.id);
+      if (index !== -1) {
+        batches[index] = { ...batches[index], ...batch };
+      } else {
+        batches.push(batch);
+      }
+    } else {
+      batch.id = 'batch-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+      batches.push(batch);
+    }
+
+    MistralGestion.setConfigValue('gamme_batches', batches);
+    return batch;
+  }
+
+  /**
+   * Supprime un batch
+   */
+  function removeBatch(id) {
+    if (typeof MistralGestion === 'undefined') return false;
+    const batches = getBatches().filter(b => b.id !== id);
+    MistralGestion.setConfigValue('gamme_batches', batches);
+
+    // Si c'était le batch actif, désactiver
+    const config = MistralGestion.getConfig();
+    if (config.gamme_batch_active === id) {
+      deactivateAllBatches();
+    }
+    return true;
+  }
+
+  /**
+   * Active un batch → publie ses codes gammes dans le namespace configurateur
+   * pour que le configurateur public les utilise
+   */
+  async function activateBatch(id) {
+    if (typeof MistralGestion === 'undefined') return false;
+    const batch = getBatches().find(b => b.id === id);
+    if (!batch) return false;
+
+    // Sauver l'ID du batch actif dans la config gestion
+    MistralGestion.setConfigValue('gamme_batch_active', id);
+
+    // Publier les codes dans le namespace configurateur (lecture publique)
+    await publishActiveGammes(batch.gammes || []);
+
+    // Mettre à jour l'état local
+    activeBatchCodes = batch.gammes || [];
+    dispatchUpdate();
+    return true;
+  }
+
+  /**
+   * Désactive tous les batches → revient au comportement par défaut (visible_configurateur)
+   */
+  async function deactivateAllBatches() {
+    if (typeof MistralGestion !== 'undefined') {
+      MistralGestion.setConfigValue('gamme_batch_active', null);
+    }
+
+    // Supprimer la config publique
+    await publishActiveGammes(null);
+
+    activeBatchCodes = null;
+    dispatchUpdate();
+  }
+
+  /**
+   * Retourne l'ID du batch actif (ou null)
+   */
+  function getActiveBatchId() {
+    if (typeof MistralGestion === 'undefined') return null;
+    return MistralGestion.getConfig().gamme_batch_active || null;
+  }
+
+  /**
+   * Publie (ou supprime) les codes gammes actifs dans le namespace configurateur
+   * Ce namespace a une RLS publique en lecture
+   */
+  async function publishActiveGammes(codes) {
+    if (!window.MistralDB) return;
+    const client = MistralDB.getClient();
+    if (!client) return;
+
+    if (codes === null) {
+      // Supprimer la clé
+      await client
+        .from('configuration')
+        .delete()
+        .eq('namespace', 'configurateur')
+        .eq('key', 'active_gammes');
+    } else {
+      // Upsert la clé
+      await client
+        .from('configuration')
+        .upsert({
+          key: 'active_gammes',
+          value: JSON.stringify(codes),
+          namespace: 'configurateur',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key,namespace' });
+    }
+  }
+
+  // ============================================================================
   // EVENEMENTS
   // ============================================================================
 
@@ -416,6 +578,14 @@
     removeCustomLayout,
     reorder,
     reset,
+
+    // Batches (collections)
+    getBatches,
+    saveBatch,
+    removeBatch,
+    activateBatch,
+    deactivateAllBatches,
+    getActiveBatchId,
 
     // Constantes
     CATEGORIES,

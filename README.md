@@ -749,6 +749,7 @@ Le fichier configure :
 - [x] Securisation IBAN/BIC : table `configuration` en admin-only (RLS bloque les lectures anonymes)
 - [x] PayPlug/Swikly en production (test en cours)
 - [x] Auto-generation facture sur paiement confirme (webhook payplug → findOrCreateClient + generateInvoice)
+- [x] Batch de gammes : collections nommees dans Config admin, activation publie les codes dans namespace=configurateur (lecture publique RLS), configurateur boutique re-render dynamiquement
 
 ### A faire
 
@@ -757,7 +758,6 @@ Le fichier configure :
 - [ ] API La Poste Colissimo cote admin : bordereau envoi pour clients achetant un instrument en stock (option generation + impression pour preparer l'envoi)
 
 **Priorite moyenne :**
-- [ ] **Batch de gammes** — Concept non implemente pour l'instant. Le systeme actuel gere chaque gamme individuellement (CRUD unitaire dans `admin-ui-config.js`, dropdown selection simple dans le modal instrument). Objectif : pouvoir gerer des lots/batches de gammes dans Config (admin panel) avec effet dans le configurateur d'instrument virtuel (boutique.html). La recherche de gamme dans le champ instrument est deja fonctionnelle
 - [ ] Logo et mise en page des factures PDF a travailler (`gestion-pdf.js`)
 - [ ] Mise en place de Calendly pour la prise de RDV (recuperation instruments a l'atelier, recuperation location)
 - [ ] Eliminer les variables globales mutables dans les modals admin (risque de race condition entre modals)
@@ -819,6 +819,7 @@ Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 - **Securite** : RLS granulaire — policies role-based par table (admin-only pour clients/commandes/factures/locations/configuration, filtre public pour instruments/articles/accessoires/professeurs, lecture publique pour galerie/tailles)
 - **Securite** : IBAN/BIC protege — table `configuration` en admin-only (plus de lecture anonyme)
 - **Facturation** : Auto-generation facture sur paiement confirme (webhook PayPlug → findOrCreateClient + generateInvoice, idempotent)
+- **Configurateur** : Lots de gammes — collections nommees (CRUD admin), activation publie les codes via namespace=configurateur (RLS publique), boutique.js re-render sur `gammesUpdated`
 
 ### v3.4 (8 Fevrier 2026)
 - **Vendor** : Toutes les librairies JS auto-hebergees dans `js/vendor/` (plus de CDN sauf PayPlug)

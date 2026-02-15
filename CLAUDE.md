@@ -276,11 +276,12 @@ if (window.MistralAdmin && MistralAdmin.Auth.isLoggedIn()) {
 | `articles` | Blog posts | slug, title, content (HTML), status, tags |
 | `accessoires` | Accessories | nom, categorie, prix, stock, statut, visible_configurateur, tailles_compatibles |
 | `tailles` | Sizes | code, label, description, prix_malus, feasibility (JSON), ordre, disponible, visible_configurateur |
-| `configuration` | Settings (key-value) | key, value (JSON), namespace (gestion/compta/email_automations) |
+| `configuration` | Settings (key-value) | key, value (JSON), namespace (gestion/compta/email_automations/configurateur) |
 
 ### Row-Level Security (granulaire)
 
 - **Admin-only:** `clients`, `locations`, `commandes`, `factures`, `configuration` (protege IBAN/BIC)
+- **Public read (filtre config):** `configuration` (namespace='configurateur' — lots de gammes actifs)
 - **Public read (tout):** `galerie`, `tailles`
 - **Public read (filtre):** `instruments` (statut IN en_ligne/disponible), `articles` (status=published), `accessoires` (statut=en_ligne), `professeurs` (statut=active)
 - **Public insert:** `professeurs` (statut=pending uniquement)
@@ -438,7 +439,7 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 | Module | Purpose |
 |--------|---------|
 | `MistralMateriaux` | Material specifications (hardcoded defaults) |
-| `MistralGammes` | Scale configurations (hardcoded defaults) |
+| `MistralGammes` | Scale configurations (hardcoded defaults, active batch codes loaded from Supabase namespace=configurateur) |
 
 ### Admin Authentication
 - Authentication is handled via **Supabase Auth** (email + password)
