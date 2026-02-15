@@ -1,8 +1,8 @@
 # Revue de Production - Mistral Pans Website
 
-> **Date :** 9 février 2026
+> **Date :** 15 février 2026 (mise à jour v2)
 > **Version :** v3.5
-> **Scope :** Audit complet pre-production (structure, sécurité, performance, SEO, accessibilité, qualité de code)
+> **Scope :** Audit complet pre-production + revue des évolutions post-audit (structure, sécurité, performance, SEO, accessibilité, qualité de code)
 
 ---
 
@@ -10,19 +10,19 @@
 
 Le projet est **globalement solide** avec une architecture bien pensée (vanilla JS, Supabase, Netlify). Le code est propre, bien organisé et la séparation des responsabilités est correcte.
 
-**Après 4 phases de corrections, le site est prêt pour la production.**
+**Après 4 phases de corrections, le site est prêt pour la production.** Depuis l'audit initial (9 février), ~20 commits ont ajouté de nouvelles fonctionnalités (panier multi-articles, page annonce, système de notation FR/US, instrument virtuel, promotions). Cette mise à jour couvre les **nouveaux problèmes introduits** par ces évolutions.
 
 | Catégorie | Critique | Haute | Moyenne | Basse | Statut |
 |-----------|:--------:|:-----:|:-------:|:-----:|:------:|
-| Sécurité | ~~2~~ 0 | ~~3~~ 1 | ~~4~~ 2 | 2 | 5 corrigés |
-| Performance | ~~2~~ 0 | ~~2~~ 0 | ~~3~~ 2 | ~~1~~ 0 | 5 corrigés |
-| SEO / Contenu | ~~3~~ 0 | ~~4~~ 1 | ~~3~~ 1 | 2 | 6 corrigés |
-| Qualité de code | ~~1~~ 0 | ~~4~~ 2 | ~~6~~ 4 | 3 | 6 corrigés |
-| **Total** | **0** | **4** | **9** | **7** | **22 corrigés** |
+| Sécurité | ~~2~~ 0 + **1 nouveau** | ~~3~~ 1 | ~~4~~ 2 + **1 nouveau** | 2 | 5 corrigés |
+| Performance | ~~2~~ 0 | ~~2~~ 0 + **1 nouveau** | ~~3~~ 2 | ~~1~~ 0 | 5 corrigés |
+| SEO / Contenu | ~~3~~ 0 | ~~4~~ 1 | ~~3~~ 1 | 2 | 6 corrigés, sitemap+robots ajoutés |
+| Qualité de code | ~~1~~ 0 | ~~4~~ 2 + **1 nouveau** | ~~6~~ 4 + **2 nouveaux** | 3 | 6 corrigés |
+| **Total** | **1** | **5** | **12** | **7** | **22 corrigés** |
 
-**Score global : 8.5/10 — Prêt pour la production**
+**Score global : 8/10 — Prêt pour la production avec réserves (validation panier)**
 
-### Corrections effectuées (6 commits)
+### Corrections effectuées (6 commits, audit initial)
 
 | Phase | Commit | Corrections |
 |-------|--------|-------------|
@@ -32,6 +32,19 @@ Le projet est **globalement solide** avec une architecture bien pensée (vanilla
 | 2 | `f4f238c` | `defer` scripts, `loading="lazy"`, canonical URLs, OG/Twitter tags, Toast, debounce saves |
 | 3 | `a7f332a` | 37 console.log supprimés, 14 conditionnels, memory leaks (AbortController), webhook idempotence |
 | 4 | `e767158` | JSON-LD structured data, @media print, sanitizeHtml URL decoding fix |
+
+### Évolutions post-audit (9-15 février, ~20 commits)
+
+| Fonctionnalité | Fichiers principaux | Statut |
+|----------------|--------------------|---------:|
+| Panier multi-articles | `cart.js`, `commander.js`, `boutique.js` | **Nouveau** |
+| Page annonce (détail produit) | `annonce.html` | **Nouveau** |
+| Système de notation FR/US | `scales-data.js`, `boutique.js`, `handpan-player.js` | **Nouveau** |
+| Instrument virtuel (galerie) | `handpan-player.js`, `annonce.html` | **Nouveau** |
+| Badges promotionnels | `boutique.js`, `boutique-admin.js` | **Nouveau** |
+| SEO : sitemap.xml + robots.txt | `sitemap.xml`, `robots.txt` | **Nouveau** |
+| SEO diagnostic (admin) | `seo-diagnostic.js`, `seo-diagnostic.html` | **Nouveau** |
+| Location refonte UX | `location.html` | **Refactorisé** |
 
 ---
 
@@ -43,8 +56,9 @@ Le projet est **globalement solide** avec une architecture bien pensée (vanilla
 4. [SEO et Contenu](#4-seo-et-contenu)
 5. [Qualité de Code](#5-qualité-de-code)
 6. [Configuration Netlify](#6-configuration-netlify)
-7. [Ce qui est bien fait](#7-ce-qui-est-bien-fait)
-8. [Plan d'action recommandé](#8-plan-daction-recommandé)
+7. [Nouveaux Problèmes (post-audit, février 2026)](#7-nouveaux-problèmes-post-audit-février-2026)
+8. [Ce qui est bien fait](#8-ce-qui-est-bien-fait)
+9. [Plan d'action recommandé](#9-plan-daction-recommandé)
 
 ---
 
@@ -464,7 +478,161 @@ Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
 ---
 
-## 7. Ce qui est bien fait
+## 7. Nouveaux Problèmes (post-audit, février 2026)
+
+Les évolutions suivantes ont été ajoutées depuis l'audit initial du 9 février. Cette section couvre les **nouveaux problèmes identifiés**.
+
+### 7.1 Validation de prix panier incomplète (CRITIQUE)
+
+**Fichier :** `netlify/functions/payplug-webhook.js:480-498`
+
+```javascript
+if (isCart && metadata.items) {
+  let items;
+  try {
+    items = typeof metadata.items === 'string' ? JSON.parse(metadata.items) : metadata.items;
+  } catch (e) {
+    return { valid: true }; // ← Fail open sur erreur JSON
+  }
+
+  for (const item of items) {
+    if (item.type === 'instrument' && item.sourceId) {
+      // Code de validation commenté/incomplet
+    }
+  }
+  return { valid: true }; // ← Toujours vrai, validation non implémentée
+}
+```
+
+**Problème :** La validation de prix en mode panier (multi-articles) est un **no-op**. La boucle `for` itère sur les items mais n'effectue aucune vérification. Le `return { valid: true }` final signifie que n'importe quel montant est accepté pour un paiement panier.
+
+**Impact :** Un utilisateur pourrait modifier le montant côté client et payer moins que le prix réel pour un panier multi-articles.
+
+**Correction :** Implémenter la validation pour chaque item du panier :
+```javascript
+for (const item of items) {
+  if (item.type === 'instrument' && item.sourceId) {
+    const fakeMetadata = { source: 'stock', instrument_id: item.sourceId, payment_type: paymentType };
+    const fakePmt = { amount: (item.total || item.prix) * 100 };
+    const result = await validateSingleInstrumentPrice(fakePmt, fakeMetadata, sb);
+    if (!result.valid) return result;
+  }
+}
+```
+
+### 7.2 Webhook "fail-open" persistant (CRITIQUE lié)
+
+**Fichier :** `netlify/functions/payplug-webhook.js:473, 486, 519, 525, 529, 562`
+
+Le webhook contient **9 occurrences** de `return { valid: true }` dans `validatePriceWithDatabase()`. Plusieurs sont des "fail-open" (accepter le paiement si la validation échoue), notamment :
+
+| Ligne | Condition | Risque |
+|-------|-----------|--------|
+| 473 | Pas de config Supabase | Aucune validation si env vars manquantes |
+| 486 | JSON.parse échoue sur items | Panier corrompu accepté |
+| 498 | Fin de la boucle panier | Validation jamais exécutée |
+| 519 | DB indisponible | Tout montant accepté |
+| 562 | Exception catch-all | Tout montant accepté |
+
+**Contexte atténuant :** L'audit initial (§1.5) avait corrigé le fail-open dans `payplug-create-payment.js`, mais le pattern persiste dans le webhook et a été amplifié par l'ajout du mode panier.
+
+**Correction recommandée :** Adopter une stratégie fail-closed cohérente : si la validation est impossible, rejeter le paiement et alerter l'admin.
+
+### 7.3 Location.html — rendu HTML sans échappement (MOYENNE)
+
+**Fichier :** `location.html:350-370`
+
+```javascript
+function renderInstrumentCard(inst) {
+  var gamme = inst.gamme || inst.nom || 'Handpan';
+  return '...<img src="' + img + '" alt="' + gamme + '"...>'
+    + '<p style="font-weight:600;">' + gamme + '</p>'
+    + '<p class="text-sm text-muted">' + [taille, inst.tonalite, inst.materiau].filter(Boolean).join(' · ') + '</p>';
+}
+```
+
+**Problème :** Les champs `gamme`, `tonalite`, `materiau` et `img` proviennent de Supabase et sont insérés dans le HTML sans échappement via `escapeHtml()`.
+
+**Impact :** Si un admin stocke du HTML malveillant dans un champ instrument (self-XSS admin), il serait rendu sur la page publique de location. Risque faible car les données sont admin-only, mais non conforme au pattern `escapeHtml()` utilisé partout ailleurs.
+
+**Correction :** Ajouter `escapeHtml()` :
+```javascript
+var gamme = escapeHtml(inst.gamme || inst.nom || 'Handpan');
+```
+
+### 7.4 Annonce.html — script inline massif (HAUTE)
+
+**Fichier :** `annonce.html:528-1403`
+
+~875 lignes de JavaScript inline dans la page. C'est la plus grosse inclusion inline du projet.
+
+**Impact :**
+- Bloque le rendu de la page
+- Empêche la mise en cache séparée du JS
+- Nécessite `unsafe-inline` dans le CSP
+- Difficile à maintenir
+
+**Correction :** Extraire dans `js/pages/annonce.js` avec `defer`.
+
+### 7.5 Cart.js — pas de validation de prix (MOYENNE)
+
+**Fichier :** `js/features/cart.js`
+
+Le module panier stocke les prix côté client (sessionStorage) sans validation. Un utilisateur peut modifier `sessionStorage` pour changer les prix des articles.
+
+**Contexte atténuant :** Les prix doivent être revalidés côté serveur au moment du paiement (via `payplug-create-payment.js`). Mais voir §7.1 — la validation panier n'est pas implémentée dans le webhook.
+
+### 7.6 Commander.js — données localStorage affichées sans vérification serveur (MOYENNE)
+
+**Fichier :** `js/pages/commander.js:1001-1025, 1219-1279`
+
+Après un paiement réussi, les informations affichées (produit, montant, référence) proviennent de `localStorage` (`mistral_pending_order`) et non du serveur.
+
+**Impact :** Un utilisateur pourrait voir des informations erronées s'il manipule le localStorage. Risque faible car c'est un affichage post-paiement sans conséquence financière.
+
+### 7.7 SEO diagnostic sans contrôle d'accès (BASSE)
+
+**Fichier :** `seo-diagnostic.html`
+
+La page a `noindex, nofollow` et est dans `robots.txt` Disallow, mais **aucun contrôle d'authentification JS**. N'importe qui connaissant l'URL peut lancer un diagnostic SEO.
+
+**Impact :** Faible — l'outil analyse uniquement les pages publiques. Mais il pourrait être utilisé pour du scraping ou de la reconnaissance.
+
+### 7.8 Sitemap.xml — pages dynamiques manquantes (BASSE)
+
+**Fichier :** `sitemap.xml`
+
+Le sitemap liste les pages statiques mais pas les pages dynamiques (articles de blog, fiches instruments). Les moteurs de recherche ne découvriront pas ces pages via le sitemap.
+
+**Correction à terme :** Générer le sitemap dynamiquement via une Netlify Function qui requête les articles et instruments publiés.
+
+### 7.9 Nouvelles fonctionnalités bien implémentées
+
+**Cart.js (js/features/cart.js)** — Architecture propre :
+- Module IIFE avec namespace `window.MistralCart`
+- Événement `cart-updated` pour la communication inter-composants
+- Synchronisation cross-tab via `storage` event
+- Quantité plafonnée à 10 par accessoire
+
+**Notation toggle (scales-data.js)** — Bonne implémentation :
+- Persistance du choix via `sessionStorage`
+- Fallback gracieux si `MistralScales` non défini
+- Icônes drapeaux (US/FR) au lieu de texte
+
+**Instrument virtuel (handpan-player.js)** — Enrichissement majeur :
+- Intégration en tant que slide galerie
+- Support clavier + souris + touch
+- Animation pulse et wave ripple
+
+---
+
+## 8. Ce qui est bien fait
+
+### Nouvelles fonctionnalités (post-audit)
+- **Système de panier** (`cart.js`) : module propre, event-driven, sessionStorage
+- **Notation FR/US** : toggle accessible, persistance session, fallback gracieux
+- **Instrument virtuel** : intégration galerie, multi-input (clavier/souris/touch)
+- **SEO outillé** : sitemap.xml, robots.txt, diagnostic admin
 
 ### Architecture
 - **Separation of concerns excellente** : core/, admin/, services/, features/, data/, pages/
@@ -507,7 +675,7 @@ Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
 ---
 
-## 8. Plan d'action recommandé
+## 9. Plan d'action recommandé
 
 ### Phase 1 — Avant mise en prod (BLOQUANT) ✅ TERMINÉE
 
@@ -548,6 +716,17 @@ Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 | 24 | Ajouter `@media print` pour les pages légales et factures | ✅ |
 | 25 | Décoder les URL dans sanitizeHtml() (protection XSS renforcée) | ✅ |
 
+### Phase 5 — Nouveaux problèmes post-audit (RECOMMANDÉ)
+
+| # | Action | Priorité | Réf. |
+|---|--------|----------|------|
+| 27 | **Implémenter la validation de prix panier dans le webhook** | **CRITIQUE** | §7.1 |
+| 28 | Convertir les fail-open restants en fail-closed dans le webhook | Haute | §7.2 |
+| 29 | Ajouter `escapeHtml()` dans `location.html` renderInstrumentCard | Moyenne | §7.3 |
+| 30 | Extraire le script inline de `annonce.html` dans `js/pages/annonce.js` | Haute | §7.4 |
+| 31 | Ajouter contrôle d'accès admin sur `seo-diagnostic.html` | Basse | §7.7 |
+| 32 | Générer le sitemap dynamiquement (articles, instruments) | Basse | §7.8 |
+
 ### Améliorations restantes (post-launch, non bloquantes)
 
 | # | Action | Priorité |
@@ -566,18 +745,20 @@ Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
 | Métrique | Valeur |
 |----------|--------|
-| Pages HTML | 12 |
+| Pages HTML | 14 (+2 : annonce.html, seo-diagnostic.html) |
 | Partials | 4 |
 | Fichiers CSS | 4 (130 Ko) |
-| Fichiers JS (hors vendor) | 37 (~470 Ko) |
+| Fichiers JS (hors vendor) | 40 (~600 Ko, +3 : cart.js, seo-diagnostic.js, annonce inline) |
 | Vendor JS | 4 libs (611 Ko) |
-| Netlify Functions | 6 (~70 Ko) |
-| Lignes de code (estimation) | ~15 000 |
+| Netlify Functions | 6 (~75 Ko) |
+| Lignes de code (estimation) | ~20 000 (+5 000 depuis l'audit) |
 | Tables Supabase | 10 |
 | Images | ~10 fichiers (~1.4 Mo optimisé, était 26 Mo) |
 | Audio | 56 échantillons FLAC (2.1 Mo) |
+| SEO | sitemap.xml (11 URLs) + robots.txt |
 
 ---
 
-*Rapport généré le 9 février 2026. Mis à jour après 4 phases de corrections (22 items corrigés sur 45).*
+*Rapport généré le 9 février 2026. Mise à jour v2 le 15 février 2026.*
+*22 items corrigés sur 45 (audit initial). 6 nouveaux items identifiés (post-audit), dont 1 critique (§7.1).*
 *Prochain audit recommandé : 1 mois après mise en production.*
