@@ -745,12 +745,10 @@ Le fichier configure :
 - [x] Acces tarification admin : verifie OK (5 champs editables dans Config > Tarification configurateur)
 - [x] Fallback MP3 pour Safari/iOS (56 fichiers MP3 + detection canPlayType dans handpan-player.js)
 - [x] Migration tailles-data.js de localStorage vers MistralSync/Supabase (table `tailles`)
+- [x] RLS Supabase granulaire : policies role-based par table (admin-only, filtre public, insert public professeurs)
+- [x] Securisation IBAN/BIC : table `configuration` en admin-only (RLS bloque les lectures anonymes)
 
 ### A faire
-
-**Priorite critique (securite) :**
-- [ ] **RLS Supabase : politiques granulaires par table** — Actuellement toutes les policies utilisent `USING (true)`, ce qui signifie que tout utilisateur authentifie peut acceder a TOUTES les donnees. Implementer des policies basees sur les roles (ex: `auth.jwt() ->> 'role' = 'admin'`). Action dans Supabase Dashboard > SQL Editor
-- [ ] **Donnees bancaires (IBAN/BIC) dans la table `configuration`** — Table accessible en lecture publique. Risque de fraude financiere. Soit chiffrer les donnees, soit les deplacer dans une table avec RLS restreint. Action dans Supabase Dashboard
 
 **Priorite haute :**
 - [ ] Tester et passer PayPlug/Swikly en production
@@ -818,6 +816,8 @@ Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 - **SEO** : Favicon complet (ico, png 16/32, apple-touch-icon 180, android-chrome 192/512, site.webmanifest)
 - **Audio** : Fallback MP3 pour Safari/iOS (56 fichiers MP3 192kbps + detection canPlayType)
 - **Data** : Migration tailles-data.js de localStorage vers MistralSync/Supabase (table `tailles`, fallback DEFAULT_TAILLES)
+- **Securite** : RLS granulaire — policies role-based par table (admin-only pour clients/commandes/factures/locations/configuration, filtre public pour instruments/articles/accessoires/professeurs, lecture publique pour galerie/tailles)
+- **Securite** : IBAN/BIC protege — table `configuration` en admin-only (plus de lecture anonyme)
 
 ### v3.4 (8 Fevrier 2026)
 - **Vendor** : Toutes les librairies JS auto-hebergees dans `js/vendor/` (plus de CDN sauf PayPlug)

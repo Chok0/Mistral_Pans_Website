@@ -278,11 +278,14 @@ if (window.MistralAdmin && MistralAdmin.Auth.isLoggedIn()) {
 | `tailles` | Sizes | code, label, description, prix_malus, feasibility (JSON), ordre, disponible, visible_configurateur |
 | `configuration` | Settings (key-value) | key, value (JSON), namespace (gestion/compta/email_automations) |
 
-### Row-Level Security
+### Row-Level Security (granulaire)
 
-- **Public read:** Active teachers, published articles, online instruments, gallery, active accessories
-- **Public insert:** Teacher applications (pending status)
-- **Authenticated:** Full CRUD access for admin operations (all tables including configuration)
+- **Admin-only:** `clients`, `locations`, `commandes`, `factures`, `configuration` (protege IBAN/BIC)
+- **Public read (tout):** `galerie`, `tailles`
+- **Public read (filtre):** `instruments` (statut IN en_ligne/disponible), `articles` (status=published), `accessoires` (statut=en_ligne), `professeurs` (statut=active)
+- **Public insert:** `professeurs` (statut=pending uniquement)
+- **Authenticated:** Full CRUD access sur toutes les tables
+- **Netlify Functions:** Utilisent `SERVICE_KEY` (bypass RLS)
 
 ---
 
