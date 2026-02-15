@@ -275,6 +275,7 @@ if (window.MistralAdmin && MistralAdmin.Auth.isLoggedIn()) {
 | `galerie` | Media | type, src, thumbnail, ordre, featured |
 | `articles` | Blog posts | slug, title, content (HTML), status, tags |
 | `accessoires` | Accessories | nom, categorie, prix, stock, statut, visible_configurateur, tailles_compatibles |
+| `tailles` | Sizes | code, label, description, prix_malus, feasibility (JSON), ordre, disponible, visible_configurateur |
 | `configuration` | Settings (key-value) | key, value (JSON), namespace (gestion/compta/email_automations) |
 
 ### Row-Level Security
@@ -416,6 +417,7 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 | `mistral_gallery` | `galerie` | Array | Gallery media |
 | `mistral_blog_articles` | `articles` | Array | Blog articles |
 | `mistral_accessoires` | `accessoires` | Array | Shop accessories (cases, oils, etc.) |
+| `mistral_tailles` | `tailles` | Array | Size configurations (45/50/53cm) with feasibility data |
 | `mistral_gestion_config` | `configuration` (namespace='gestion') | Object | Admin business config (rates, invoice counter) |
 | `mistral_compta_config` | `configuration` (namespace='compta') | Object | Accounting settings (email dest, report prefs) |
 | `mistral_email_automations` | `configuration` (namespace='email_automations') | Object | Email automation rules |

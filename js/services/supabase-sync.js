@@ -40,6 +40,7 @@
       { local: 'mistral_gallery', remote: 'galerie', idField: 'id' },
       { local: 'mistral_blog_articles', remote: 'articles', idField: 'id' },
       { local: 'mistral_accessoires', remote: 'accessoires', idField: 'id' },
+      { local: 'mistral_tailles', remote: 'tailles', idField: 'id' },
       { local: 'mistral_gestion_config', remote: 'configuration', idField: 'id', isKeyValue: true },
       { local: 'mistral_compta_config', remote: 'configuration', idField: 'id', isKeyValue: true, configNamespace: 'compta' },
       { local: 'mistral_email_automations', remote: 'configuration', idField: 'id', isKeyValue: true, configNamespace: 'email_automations' }
@@ -49,8 +50,8 @@
     // Note: une meme table Supabase peut etre mappee a plusieurs cles locales
     // via des filtres differents (ex: professeurs -> teachers + pending_teachers)
     publicPageTables: {
-      'boutique':  ['instruments', 'accessoires'],
-      'annonce':   ['instruments', 'accessoires'],
+      'boutique':  ['instruments', 'accessoires', 'tailles'],
+      'annonce':   ['instruments', 'accessoires', 'tailles'],
       'apprendre': ['professeurs'],
       'galerie':   ['galerie'],
       'blog':      ['articles'],

@@ -149,7 +149,7 @@ Navigateur
 |   |-- data/                # Donnees statiques / modules de configuration
 |   |   |-- scales-data.js   # Theorie musicale (modes, intervalles, notes)
 |   |   |-- gammes-data.js   # Gammes du configurateur (in-memory, CRUD admin)
-|   |   |-- tailles-data.js  # Tailles et faisabilite (localStorage, CRUD admin)
+|   |   |-- tailles-data.js  # Tailles et faisabilite (MistralSync/Supabase, CRUD admin)
 |   |   +-- materiaux-data.js # Materiaux et proprietes (in-memory, CRUD admin)
 |   |
 |   |-- features/            # Modules metier reutilisables
@@ -359,6 +359,7 @@ Le flux est :
 | `mistral_gallery` | `galerie` | Array | Medias galerie |
 | `mistral_blog_articles` | `articles` | Array | Articles blog |
 | `mistral_accessoires` | `accessoires` | Array | Accessoires boutique |
+| `mistral_tailles` | `tailles` | Array | Configurations tailles (45/50/53cm) avec donnees faisabilite |
 | `mistral_gestion_config` | `configuration` (namespace='gestion') | Object | Config metier (tarifs, compteur factures) |
 | `mistral_compta_config` | `configuration` (namespace='compta') | Object | Config comptabilite |
 | `mistral_email_automations` | `configuration` (namespace='email_automations') | Object | Config emails automatiques |
@@ -370,7 +371,6 @@ Le flux est :
 | `mistral_cookie_consent` | Preferences consentement cookies RGPD |
 | `mistral_leaflet_consent` | Consentement carte Leaflet |
 | `mistral_stats_anonymous` | Compteurs de pages vues anonymes |
-| `mistral_tailles` | Configuration des tailles (a migrer vers MistralSync) |
 
 ### Donnees in-memory uniquement (pas de persistence)
 
@@ -744,6 +744,7 @@ Le fichier configure :
 - [x] Favicon (ico + png + apple-touch-icon + webmanifest) sur les 14 pages
 - [x] Acces tarification admin : verifie OK (5 champs editables dans Config > Tarification configurateur)
 - [x] Fallback MP3 pour Safari/iOS (56 fichiers MP3 + detection canPlayType dans handpan-player.js)
+- [x] Migration tailles-data.js de localStorage vers MistralSync/Supabase (table `tailles`)
 
 ### A faire
 
@@ -761,7 +762,6 @@ Le fichier configure :
 - [ ] **Batch de gammes** — Concept non implemente pour l'instant. Le systeme actuel gere chaque gamme individuellement (CRUD unitaire dans `admin-ui-config.js`, dropdown selection simple dans le modal instrument). Objectif : pouvoir gerer des lots/batches de gammes dans Config (admin panel) avec effet dans le configurateur d'instrument virtuel (boutique.html). La recherche de gamme dans le champ instrument est deja fonctionnelle
 - [ ] Logo et mise en page des factures PDF a travailler (`gestion-pdf.js`)
 - [ ] Mise en place de Calendly pour la prise de RDV (recuperation instruments a l'atelier, recuperation location)
-- [ ] Migrer `tailles-data.js` de localStorage vers MistralSync
 - [ ] Eliminer les variables globales mutables dans les modals admin (risque de race condition entre modals)
 - [ ] Pagination dans les listes admin (probleme de performance DOM avec 1000+ enregistrements)
 - [ ] Validation de prix panier cote client (`cart.js` utilise sessionStorage modifiable)
@@ -817,6 +817,7 @@ Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 - **Boutique** : Suppression du scroll gate JS desktop (~200 lignes) — scroll 100% natif + bandeau teal sticky cliquable
 - **SEO** : Favicon complet (ico, png 16/32, apple-touch-icon 180, android-chrome 192/512, site.webmanifest)
 - **Audio** : Fallback MP3 pour Safari/iOS (56 fichiers MP3 192kbps + detection canPlayType)
+- **Data** : Migration tailles-data.js de localStorage vers MistralSync/Supabase (table `tailles`, fallback DEFAULT_TAILLES)
 
 ### v3.4 (8 Fevrier 2026)
 - **Vendor** : Toutes les librairies JS auto-hebergees dans `js/vendor/` (plus de CDN sauf PayPlug)
