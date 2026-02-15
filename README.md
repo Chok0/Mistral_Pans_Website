@@ -747,12 +747,12 @@ Le fichier configure :
 - [x] Migration tailles-data.js de localStorage vers MistralSync/Supabase (table `tailles`)
 - [x] RLS Supabase granulaire : policies role-based par table (admin-only, filtre public, insert public professeurs)
 - [x] Securisation IBAN/BIC : table `configuration` en admin-only (RLS bloque les lectures anonymes)
+- [x] PayPlug/Swikly en production (test en cours)
+- [x] Auto-generation facture sur paiement confirme (webhook payplug → findOrCreateClient + generateInvoice)
 
 ### A faire
 
 **Priorite haute :**
-- [ ] Tester et passer PayPlug/Swikly en production
-- [ ] Auto-generation de facture sur paiement confirme
 - [ ] API La Poste Colissimo : generation bordereau retour pour clients location a distance
 - [ ] API La Poste Colissimo cote admin : bordereau envoi pour clients achetant un instrument en stock (option generation + impression pour preparer l'envoi)
 
@@ -818,6 +818,7 @@ Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 - **Data** : Migration tailles-data.js de localStorage vers MistralSync/Supabase (table `tailles`, fallback DEFAULT_TAILLES)
 - **Securite** : RLS granulaire — policies role-based par table (admin-only pour clients/commandes/factures/locations/configuration, filtre public pour instruments/articles/accessoires/professeurs, lecture publique pour galerie/tailles)
 - **Securite** : IBAN/BIC protege — table `configuration` en admin-only (plus de lecture anonyme)
+- **Facturation** : Auto-generation facture sur paiement confirme (webhook PayPlug → findOrCreateClient + generateInvoice, idempotent)
 
 ### v3.4 (8 Fevrier 2026)
 - **Vendor** : Toutes les librairies JS auto-hebergees dans `js/vendor/` (plus de CDN sauf PayPlug)
