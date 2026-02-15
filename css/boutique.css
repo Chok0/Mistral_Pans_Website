@@ -229,6 +229,10 @@ body[data-page="boutique"] {
     max-width: 95vw;
   }
 
+  .player-visual {
+    padding-bottom: 1.5rem;
+  }
+
   .note-group .note-circle {
     /* Larger touch targets on mobile */
     stroke-width: 2px;

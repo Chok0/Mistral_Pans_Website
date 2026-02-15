@@ -331,6 +331,7 @@
         if (window.AdminUI.renderGammes) window.AdminUI.renderGammes();
         if (window.AdminUI.renderTailles) window.AdminUI.renderTailles();
         if (window.AdminUI.renderEmailAutomations) window.AdminUI.renderEmailAutomations();
+        if (window.AdminUI.initConfigSections) window.AdminUI.initConfigSections();
         break;
       case 'comptabilite':
         if (window.AdminUI.renderComptabilite) window.AdminUI.renderComptabilite();

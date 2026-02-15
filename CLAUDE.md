@@ -107,7 +107,6 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 │   └── order-status.js      # Order tracking endpoint
 ├── netlify.toml              # Netlify config (headers, redirects, CSP)
 ├── CLAUDE.md                # This file (AI assistant guide)
-├── PROJECT-REVIEW.md         # Full code audit report
 └── README.md                # Full project documentation (French)
 ```
 

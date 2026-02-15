@@ -396,94 +396,134 @@
 
           <!-- GESTION DES MATÉRIAUX -->
           <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
-            <div class="dashboard__card-title">Matériaux disponibles</div>
-            <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 1rem;">Gérez les matériaux disponibles dans le configurateur boutique. Vous pouvez activer/désactiver chaque matériau.</p>
-            <div id="materiaux-list" class="materiaux-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-              <!-- Populated by JS -->
+            <div class="config-section__header collapsed" onclick="AdminUI.toggleConfigSection('materiaux')">
+              <div class="dashboard__card-title">Matériaux disponibles</div>
+              <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-              <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('materiau')">+ Ajouter un matériau</button>
-              <button class="admin-btn admin-btn--secondary" onclick="AdminUI.resetMateriaux()">Réinitialiser par défaut</button>
+            <div class="config-section__body collapsed" id="config-body-materiaux">
+              <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 1rem;">Gérez les matériaux disponibles dans le configurateur boutique. Vous pouvez activer/désactiver chaque matériau.</p>
+              <div id="materiaux-list" class="materiaux-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                <!-- Populated by JS -->
+              </div>
+              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('materiau')">+ Ajouter un matériau</button>
+                <button class="admin-btn admin-btn--secondary" onclick="AdminUI.resetMateriaux()">Réinitialiser par défaut</button>
+              </div>
             </div>
           </div>
 
           <!-- GESTION DES GAMMES -->
           <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
-            <div class="dashboard__card-title">Gammes disponibles</div>
-            <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 1rem;">Gérez les gammes disponibles. Les gammes marquées "Configurateur" apparaissent dans le configurateur boutique.</p>
-            <div id="gammes-list" class="materiaux-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-              <!-- Populated by JS -->
+            <div class="config-section__header collapsed" onclick="AdminUI.toggleConfigSection('gammes')">
+              <div class="dashboard__card-title">Gammes disponibles</div>
+              <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-              <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('gamme')">+ Ajouter une gamme</button>
-              <button class="admin-btn admin-btn--secondary" onclick="AdminUI.resetGammes()">Réinitialiser par défaut</button>
+            <div class="config-section__body collapsed" id="config-body-gammes">
+              <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 1rem;">Gérez les gammes disponibles. Les gammes marquées "Configurateur" apparaissent dans le configurateur boutique.</p>
+              <div id="gammes-list" class="materiaux-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                <!-- Populated by JS -->
+              </div>
+              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('gamme')">+ Ajouter une gamme</button>
+                <button class="admin-btn admin-btn--secondary" onclick="AdminUI.resetGammes()">Réinitialiser par défaut</button>
+              </div>
             </div>
           </div>
 
           <!-- GESTION DES TAILLES -->
           <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
-            <div class="dashboard__card-title">Tailles disponibles</div>
-            <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 1rem;">Gérez les tailles de handpan disponibles avec leurs malus de prix et paramètres de faisabilité.</p>
-            <div id="tailles-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-              <!-- Populated by JS -->
+            <div class="config-section__header collapsed" onclick="AdminUI.toggleConfigSection('tailles')">
+              <div class="dashboard__card-title">Tailles disponibles</div>
+              <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-              <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('taille')">+ Ajouter une taille</button>
-              <button class="admin-btn admin-btn--secondary" onclick="AdminUI.resetTailles()">Réinitialiser par défaut</button>
+            <div class="config-section__body collapsed" id="config-body-tailles">
+              <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 1rem;">Gérez les tailles de handpan disponibles avec leurs malus de prix et paramètres de faisabilité.</p>
+              <div id="tailles-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                <!-- Populated by JS -->
+              </div>
+              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('taille')">+ Ajouter une taille</button>
+                <button class="admin-btn admin-btn--secondary" onclick="AdminUI.resetTailles()">Réinitialiser par défaut</button>
+              </div>
             </div>
           </div>
 
           <div class="dashboard__card">
-            <div class="dashboard__card-title">Informations entreprise</div>
-            <div class="admin-form__group"><label class="admin-form__label">Nom</label><input type="text" class="admin-form__input" id="config-nom" value=""></div>
-            <div class="admin-form__group"><label class="admin-form__label">SIRET</label><input type="text" class="admin-form__input" id="config-siret" value=""></div>
-            <div class="admin-form__group"><label class="admin-form__label">Email</label><input type="email" class="admin-form__input" id="config-email" value=""></div>
-            <div class="admin-form__group"><label class="admin-form__label">Téléphone</label><input type="tel" class="admin-form__input" id="config-tel" value=""></div>
-            <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
+            <div class="config-section__header" onclick="AdminUI.toggleConfigSection('entreprise')">
+              <div class="dashboard__card-title">Informations entreprise</div>
+              <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="config-section__body" id="config-body-entreprise">
+              <div class="admin-form__group"><label class="admin-form__label">Nom</label><input type="text" class="admin-form__input" id="config-nom" value=""></div>
+              <div class="admin-form__group"><label class="admin-form__label">SIRET</label><input type="text" class="admin-form__input" id="config-siret" value=""></div>
+              <div class="admin-form__group"><label class="admin-form__label">Email</label><input type="email" class="admin-form__input" id="config-email" value=""></div>
+              <div class="admin-form__group"><label class="admin-form__label">Téléphone</label><input type="tel" class="admin-form__input" id="config-tel" value=""></div>
+              <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
+            </div>
           </div>
           <div class="dashboard__card">
-            <div class="dashboard__card-title">Tarifs par défaut</div>
-            <div class="admin-form__group"><label class="admin-form__label">Loyer (€)</label><input type="number" class="admin-form__input" id="config-loyer" value="50"></div>
-            <div class="admin-form__group"><label class="admin-form__label">Caution (€)</label><input type="number" class="admin-form__input" id="config-caution" value="1150"></div>
-            <div class="admin-form__group"><label class="admin-form__label">Frais distance (€)</label><input type="number" class="admin-form__input" id="config-frais" value="100"></div>
-            <div class="admin-form__group"><label class="admin-form__label">Crédit fidélité (%)</label><input type="number" class="admin-form__input" id="config-fidelite" value="50" min="0" max="100"></div>
-            <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
+            <div class="config-section__header" onclick="AdminUI.toggleConfigSection('tarifs')">
+              <div class="dashboard__card-title">Tarifs par défaut</div>
+              <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="config-section__body" id="config-body-tarifs">
+              <div class="admin-form__group"><label class="admin-form__label">Loyer (€)</label><input type="number" class="admin-form__input" id="config-loyer" value="50"></div>
+              <div class="admin-form__group"><label class="admin-form__label">Caution (€)</label><input type="number" class="admin-form__input" id="config-caution" value="1150"></div>
+              <div class="admin-form__group"><label class="admin-form__label">Frais distance (€)</label><input type="number" class="admin-form__input" id="config-frais" value="100"></div>
+              <div class="admin-form__group"><label class="admin-form__label">Crédit fidélité (%)</label><input type="number" class="admin-form__input" id="config-fidelite" value="50" min="0" max="100"></div>
+              <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
+            </div>
           </div>
           <div class="dashboard__card">
-            <div class="dashboard__card-title">Tarification configurateur</div>
-            <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 0.75rem;">
-              Prix de base utilisés par le configurateur de la boutique.
-            </p>
-            <div class="admin-form__group"><label class="admin-form__label">Prix par note (€)</label><input type="number" class="admin-form__input" id="config-prix-note" value="115" min="0" step="5"></div>
-            <div class="admin-form__group"><label class="admin-form__label">Bonus octave 2 (€/note)</label><input type="number" class="admin-form__input" id="config-bonus-octave2" value="50" min="0" step="5"></div>
-            <div class="admin-form__group"><label class="admin-form__label">Bonus bottoms (€)</label><input type="number" class="admin-form__input" id="config-bonus-bottoms" value="25" min="0" step="5"></div>
-            <div class="admin-form__group"><label class="admin-form__label">Malus difficulté warning (%)</label><input type="number" class="admin-form__input" id="config-malus-warning" value="5" min="0" max="100" step="1"></div>
-            <div class="admin-form__group"><label class="admin-form__label">Malus difficulté difficile (%)</label><input type="number" class="admin-form__input" id="config-malus-difficile" value="10" min="0" max="100" step="1"></div>
-            <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
+            <div class="config-section__header" onclick="AdminUI.toggleConfigSection('tarification')">
+              <div class="dashboard__card-title">Tarification configurateur</div>
+              <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="config-section__body" id="config-body-tarification">
+              <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 0.75rem;">
+                Prix de base utilisés par le configurateur de la boutique.
+              </p>
+              <div class="admin-form__group"><label class="admin-form__label">Prix par note (€)</label><input type="number" class="admin-form__input" id="config-prix-note" value="115" min="0" step="5"></div>
+              <div class="admin-form__group"><label class="admin-form__label">Bonus octave 2 (€/note)</label><input type="number" class="admin-form__input" id="config-bonus-octave2" value="50" min="0" step="5"></div>
+              <div class="admin-form__group"><label class="admin-form__label">Bonus bottoms (€)</label><input type="number" class="admin-form__input" id="config-bonus-bottoms" value="25" min="0" step="5"></div>
+              <div class="admin-form__group"><label class="admin-form__label">Malus difficulté warning (%)</label><input type="number" class="admin-form__input" id="config-malus-warning" value="5" min="0" max="100" step="1"></div>
+              <div class="admin-form__group"><label class="admin-form__label">Malus difficulté difficile (%)</label><input type="number" class="admin-form__input" id="config-malus-difficile" value="10" min="0" max="100" step="1"></div>
+              <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
+            </div>
           </div>
           <!-- EMAILS AUTOMATIQUES -->
           <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
-            <div class="dashboard__card-title">Emails automatiques</div>
-            <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 1rem;">
-              Configurez les emails envoyés automatiquement lors des changements de statut des commandes.
-            </p>
-            <div id="email-automations-list" style="display: flex; flex-direction: column; gap: 1rem;">
-              <!-- Populated by JS -->
+            <div class="config-section__header collapsed" onclick="AdminUI.toggleConfigSection('emails')">
+              <div class="dashboard__card-title">Emails automatiques</div>
+              <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
-            <div style="margin-top: 1rem;">
-              <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveEmailConfig()">Enregistrer</button>
-              <button class="admin-btn admin-btn--secondary" style="margin-left: 0.5rem;" onclick="AdminUI.testEmailAutomation()">Envoyer un test</button>
+            <div class="config-section__body collapsed" id="config-body-emails">
+              <p style="font-size: 0.85rem; color: var(--admin-text-muted); margin-bottom: 1rem;">
+                Configurez les emails envoyés automatiquement lors des changements de statut des commandes.
+              </p>
+              <div id="email-automations-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                <!-- Populated by JS -->
+              </div>
+              <div style="margin-top: 1rem;">
+                <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveEmailConfig()">Enregistrer</button>
+                <button class="admin-btn admin-btn--secondary" style="margin-left: 0.5rem;" onclick="AdminUI.testEmailAutomation()">Envoyer un test</button>
+              </div>
             </div>
           </div>
 
           <div class="dashboard__card">
-            <div class="dashboard__card-title">Données</div>
-            <div style="display:flex;flex-direction:column;gap:0.75rem;">
-              <button class="admin-btn admin-btn--secondary" onclick="AdminUI.exportAllData()">Exporter</button>
-              <button class="admin-btn admin-btn--secondary" onclick="document.getElementById('import-file').click()">Importer</button>
-              <input type="file" id="import-file" accept=".json" style="display:none;" onchange="AdminUI.importData(this.files[0])">
-              <hr style="border-color:var(--admin-border);margin:0.5rem 0;">
-              <button class="admin-btn admin-btn--danger" onclick="AdminUI.resetAllData()">Réinitialiser</button>
+            <div class="config-section__header" onclick="AdminUI.toggleConfigSection('donnees')">
+              <div class="dashboard__card-title">Données</div>
+              <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="config-section__body" id="config-body-donnees">
+              <div style="display:flex;flex-direction:column;gap:0.75rem;">
+                <button class="admin-btn admin-btn--secondary" onclick="AdminUI.exportAllData()">Exporter</button>
+                <button class="admin-btn admin-btn--secondary" onclick="document.getElementById('import-file').click()">Importer</button>
+                <input type="file" id="import-file" accept=".json" style="display:none;" onchange="AdminUI.importData(this.files[0])">
+                <hr style="border-color:var(--admin-border);margin:0.5rem 0;">
+                <button class="admin-btn admin-btn--danger" onclick="AdminUI.resetAllData()">Réinitialiser</button>
+              </div>
             </div>
           </div>
         </div>
