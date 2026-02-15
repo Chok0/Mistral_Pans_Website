@@ -1041,7 +1041,12 @@
     return new Promise(r => setTimeout(r, ms));
   }
 
-  // ===== SWIPE NAVIGATION SYSTEM =====
+  // ===== SWIPE / SNAP NAVIGATION SYSTEM =====
+  // Mobile: CSS scroll-snap horizontal (x mandatory) — handled purely by CSS.
+  // Desktop (> 1024px): CSS scroll-snap vertical (y mandatory) — same approach.
+  // Tablet (769–1024px): normal scroll, nav band clickable shortcut.
+  // No JS wheel hijacking — the browser handles momentum, snap, and thresholds.
+
   (function() {
     const wrapper = document.getElementById('boutique-wrapper');
     const tabs = document.querySelectorAll('.boutique-tab');
@@ -1059,12 +1064,11 @@
     const arrowUp = document.getElementById('nav-arrow-up');
 
     let currentSection = 'config'; // 'config' or 'stock'
-    let gateSection = 'config';   // Scroll gate state (only updated on snap or stable scroll)
-    let isSnapping = false;       // True during snap animation (blocks scroll)
 
     if (!wrapper) return;
 
-    // Update active state based on scroll position
+    // ----- State updates -----
+
     function updateActiveState(panel) {
       tabs.forEach(tab => {
         tab.classList.toggle('active', tab.dataset.panel === panel);
@@ -1074,7 +1078,6 @@
       });
     }
 
-    // Update nav band state
     function updateNavBand(section) {
       if (!navBand || window.innerWidth <= 768) return;
 
@@ -1087,7 +1090,7 @@
         if (navBandBadge) navBandBadge.style.display = 'inline-flex';
         navBand.classList.remove('is-stock');
       } else {
-        navBandText.textContent = 'Cr\u00E9er sur mesure';
+        navBandText.textContent = 'Créer sur mesure';
         arrowDown.style.display = 'none';
         arrowUp.style.display = 'block';
         if (navBandBadge) navBandBadge.style.display = 'none';
@@ -1095,298 +1098,105 @@
       }
     }
 
-    // Scroll to panel
+    // ----- Scroll to panel -----
+
     function scrollToPanel(panel) {
       const target = panel === 'config' ? panelConfig : panelStock;
-      if (target) {
-        // Mobile: horizontal scroll
-        if (window.innerWidth <= 768) {
-          wrapper.scrollTo({
-            left: target.offsetLeft,
-            behavior: 'smooth'
-          });
-        } else {
-          // Desktop: vertical scroll
-          if (panel === 'config') {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          } else {
-            // Scroll so the nav band is stuck under the header.
-            // Calculate exact position: nav band's document position minus header height,
-            // plus a few pixels to guarantee it crosses the sticky threshold.
-            const headerHeight = parseInt(
-              getComputedStyle(document.documentElement)
-                .getPropertyValue('--header-height') || '72'
-            );
-            const navBandDocTop = navBand.getBoundingClientRect().top + window.scrollY;
-            window.scrollTo({
-              top: navBandDocTop - headerHeight + 5,
-              behavior: 'smooth'
-            });
-          }
+      if (!target) return;
+
+      if (window.innerWidth <= 768) {
+        // Mobile: horizontal scroll in wrapper
+        wrapper.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+      } else if (window.innerWidth > 1024) {
+        // Desktop: vertical scroll in wrapper (CSS snap does the rest)
+        wrapper.scrollTo({
+          top: panel === 'config' ? 0 : wrapper.clientHeight,
+          behavior: 'smooth'
+        });
+      } else {
+        // Tablet: scroll the window (no snap, normal page scroll)
+        if (panel === 'config') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (navBand) {
+          const headerHeight = parseInt(
+            getComputedStyle(document.documentElement)
+              .getPropertyValue('--header-height') || '72'
+          );
+          const navBandDocTop = navBand.getBoundingClientRect().top + window.scrollY;
+          window.scrollTo({ top: navBandDocTop - headerHeight + 5, behavior: 'smooth' });
         }
       }
     }
 
-    // Tab click handlers
+    // ----- Click handlers -----
+
     tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        scrollToPanel(tab.dataset.panel);
-      });
+      tab.addEventListener('click', () => scrollToPanel(tab.dataset.panel));
     });
 
-    // Dot click handlers
     dots.forEach(dot => {
-      dot.addEventListener('click', () => {
-        scrollToPanel(dot.dataset.panel);
-      });
+      dot.addEventListener('click', () => scrollToPanel(dot.dataset.panel));
     });
 
-    // Nav band click handler
     if (navBandBtn) {
       navBandBtn.addEventListener('click', () => {
-        if (currentSection === 'config') {
-          gateSection = 'stock';
-          scrollToPanel('stock');
-        } else {
-          gateSection = 'config';
-          scrollToPanel('config');
-        }
+        scrollToPanel(currentSection === 'config' ? 'stock' : 'config');
       });
     }
 
-    // Detect scroll position on mobile (horizontal)
+    // ----- Scroll detection -----
+
+    // Wrapper scroll: handles mobile (horizontal) + desktop (vertical snap)
     let scrollTimeout;
     wrapper.addEventListener('scroll', () => {
-      if (window.innerWidth > 768) return;
-
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
-        const scrollLeft = wrapper.scrollLeft;
-        const panelWidth = wrapper.offsetWidth;
-        const activePanel = scrollLeft < panelWidth / 2 ? 'config' : 'stock';
-        updateActiveState(activePanel);
+        if (window.innerWidth <= 768) {
+          // Mobile: horizontal position
+          const activePanel = wrapper.scrollLeft < wrapper.offsetWidth / 2 ? 'config' : 'stock';
+          updateActiveState(activePanel);
+        } else if (window.innerWidth > 1024) {
+          // Desktop: vertical position in wrapper
+          const isStock = wrapper.scrollTop > wrapper.clientHeight / 2;
+          updateNavBand(isStock ? 'stock' : 'config');
+        }
       }, 50);
     });
 
-    // Detect scroll position on desktop (vertical)
-    function checkDesktopScroll() {
-      if (window.innerWidth <= 768) return;
-
-      if (!navBand) return;
-
-      // Check if nav band is stuck (at top under header)
-      const navBandRect = navBand.getBoundingClientRect();
-      const headerHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height') || '64');
-
-      // If the nav band is stuck at the top (its top equals header height), we're in stock mode
-      const isStuck = navBandRect.top <= headerHeight + 2; // +2 for tolerance
-
-      if (isStuck) {
-        updateNavBand('stock');
-        if (!isSnapping) gateSection = 'stock';
-      } else {
-        updateNavBand('config');
-        if (!isSnapping) gateSection = 'config';
-      }
-    }
-
-    // Throttled scroll handler for desktop
+    // Window scroll: handles tablet (769–1024px) nav band sticky detection
     let ticking = false;
     window.addEventListener('scroll', () => {
+      if (window.innerWidth <= 768 || window.innerWidth > 1024) return;
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          checkDesktopScroll();
+          if (navBand) {
+            const headerHeight = parseInt(
+              getComputedStyle(document.documentElement)
+                .getPropertyValue('--header-height') || '64'
+            );
+            const isStuck = navBand.getBoundingClientRect().top <= headerHeight + 2;
+            updateNavBand(isStuck ? 'stock' : 'config');
+          }
           ticking = false;
         });
         ticking = true;
       }
     });
 
-    // ===== SCROLL GATE: Nav band acts as page boundary =====
-    // Prevents scrolling through the teal banner — triggers a page snap instead.
-    // Uses gateSection (not currentSection) to avoid race conditions with scroll events.
-    // Ignores wheel events consumed by inner scrollable containers (e.g. config-options-inner).
-    // Requires intentional scrolling (accumulation threshold) to avoid accidental triggers.
-    // Normalizes deltaY across mouse types (pixel/line/page modes, sensitivity settings).
+    // ----- Stock count -----
 
-    let gateAccumulator = 0;
-    let gateAccumulatorTimer = null;
-    let gateDirection = null;           // 'down' or 'up' — resets if direction changes
-    let snapDirection = null;           // direction of last snap ('down'/'up') for cooldown
-    const GATE_SNAP_THRESHOLD = 150;    // normalized px to accumulate before snap
-    const GATE_RESET_MS = 400;          // ms of inactivity before accumulator resets
-    const GATE_MAX_SINGLE_DELTA = 120;  // cap per-event contribution (mouse sensitivity)
-    const SNAP_COOLDOWN_MS = 700;       // ms of snap cooldown (was 1000)
-
-    // Reference to config-options panel (right panel of configurator)
-    const configOptions = document.querySelector('.config-options');
-
-    // Normalize wheel deltaY to pixels regardless of deltaMode
-    function normalizeWheelDelta(e) {
-      let delta = e.deltaY;
-      if (e.deltaMode === 1) delta *= 16;               // line mode → ~pixels
-      if (e.deltaMode === 2) delta *= window.innerHeight; // page mode → pixels
-      return delta;
-    }
-
-    // Find nearest scrollable ancestor (not body/document)
-    function getScrollableParent(el) {
-      while (el && el !== document.body && el !== document.documentElement) {
-        const { overflowY } = getComputedStyle(el);
-        if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
-          return el;
-        }
-        el = el.parentElement;
-      }
-      return null;
-    }
-
-    function resetGate() {
-      gateAccumulator = 0;
-      gateDirection = null;
-      clearTimeout(gateAccumulatorTimer);
-    }
-
-    window.addEventListener('wheel', (e) => {
-      if (window.innerWidth <= 768) return;
-      if (!navBand) return;
-
-      const rawDelta = normalizeWheelDelta(e);
-      const scrollingDown = rawDelta > 0;
-      const scrollingUp = rawDelta < 0;
-
-      // During snap cooldown: allow same-direction scroll, block reverse
-      if (isSnapping) {
-        const sameDir = (snapDirection === 'down' && scrollingDown)
-                     || (snapDirection === 'up' && scrollingUp);
-        if (sameDir) return; // let native scroll continue in snap direction
-        e.preventDefault();
-        return;
-      }
-
-      // If the wheel target is inside an inner scrollable element that can still
-      // scroll in this direction, let the inner element handle it — don't snap.
-      const scrollableParent = getScrollableParent(e.target);
-      if (scrollableParent) {
-        if (scrollingDown) {
-          const canScroll = scrollableParent.scrollTop + scrollableParent.clientHeight < scrollableParent.scrollHeight - 2;
-          if (canScroll) return;
-        } else if (scrollingUp) {
-          if (scrollableParent.scrollTop > 2) return;
-        }
-      }
-
-      // Never trigger gate snap when scrolling inside the right options panel.
-      // Even if the inner scroller is exhausted, the gate should not capture
-      // overflow wheel events from this zone — user must click the nav band.
-      if (configOptions && configOptions.contains(e.target)) return;
-
-      const headerHeight = parseInt(
-        getComputedStyle(document.documentElement)
-          .getPropertyValue('--header-height') || '72'
-      );
-      const navBandRect = navBand.getBoundingClientRect();
-
-      // Cap per-event contribution so high-sensitivity mice don't skip the threshold
-      const cappedDelta = Math.min(Math.abs(rawDelta), GATE_MAX_SINGLE_DELTA);
-
-      if (scrollingDown && gateSection === 'config') {
-        // Nav band is visible on screen → gate zone active
-        if (navBandRect.top < window.innerHeight) {
-          e.preventDefault();
-
-          // Reset accumulator if direction changed
-          if (gateDirection !== 'down') { gateAccumulator = 0; gateDirection = 'down'; }
-
-          gateAccumulator += cappedDelta;
-
-          // Restart inactivity timer
-          clearTimeout(gateAccumulatorTimer);
-          gateAccumulatorTimer = setTimeout(resetGate, GATE_RESET_MS);
-
-          // Threshold reached → snap
-          if (gateAccumulator >= GATE_SNAP_THRESHOLD) {
-            resetGate();
-            isSnapping = true;
-            snapDirection = 'down';
-            gateSection = 'stock';
-            updateNavBand('stock');
-            scrollToPanel('stock');
-            setTimeout(() => { isSnapping = false; snapDirection = null; }, SNAP_COOLDOWN_MS);
-          }
-        }
-      } else if (scrollingUp && gateSection === 'stock') {
-        // Check how far the nav band is from its sticky position
-        const distFromSticky = navBandRect.top - headerHeight;
-
-        // Safety net: if the nav band has already un-stuck (user scrolled past
-        // the boundary via momentum), force-snap back to config immediately.
-        if (distFromSticky > 8) {
-          e.preventDefault();
-          resetGate();
-          isSnapping = true;
-          snapDirection = 'up';
-          gateSection = 'config';
-          updateNavBand('config');
-          scrollToPanel('config');
-          setTimeout(() => { isSnapping = false; snapDirection = null; }, SNAP_COOLDOWN_MS);
-          return;
-        }
-
-        // Nav band is stuck or nearly stuck → accumulate gate threshold
-        const flashSection = document.getElementById('flash-sales');
-        if (flashSection) {
-          const flashTop = flashSection.getBoundingClientRect().top;
-          const expectedTop = headerHeight + navBand.offsetHeight;
-          if (flashTop >= expectedTop - 40) {
-            e.preventDefault();
-
-            // Reset accumulator if direction changed
-            if (gateDirection !== 'up') { gateAccumulator = 0; gateDirection = 'up'; }
-
-            gateAccumulator += cappedDelta;
-
-            // Restart inactivity timer
-            clearTimeout(gateAccumulatorTimer);
-            gateAccumulatorTimer = setTimeout(resetGate, GATE_RESET_MS);
-
-            // Threshold reached → snap
-            if (gateAccumulator >= GATE_SNAP_THRESHOLD) {
-              resetGate();
-              isSnapping = true;
-              snapDirection = 'up';
-              gateSection = 'config';
-              updateNavBand('config');
-              scrollToPanel('config');
-              setTimeout(() => { isSnapping = false; snapDirection = null; }, SNAP_COOLDOWN_MS);
-            }
-          }
-        }
-      } else {
-        // Not at a gate boundary — reset accumulator
-        if (gateAccumulator > 0) resetGate();
-      }
-    }, { passive: false });
-
-    // Update stock count in tab and nav band
     function updateStockCount() {
       const stockCountTab = document.getElementById('stock-count-tab');
       let count = 0;
 
-      // Use new system (BoutiqueAdmin) - instruments en_ligne + accessoires actifs
       if (typeof BoutiqueAdmin !== 'undefined') {
         const instruments = BoutiqueAdmin.getInstrumentsEnLigne();
         const accessoires = BoutiqueAdmin.getAccessoiresActifs();
         count = instruments.length + accessoires.length;
       }
 
-      if (stockCountTab) {
-        stockCountTab.textContent = count;
-      }
-
-      if (navBandCount) {
-        navBandCount.textContent = count;
-      }
+      if (stockCountTab) stockCountTab.textContent = count;
+      if (navBandCount) navBandCount.textContent = count;
     }
 
     // Expose scrollToStock for compatibility
@@ -1394,22 +1204,25 @@
       scrollToPanel('stock');
     };
 
-    // Init
+    // ----- Init -----
+
     setTimeout(() => {
       updateStockCount();
-      checkDesktopScroll();
+      // Desktop: detect initial section from wrapper scroll position
+      if (window.innerWidth > 1024) {
+        const isStock = wrapper.scrollTop > wrapper.clientHeight / 2;
+        updateNavBand(isStock ? 'stock' : 'config');
+      }
     }, 100);
+
     window.addEventListener('storageUpdate', updateStockCount);
     window.addEventListener('stockUpdated', (e) => {
       const count = e.detail?.count || 0;
       if (document.getElementById('stock-count-tab')) {
         document.getElementById('stock-count-tab').textContent = count;
       }
-      if (navBandCount) {
-        navBandCount.textContent = count;
-      }
+      if (navBandCount) navBandCount.textContent = count;
     });
-    window.addEventListener('resize', checkDesktopScroll);
   })();
 
   // ===== COMMANDER DIRECTEMENT =====
