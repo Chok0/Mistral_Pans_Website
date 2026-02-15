@@ -14,11 +14,11 @@ Le projet est **globalement solide** avec une architecture bien pensée (vanilla
 
 | Catégorie | Critique | Haute | Moyenne | Basse | Statut |
 |-----------|:--------:|:-----:|:-------:|:-----:|:------:|
-| Sécurité | ~~2~~ 0 + **1 nouveau** | ~~3~~ 1 | ~~4~~ 2 + **1 nouveau** | 2 | 5 corrigés |
+| Sécurité | ~~2~~ 0 + **1 nouveau** | ~~3~~ 1 | ~~4~~ 2 + ~~1 nouveau~~ | 2 | 6 corrigés (dont §2.1 CSP, §7.3 escapeHtml) |
 | Performance | ~~2~~ 0 | ~~2~~ 0 + **1 nouveau** | ~~3~~ 2 | ~~1~~ 0 | 5 corrigés |
 | SEO / Contenu | ~~3~~ 0 | ~~4~~ 1 | ~~3~~ 1 | 2 | 6 corrigés, sitemap+robots ajoutés |
-| Qualité de code | ~~1~~ 0 | ~~4~~ 2 + **1 nouveau** | ~~6~~ 4 + **2 nouveaux** | 3 | 6 corrigés |
-| **Total** | **1** | **5** | **12** | **7** | **22 corrigés** |
+| Qualité de code | ~~1~~ 0 | ~~4~~ 2 + ~~1 nouveau~~ | ~~6~~ 4 + **2 nouveaux** | 3 | 9 corrigés (dont §5.5, §7.4 inline JS, items 14/22) |
+| **Total** | **1** | **4** | **11** | **7** | **26 corrigés** |
 
 **Score global : 8/10 — Prêt pour la production avec réserves (validation panier)**
 
@@ -150,23 +150,25 @@ Et aussi à la ligne 113 :
 
 ## 2. Sécurité
 
-### 2.1 CSP avec `unsafe-inline` et `unsafe-eval` (HAUTE)
+### 2.1 ~~CSP avec `unsafe-inline` et `unsafe-eval`~~ ✅ CORRIGÉ
 
-**Fichier :** `netlify.toml:16`
+**Fichier :** `netlify.toml:17`
+
+**Avant :**
 ```
 script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.payplug.com
 ```
 
-**Problème :** `unsafe-inline` réduit considérablement l'efficacité du CSP contre les XSS. `unsafe-eval` permet `eval()`.
+**Après :**
+```
+script-src 'self' https://cdn.payplug.com https://cdnjs.cloudflare.com
+```
 
-**Contexte :** Nécessaire actuellement pour :
-- Scripts inline dans location.html, suivi.html, article.html, index.html
-- Quill.js (éditeur WYSIWYG) utilise `eval()`
-
-**Correction progressive :**
-1. Externaliser les scripts inline dans des fichiers `.js` séparés
-2. Utiliser des nonces CSP pour les scripts restants
-3. Vérifier si Quill.js v2 est compatible sans `unsafe-eval`
+**Corrections appliquées :**
+1. Tous les scripts inline externalisés dans `js/pages/` (6 fichiers : annonce.js, location.js, suivi.js, article.js, index.js, admin-init.js)
+2. `'unsafe-inline'` supprimé de `script-src` (conservé dans `style-src` pour les styles inline)
+3. `'unsafe-eval'` supprimé — ni le code applicatif ni les vendor libs (Quill.js inclus) n'utilisent `eval()`
+4. `https://cdnjs.cloudflare.com` ajouté pour jspdf CDN (admin)
 
 ### 2.2 ~~Header HSTS manquant~~ ✅ CORRIGÉ (commit 5bca2a2)
 
@@ -404,17 +406,20 @@ btn.disabled = true;
 try { await save(); } finally { btn.disabled = false; }
 ```
 
-### 5.5 CSS/JS inline massif dans certaines pages (HAUTE)
+### 5.5 ~~CSS/JS inline massif dans certaines pages~~ ✅ CORRIGÉ (JS externalisé)
 
-| Page | Lignes inline | Type |
-|------|:------------:|------|
-| `apprendre.html` | ~940 lignes | CSS admin |
-| `suivi.html` | ~135 lignes | JS + ~280 lignes CSS |
-| `article.html` | ~135 lignes | JS |
-| `location.html` | ~59 lignes | JS |
-| `index.html` | ~34 lignes | JS |
+**JS externalisé (6 pages) :**
 
-**Impact :** Empêche la mise en cache séparée, gonfle le HTML, et nécessite `unsafe-inline` dans le CSP.
+| Page | Lignes inline | Fichier externe |
+|------|:------------:|-----------------|
+| `annonce.html` | ~877 lignes | `js/pages/annonce.js` |
+| `location.html` | ~247 lignes | `js/pages/location.js` |
+| `suivi.html` | ~135 lignes | `js/pages/suivi.js` |
+| `article.html` | ~135 lignes | `js/pages/article.js` |
+| `index.html` | ~34 lignes | `js/pages/index.js` |
+| `admin.html` | ~183 lignes | `js/pages/admin-init.js` |
+
+**Restant (CSS inline, non bloquant) :** `apprendre.html` (~940 lignes CSS admin), `suivi.html` (~280 lignes CSS). Le CSS inline nécessite `'unsafe-inline'` dans `style-src` uniquement.
 
 ### 5.6 Absence de validation de longueur sur les champs admin (MOYENNE)
 
@@ -538,41 +543,17 @@ Le webhook contient **9 occurrences** de `return { valid: true }` dans `validate
 
 **Correction recommandée :** Adopter une stratégie fail-closed cohérente : si la validation est impossible, rejeter le paiement et alerter l'admin.
 
-### 7.3 Location.html — rendu HTML sans échappement (MOYENNE)
+### 7.3 ~~Location.html — rendu HTML sans échappement~~ ✅ CORRIGÉ
 
-**Fichier :** `location.html:350-370`
+**Fichier :** `js/pages/location.js` (externalisé depuis `location.html`)
 
-```javascript
-function renderInstrumentCard(inst) {
-  var gamme = inst.gamme || inst.nom || 'Handpan';
-  return '...<img src="' + img + '" alt="' + gamme + '"...>'
-    + '<p style="font-weight:600;">' + gamme + '</p>'
-    + '<p class="text-sm text-muted">' + [taille, inst.tonalite, inst.materiau].filter(Boolean).join(' · ') + '</p>';
-}
-```
+**Correction appliquée :** `escapeHtml()` ajouté sur tous les champs dynamiques dans `renderInstrumentCard()` (`gamme`, `taille`, `tonalite`, `materiau`, `img`, `id`).
 
-**Problème :** Les champs `gamme`, `tonalite`, `materiau` et `img` proviennent de Supabase et sont insérés dans le HTML sans échappement via `escapeHtml()`.
+### 7.4 ~~Annonce.html — script inline massif~~ ✅ CORRIGÉ
 
-**Impact :** Si un admin stocke du HTML malveillant dans un champ instrument (self-XSS admin), il serait rendu sur la page publique de location. Risque faible car les données sont admin-only, mais non conforme au pattern `escapeHtml()` utilisé partout ailleurs.
+**Fichier :** `js/pages/annonce.js` (877 lignes externalisées depuis `annonce.html`)
 
-**Correction :** Ajouter `escapeHtml()` :
-```javascript
-var gamme = escapeHtml(inst.gamme || inst.nom || 'Handpan');
-```
-
-### 7.4 Annonce.html — script inline massif (HAUTE)
-
-**Fichier :** `annonce.html:528-1403`
-
-~875 lignes de JavaScript inline dans la page. C'est la plus grosse inclusion inline du projet.
-
-**Impact :**
-- Bloque le rendu de la page
-- Empêche la mise en cache séparée du JS
-- Nécessite `unsafe-inline` dans le CSP
-- Difficile à maintenir
-
-**Correction :** Extraire dans `js/pages/annonce.js` avec `defer`.
+**Correction appliquée :** Script extrait dans `js/pages/annonce.js` avec `defer`. JSON-LD converti en `document.createElement('script')` pour compatibilité CSP strict.
 
 ### 7.5 Cart.js — pas de validation de prix (MOYENNE)
 
@@ -722,8 +703,8 @@ Le sitemap liste les pages statiques mais pas les pages dynamiques (articles de 
 |---|--------|----------|------|
 | 27 | **Implémenter la validation de prix panier dans le webhook** | **CRITIQUE** | §7.1 |
 | 28 | Convertir les fail-open restants en fail-closed dans le webhook | Haute | §7.2 |
-| 29 | Ajouter `escapeHtml()` dans `location.html` renderInstrumentCard | Moyenne | §7.3 |
-| 30 | Extraire le script inline de `annonce.html` dans `js/pages/annonce.js` | Haute | §7.4 |
+| 29 | ~~Ajouter `escapeHtml()` dans `location.html` renderInstrumentCard~~ | ✅ | §7.3 |
+| 30 | ~~Extraire le script inline de `annonce.html` dans `js/pages/annonce.js`~~ | ✅ | §7.4 |
 | 31 | Ajouter contrôle d'accès admin sur `seo-diagnostic.html` | Basse | §7.7 |
 | 32 | Générer le sitemap dynamiquement (articles, instruments) | Basse | §7.8 |
 
@@ -731,11 +712,11 @@ Le sitemap liste les pages statiques mais pas les pages dynamiques (articles de 
 
 | # | Action | Priorité |
 |---|--------|----------|
-| 14 | Externaliser les scripts/CSS inline (suppression unsafe-inline) | Moyenne |
+| 14 | ~~Externaliser les scripts/CSS inline (suppression unsafe-inline)~~ | ✅ |
 | 18 | Éliminer les variables globales mutables dans les modals | Moyenne |
 | 20 | Ajouter un fallback MP3 pour l'audio (Safari/iOS) | Moyenne |
 | 21 | Ajouter pagination dans les listes admin | Moyenne |
-| 22 | Supprimer `unsafe-inline`/`unsafe-eval` du CSP | Moyenne |
+| 22 | ~~Supprimer `unsafe-inline`/`unsafe-eval` du CSP~~ | ✅ |
 | 23 | Implémenter un rate limiting persistant | Basse |
 | 26 | Ajouter validation de longueur sur les champs admin | Basse |
 
@@ -748,7 +729,7 @@ Le sitemap liste les pages statiques mais pas les pages dynamiques (articles de 
 | Pages HTML | 14 (+2 : annonce.html, seo-diagnostic.html) |
 | Partials | 4 |
 | Fichiers CSS | 4 (130 Ko) |
-| Fichiers JS (hors vendor) | 40 (~600 Ko, +3 : cart.js, seo-diagnostic.js, annonce inline) |
+| Fichiers JS (hors vendor) | 46 (~650 Ko, +9 : cart.js, seo-diagnostic.js, 6 pages externalisées + admin-init) |
 | Vendor JS | 4 libs (611 Ko) |
 | Netlify Functions | 6 (~75 Ko) |
 | Lignes de code (estimation) | ~20 000 (+5 000 depuis l'audit) |
@@ -760,5 +741,5 @@ Le sitemap liste les pages statiques mais pas les pages dynamiques (articles de 
 ---
 
 *Rapport généré le 9 février 2026. Mise à jour v2 le 15 février 2026.*
-*22 items corrigés sur 45 (audit initial). 6 nouveaux items identifiés (post-audit), dont 1 critique (§7.1).*
+*26 items corrigés sur 45 (audit initial + post-audit). 6 nouveaux items identifiés (post-audit), dont 1 critique (§7.1), 4 déjà corrigés (§2.1, §5.5, §7.3, §7.4 + items 14, 22).*
 *Prochain audit recommandé : 1 mois après mise en production.*
