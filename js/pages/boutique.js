@@ -1041,11 +1041,10 @@
     return new Promise(r => setTimeout(r, ms));
   }
 
-  // ===== SWIPE / SNAP NAVIGATION SYSTEM =====
-  // Mobile: CSS scroll-snap horizontal (x mandatory) — handled purely by CSS.
-  // Desktop (> 1024px): CSS scroll-snap vertical (y mandatory) — same approach.
-  // Tablet (769–1024px): normal scroll, nav band clickable shortcut.
-  // No JS wheel hijacking — the browser handles momentum, snap, and thresholds.
+  // ===== NAVIGATION SYSTEM =====
+  // Mobile: CSS scroll-snap horizontal (x mandatory) — handled by CSS.
+  // Desktop/Tablet: native vertical scroll + sticky teal nav band as clickable shortcut.
+  // No scroll hijacking — the browser handles everything.
 
   (function() {
     const wrapper = document.getElementById('boutique-wrapper');
@@ -1101,20 +1100,12 @@
     // ----- Scroll to panel -----
 
     function scrollToPanel(panel) {
-      const target = panel === 'config' ? panelConfig : panelStock;
-      if (!target) return;
-
       if (window.innerWidth <= 768) {
-        // Mobile: horizontal scroll in wrapper
-        wrapper.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
-      } else if (window.innerWidth > 1024) {
-        // Desktop: vertical scroll in wrapper (CSS snap does the rest)
-        wrapper.scrollTo({
-          top: panel === 'config' ? 0 : wrapper.clientHeight,
-          behavior: 'smooth'
-        });
+        // Mobile: horizontal scroll in wrapper (CSS snap)
+        const target = panel === 'config' ? panelConfig : panelStock;
+        if (target) wrapper.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
       } else {
-        // Tablet: scroll the window (no snap, normal page scroll)
+        // Desktop/Tablet: native vertical scroll
         if (panel === 'config') {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (navBand) {
@@ -1146,27 +1137,21 @@
 
     // ----- Scroll detection -----
 
-    // Wrapper scroll: handles mobile (horizontal) + desktop (vertical snap)
+    // Mobile: detect horizontal scroll position in wrapper
     let scrollTimeout;
     wrapper.addEventListener('scroll', () => {
+      if (window.innerWidth > 768) return;
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
-        if (window.innerWidth <= 768) {
-          // Mobile: horizontal position
-          const activePanel = wrapper.scrollLeft < wrapper.offsetWidth / 2 ? 'config' : 'stock';
-          updateActiveState(activePanel);
-        } else if (window.innerWidth > 1024) {
-          // Desktop: vertical position in wrapper
-          const isStock = wrapper.scrollTop > wrapper.clientHeight / 2;
-          updateNavBand(isStock ? 'stock' : 'config');
-        }
+        const activePanel = wrapper.scrollLeft < wrapper.offsetWidth / 2 ? 'config' : 'stock';
+        updateActiveState(activePanel);
       }, 50);
     });
 
-    // Window scroll: handles tablet (769–1024px) nav band sticky detection
+    // Desktop/Tablet: detect nav band sticky state to update its label/arrows
     let ticking = false;
     window.addEventListener('scroll', () => {
-      if (window.innerWidth <= 768 || window.innerWidth > 1024) return;
+      if (window.innerWidth <= 768) return;
       if (!ticking) {
         window.requestAnimationFrame(() => {
           if (navBand) {
@@ -1206,15 +1191,7 @@
 
     // ----- Init -----
 
-    setTimeout(() => {
-      updateStockCount();
-      // Desktop: detect initial section from wrapper scroll position
-      if (window.innerWidth > 1024) {
-        const isStock = wrapper.scrollTop > wrapper.clientHeight / 2;
-        updateNavBand(isStock ? 'stock' : 'config');
-      }
-    }, 100);
-
+    setTimeout(updateStockCount, 100);
     window.addEventListener('storageUpdate', updateStockCount);
     window.addEventListener('stockUpdated', (e) => {
       const count = e.detail?.count || 0;
