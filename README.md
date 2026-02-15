@@ -548,14 +548,15 @@ Chaque taille dans `tailles-data.js` contient un objet `feasibility` avec :
 
 Le configurateur joue les notes en temps reel via Web Audio API.
 
-- **Format** : FLAC
+- **Formats** : FLAC (principal) + MP3 192kbps (fallback Safari/iOS)
+- **Detection** : `canPlayType('audio/flac')` au constructeur, bascule automatique
 - **Dossier** : `ressources/audio/`
-- **Nommage** : `[Note][s][Octave].flac` (s = diese/sharp)
-  - Exemples : `Cs4.flac` = C#4, `As3.flac` = A#3/Bb3, `D3.flac` = D3
-- **Plage** : E2 a F5 (56 samples)
+- **Nommage** : `[Note][s][Octave].flac` et `.mp3` (s = diese/sharp)
+  - Exemples : `Cs4.flac`/`Cs4.mp3` = C#4, `As3.flac`/`As3.mp3` = A#3/Bb3
+- **Plage** : E2 a F5 (56 samples x 2 formats = 112 fichiers)
 - **Module** : `js/features/handpan-player.js` (classe `HandpanPlayer`)
 
-Pour ajouter un sample : convertir en FLAC, nommer selon la convention, placer dans `ressources/audio/`.
+Pour ajouter un sample : convertir en FLAC + MP3, nommer selon la convention, placer dans `ressources/audio/`.
 
 ---
 
@@ -742,6 +743,7 @@ Le fichier configure :
 - [x] Boutique desktop : suppression du scroll gate JS, scroll 100% natif + bandeau teal cliquable sticky
 - [x] Favicon (ico + png + apple-touch-icon + webmanifest) sur les 14 pages
 - [x] Acces tarification admin : verifie OK (5 champs editables dans Config > Tarification configurateur)
+- [x] Fallback MP3 pour Safari/iOS (56 fichiers MP3 + detection canPlayType dans handpan-player.js)
 
 ### A faire
 
@@ -761,7 +763,6 @@ Le fichier configure :
 - [ ] Mise en place de Calendly pour la prise de RDV (recuperation instruments a l'atelier, recuperation location)
 - [ ] Migrer `tailles-data.js` de localStorage vers MistralSync
 - [ ] Eliminer les variables globales mutables dans les modals admin (risque de race condition entre modals)
-- [ ] Fallback MP3 pour l'audio (compatibilite Safari/iOS, actuellement FLAC uniquement)
 - [ ] Pagination dans les listes admin (probleme de performance DOM avec 1000+ enregistrements)
 - [ ] Validation de prix panier cote client (`cart.js` utilise sessionStorage modifiable)
 - [ ] Ameliorer indicateurs `:focus-visible` sur tout le site
@@ -815,6 +816,7 @@ Le dashboard admin affiche aussi un indicateur quand des MAJ sont disponibles.
 - **Boutique** : Fix hint mobile qui masquait le bouton "Ecouter" (padding-bottom sur player-visual)
 - **Boutique** : Suppression du scroll gate JS desktop (~200 lignes) — scroll 100% natif + bandeau teal sticky cliquable
 - **SEO** : Favicon complet (ico, png 16/32, apple-touch-icon 180, android-chrome 192/512, site.webmanifest)
+- **Audio** : Fallback MP3 pour Safari/iOS (56 fichiers MP3 192kbps + detection canPlayType)
 
 ### v3.4 (8 Fevrier 2026)
 - **Vendor** : Toutes les librairies JS auto-hebergees dans `js/vendor/` (plus de CDN sauf PayPlug)
