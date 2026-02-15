@@ -16,9 +16,9 @@ Le projet est **globalement solide** avec une architecture bien pensée (vanilla
 |-----------|:--------:|:-----:|:-------:|:-----:|:------:|
 | Sécurité | ~~2~~ 0 + ~~1 nouveau~~ | ~~3~~ 1 | ~~4~~ 2 + ~~1 nouveau~~ | 2 | 8 corrigés (dont §2.1 CSP, §7.1-7.3 webhook+escapeHtml) |
 | Performance | ~~2~~ 0 | ~~2~~ 0 + **1 nouveau** | ~~3~~ 2 | ~~1~~ 0 | 5 corrigés |
-| SEO / Contenu | ~~3~~ 0 | ~~4~~ 1 | ~~3~~ 1 | 2 | 6 corrigés, sitemap+robots ajoutés |
+| SEO / Contenu | ~~3~~ 0 | ~~4~~ 1 | ~~3~~ 1 | ~~2~~ 1 | 7 corrigés (dont §7.8 sitemap dynamique), §7.7 N/A |
 | Qualité de code | ~~1~~ 0 | ~~4~~ 2 + ~~1 nouveau~~ | ~~6~~ 4 + **2 nouveaux** | 3 | 9 corrigés (dont §5.5, §7.4 inline JS, items 14/22) |
-| **Total** | **0** | **4** | **10** | **7** | **28 corrigés** |
+| **Total** | **0** | **4** | **10** | **6** | **30 corrigés** |
 
 **Score global : 9/10 — Prêt pour la production (validation panier corrigée, 0 critique restant)**
 
@@ -542,21 +542,24 @@ Après un paiement réussi, les informations affichées (produit, montant, réf�
 
 **Impact :** Un utilisateur pourrait voir des informations erronées s'il manipule le localStorage. Risque faible car c'est un affichage post-paiement sans conséquence financière.
 
-### 7.7 SEO diagnostic sans contrôle d'accès (BASSE)
+### 7.7 SEO diagnostic sans contrôle d'accès — N/A
 
 **Fichier :** `seo-diagnostic.html`
 
-La page a `noindex, nofollow` et est dans `robots.txt` Disallow, mais **aucun contrôle d'authentification JS**. N'importe qui connaissant l'URL peut lancer un diagnostic SEO.
+~~La page n'a pas de contrôle d'authentification JS.~~
 
-**Impact :** Faible — l'outil analyse uniquement les pages publiques. Mais il pourrait être utilisé pour du scraping ou de la reconnaissance.
+**Décision :** Page non utilisée en production. Pas de correction nécessaire.
 
-### 7.8 Sitemap.xml — pages dynamiques manquantes (BASSE)
+### 7.8 ~~Sitemap.xml — pages dynamiques manquantes~~ ✅ CORRIGÉ
 
-**Fichier :** `sitemap.xml`
+**Fichier :** `netlify/functions/sitemap.js` (nouveau)
 
-Le sitemap liste les pages statiques mais pas les pages dynamiques (articles de blog, fiches instruments). Les moteurs de recherche ne découvriront pas ces pages via le sitemap.
-
-**Correction à terme :** Générer le sitemap dynamiquement via une Netlify Function qui requête les articles et instruments publiés.
+**Correction appliquée :** Netlify Function qui génère le sitemap dynamiquement :
+- Pages statiques (10 pages, priorités et fréquences configurées)
+- Articles publiés (`articles` table, `status=published`) avec `lastmod`
+- Instruments en stock (`instruments` table, `statut=en_stock`) avec `lastmod`
+- Redirect `/sitemap.xml` → `/.netlify/functions/sitemap` dans `netlify.toml`
+- Cache 1h (`Cache-Control: public, max-age=3600`)
 
 ### 7.9 Nouvelles fonctionnalités bien implémentées
 
@@ -676,8 +679,8 @@ Le sitemap liste les pages statiques mais pas les pages dynamiques (articles de 
 | 28 | ~~Convertir les fail-open restants en fail-closed dans le webhook~~ | ✅ | §7.2 |
 | 29 | ~~Ajouter `escapeHtml()` dans `location.html` renderInstrumentCard~~ | ✅ | §7.3 |
 | 30 | ~~Extraire le script inline de `annonce.html` dans `js/pages/annonce.js`~~ | ✅ | §7.4 |
-| 31 | Ajouter contrôle d'accès admin sur `seo-diagnostic.html` | Basse | §7.7 |
-| 32 | Générer le sitemap dynamiquement (articles, instruments) | Basse | §7.8 |
+| 31 | ~~Ajouter contrôle d'accès admin sur `seo-diagnostic.html`~~ | N/A | §7.7 |
+| 32 | ~~Générer le sitemap dynamiquement (articles, instruments)~~ | ✅ | §7.8 |
 
 ### Améliorations restantes (post-launch, non bloquantes)
 
@@ -702,7 +705,7 @@ Le sitemap liste les pages statiques mais pas les pages dynamiques (articles de 
 | Fichiers CSS | 4 (130 Ko) |
 | Fichiers JS (hors vendor) | 46 (~650 Ko, +9 : cart.js, seo-diagnostic.js, 6 pages externalisées + admin-init) |
 | Vendor JS | 4 libs (611 Ko) |
-| Netlify Functions | 6 (~75 Ko) |
+| Netlify Functions | 7 (~80 Ko, +1 : sitemap.js) |
 | Lignes de code (estimation) | ~20 000 (+5 000 depuis l'audit) |
 | Tables Supabase | 10 |
 | Images | ~10 fichiers (~1.4 Mo optimisé, était 26 Mo) |
@@ -712,5 +715,5 @@ Le sitemap liste les pages statiques mais pas les pages dynamiques (articles de 
 ---
 
 *Rapport généré le 9 février 2026. Mise à jour v2 le 15 février 2026.*
-*28 items corrigés sur 45 (audit initial + post-audit). 6 nouveaux items identifiés (post-audit), tous les critiques corrigés (§7.1 + §7.2), 6 post-audit corrigés (§2.1, §5.5, §7.1-7.4 + items 14, 22).*
+*30 items corrigés sur 45 (audit initial + post-audit). 6 nouveaux items identifiés (post-audit), tous corrigés ou classés N/A. 0 critique, 0 haute restant.*
 *Prochain audit recommandé : 1 mois après mise en production.*

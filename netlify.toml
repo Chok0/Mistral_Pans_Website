@@ -31,3 +31,9 @@
   for = "/js/*"
   [headers.values]
     Cache-Control = "public, max-age=3600"
+
+# Sitemap dynamique (Netlify Function)
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "/.netlify/functions/sitemap"
+  status = 200
