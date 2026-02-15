@@ -1296,60 +1296,7 @@ body[data-page="boutique"] {
   padding-top: 2rem;
   margin-top: 0;
   background: #F5F5F5;
-}
-
-/* ===== DESKTOP SCROLL SNAP (CSS-native, like mobile but vertical) ===== */
-@media (min-width: 1025px) {
-  .boutique-wrapper {
-    margin-top: var(--header-height, 64px);
-    height: calc(100vh - var(--header-height, 64px));
-    overflow-y: auto;
-    scroll-snap-type: y mandatory;
-    scrollbar-width: none;
-  }
-  .boutique-wrapper::-webkit-scrollbar {
-    display: none;
-  }
-  .boutique-panel {
-    height: calc(100vh - var(--header-height, 64px));
-    min-height: auto;
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-    overflow: hidden;
-  }
-  /* Configurator: fill panel, no header padding (wrapper handles offset) */
-  .configurator {
-    padding-top: 0;
-    min-height: 0;
-    height: 100%;
-    grid-template-rows: 1fr;
-  }
-  /* Player: no more sticky (panel is fixed height, no body scroll) */
-  .config-player {
-    position: relative;
-    height: auto;
-    min-height: 0;
-  }
-  /* Options: fill grid cell */
-  .config-options {
-    height: auto;
-    min-height: 0;
-  }
-  /* Stock panel: flex column so flash-section scrolls internally */
-  .boutique-panel--stock {
-    display: flex;
-    flex-direction: column;
-  }
-  .boutique-panel--stock .flash-section {
-    flex: 1;
-    overflow-y: auto;
-  }
-  /* Nav band: no more sticky (panel snaps as a whole) */
-  .boutique-nav-band {
-    position: relative;
-    top: auto;
-    flex-shrink: 0;
-  }
+  scroll-margin-top: calc(var(--header-height, 72px) + var(--nav-band-height, 56px));
 }
 
 /* ===== DOTS INDICATOR (Mobile only) ===== */
