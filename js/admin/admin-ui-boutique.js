@@ -158,10 +158,10 @@
     _boutiqueState.selectedInstrument = null;
     searchInput.value = '';
     
-    searchInput.addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase();
+    const debouncedBoutiqueSearch = MistralUtils.debounce(() => {
+      const query = searchInput.value.toLowerCase();
       const instruments = getInstrumentsDisponiblesPourBoutique(query);
-      
+
       if (instruments.length === 0) {
         dropdown.innerHTML = `<div class="searchable-dropdown__empty">Aucun instrument disponible</div>`;
       } else {
@@ -172,9 +172,10 @@
           </div>
         `).join('');
       }
-      
+
       dropdown.style.display = 'block';
-    });
+    }, 200);
+    searchInput.addEventListener('input', debouncedBoutiqueSearch);
     
     searchInput.addEventListener('focus', () => {
       const query = searchInput.value.toLowerCase();

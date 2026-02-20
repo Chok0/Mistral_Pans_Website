@@ -1204,23 +1204,33 @@ async function handlePaymentNotification(paymentId, secretKey, headers) {
       };
     }
 
-    // Orchestrer toutes les actions post-paiement en parallèle
-    await Promise.all([
-      // 1. Enregistrer le paiement
+    // Orchestrer les actions post-paiement en parallèle.
+    // Promise.allSettled() garantit que si un email bloque ou échoue,
+    // les opérations critiques (enregistrement, stock) ne sont pas impactées.
+    const results = await Promise.allSettled([
+      // 1. Enregistrer le paiement (critique)
       recordPayment(payment, metadata),
 
-      // 2. Créer/mettre à jour la commande
+      // 2. Créer/mettre à jour la commande (critique)
       createOrUpdateOrder(payment, metadata),
 
-      // 3. Mettre à jour le stock (instrument en stock → vendu/réservé)
+      // 3. Mettre à jour le stock (critique)
       updateInstrumentStock(metadata, metadata.payment_type),
 
-      // 4. Email confirmation client
+      // 4. Email confirmation client (non-critique)
       sendPaymentConfirmationEmail(payment, metadata),
 
-      // 5. Notification artisan
+      // 5. Notification artisan (non-critique)
       sendArtisanNotification(payment, metadata)
     ]);
+
+    // Logger les échecs sans bloquer le webhook
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        const labels = ['recordPayment', 'createOrUpdateOrder', 'updateInstrumentStock', 'sendPaymentConfirmationEmail', 'sendArtisanNotification'];
+        console.error(`Webhook action échouée [${labels[i]}]:`, r.reason?.message || r.reason);
+      }
+    });
 
     // 6. Auto-générer la facture (séquentiel — nécessite la commande créée ci-dessus)
     await generateInvoice(payment, metadata);

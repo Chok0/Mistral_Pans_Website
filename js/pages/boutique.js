@@ -1241,7 +1241,9 @@
 
     function updateActiveState(panel) {
       tabs.forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.panel === panel);
+        const isActive = tab.dataset.panel === panel;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', String(isActive));
       });
       dots.forEach(dot => {
         dot.classList.toggle('active', dot.dataset.panel === panel);

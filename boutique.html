@@ -84,11 +84,11 @@
 
   <!-- ===== BOUTIQUE TABS (Mobile only) ===== -->
   <div class="boutique-tabs" id="boutique-tabs">
-    <div class="boutique-tabs__inner">
-      <button class="boutique-tab active" data-panel="config">
+    <div class="boutique-tabs__inner" role="tablist" aria-label="Sections boutique">
+      <button class="boutique-tab active" data-panel="config" role="tab" aria-selected="true" aria-controls="panel-config" id="tab-config">
         Créer sur mesure
       </button>
-      <button class="boutique-tab" data-panel="stock">
+      <button class="boutique-tab" data-panel="stock" role="tab" aria-selected="false" aria-controls="panel-stock" id="tab-stock">
         En stock
         <span class="boutique-tab__badge">
           <span class="boutique-tab__badge-dot"></span>
@@ -102,7 +102,7 @@
   <div class="boutique-wrapper" id="boutique-wrapper">
     
     <!-- PANEL 1: CONFIGURATOR -->
-    <div class="boutique-panel boutique-panel--config" id="panel-config">
+    <div class="boutique-panel boutique-panel--config" id="panel-config" role="tabpanel" aria-labelledby="tab-config">
 
 
   <!-- ===== CONFIGURATOR ===== -->
@@ -309,7 +309,7 @@
     </div><!-- end panel-config -->
     
     <!-- PANEL 2: STOCK -->
-    <div class="boutique-panel boutique-panel--stock" id="panel-stock">
+    <div class="boutique-panel boutique-panel--stock" id="panel-stock" role="tabpanel" aria-labelledby="tab-stock">
     
       <!-- Navigation Band (at top of stock panel) -->
       <div class="boutique-nav-band" id="nav-band">
