@@ -297,7 +297,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
               Écrire à ${utils.escapeHtml(firstName)}
             </a>
-            ${phoneClean ? (('ontouchstart' in window || navigator.maxTouchPoints > 0)
+            ${phoneClean ? (window.matchMedia('(max-width: 768px)').matches
               ? `<a href="tel:${phoneClean}" class="teacher-card__btn teacher-card__btn--phone" data-action="stop-propagation">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.09.6.21 1.19.39 1.77a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.58.18 1.17.3 1.77.39A2 2 0 0 1 22 16.92z"/></svg>
                 Appeler
@@ -1107,7 +1107,7 @@
     contactHtml += `<a href="mailto:${utils.escapeHtml(teacher.email)}" class="btn btn--primary" target="_blank" rel="noopener">📧 Écrire à ${utils.escapeHtml(firstName)}</a>`;
     if (teacher.phone) {
       const phoneClean = teacher.phone.replace(/\s/g, '');
-      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isMobile = window.matchMedia('(max-width: 768px)').matches;
       if (isMobile) {
         contactHtml += `<a href="tel:${phoneClean}" class="btn btn--secondary">📞 Appeler ${utils.escapeHtml(firstName)}</a>`;
       } else {
