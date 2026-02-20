@@ -95,7 +95,7 @@
               </button>
               <span class="teacher-form__photo-hint">Recommandé : 300×300px, format carré</span>
             </div>
-            <input type="file" id="${formId}-photo-input" name="photo" accept="image/*" style="display:none;">
+            <input type="file" id="${formId}-photo-input" name="photo" accept="image/*" class="sr-only">
             <input type="hidden" id="${formId}-photo-data" name="photoData" value="${teacher && teacher.photo ? escape(teacher.photo) : ''}">
           </div>
         </div>

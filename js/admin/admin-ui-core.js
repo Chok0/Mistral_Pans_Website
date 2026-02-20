@@ -436,14 +436,15 @@
       dropdown.classList.add('show');
     }
 
-    searchInput.addEventListener('input', () => {
+    const debouncedSearch = MistralUtils.debounce(() => {
       const q = searchInput.value.trim().toLowerCase();
       if (q.length >= 1) {
         renderDropdown(q);
       } else {
         dropdown.classList.remove('show');
       }
-    });
+    }, 200);
+    searchInput.addEventListener('input', debouncedSearch);
 
     searchInput.addEventListener('focus', () => {
       // N'ouvrir le dropdown au focus que si l'input contient deja du texte

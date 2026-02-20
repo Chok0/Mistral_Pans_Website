@@ -73,12 +73,13 @@
    */
   function handleError(error, operation) {
     console.error(`❌ Erreur ${operation}:`, error);
-    
-    // Notification utilisateur si Toast existe
+
+    // Notification utilisateur si Toast existe (escape pour eviter XSS via messages API)
     if (window.Toast) {
-      Toast.error(`Erreur: ${error.message || operation}`);
+      const safeMsg = MistralUtils.escapeHtml(error.message || operation);
+      Toast.error(`Erreur: ${safeMsg}`);
     }
-    
+
     return null;
   }
 
