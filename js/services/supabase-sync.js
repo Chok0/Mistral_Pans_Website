@@ -63,6 +63,16 @@
       'commander': ['configuration'],
       'cgv':       ['configuration'],
       'index':     ['instruments', 'configuration']
+    },
+
+    // Colonnes a charger pour les pages publiques (reduit la taille du payload)
+    // Si absent, select('*') est utilise (admin)
+    publicColumns: {
+      'instruments': 'id,reference,gamme,tonalite,taille,materiau,nombre_notes,prix_vente,statut,photos,updated_at',
+      'accessoires': 'id,nom,categorie,prix,stock,statut,description,photo,tailles_compatibles,visible_configurateur,updated_at',
+      'articles': 'id,slug,title,excerpt,cover_image,status,tags,published_at,updated_at',
+      'galerie': 'id,type,src,thumbnail,titre,description,ordre,featured,updated_at',
+      'professeurs': 'id,nom,location,lat,lng,email,website,photo_url,course_types,course_formats,instrument_available,statut,updated_at'
     }
   };
 
@@ -365,7 +375,16 @@
   // ============================================================================
 
   /**
-   * Recupere les donnees d'une table depuis Supabase
+   * Determine les colonnes a selectionner pour une table
+   * Pages publiques: colonnes reduites (publicColumns), Admin: select('*')
+   */
+  function getSelectColumns(remoteName) {
+    if (isAdminPage) return '*';
+    return SYNC_CONFIG.publicColumns[remoteName] || '*';
+  }
+
+  /**
+   * Recupere les donnees d'une table depuis Supabase (requete individuelle)
    */
   async function fetchTable(tableConfig) {
     if (!window.MistralDB) return false;
@@ -379,9 +398,10 @@
         return await fetchKeyValueTable(tableConfig, client);
       }
 
+      const columns = getSelectColumns(tableConfig.remote);
       let query = client
         .from(tableConfig.remote)
-        .select('*');
+        .select(columns);
 
       // Appliquer un filtre si defini (ex: statut = 'active' pour professeurs)
       if (tableConfig.fetchFilter) {
@@ -450,6 +470,111 @@
       return true;
     } catch (e) {
       log(`Exception fetch config ${tableConfig.configNamespace || 'gestion'}: ${e.message}`, 'error');
+      return false;
+    }
+  }
+
+  // ============================================================================
+  // BATCHED FETCH (regroupe les requetes vers la meme table Supabase)
+  // ============================================================================
+
+  /**
+   * Fetch batche pour les tables key-value (configuration)
+   * Au lieu de N requetes (1 par namespace), fait 1 requete avec .in()
+   * et distribue les resultats cote client.
+   *
+   * Ex: 5 namespaces (gestion, compta, email_automations, configurateur, location_waitlist)
+   *     -> 1 seule requete HTTP au lieu de 5
+   */
+  async function fetchBatchedKeyValue(configs) {
+    if (!window.MistralDB) return false;
+
+    const client = window.MistralDB.getClient();
+    if (!client) return false;
+
+    try {
+      const namespaces = configs.map(c => c.configNamespace || 'gestion');
+
+      const { data, error } = await client
+        .from(configs[0].remote)
+        .select('*')
+        .in('namespace', namespaces);
+
+      if (error) {
+        log(`Erreur fetch batched config (${namespaces.join(',')}): ${error.message}`, 'error');
+        return false;
+      }
+
+      // Distribuer les resultats par namespace
+      for (const config of configs) {
+        const ns = config.configNamespace || 'gestion';
+        const nsRows = (data || []).filter(row => row.namespace === ns);
+
+        const configObj = {};
+        nsRows.forEach(row => {
+          try {
+            configObj[row.key] = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+          } catch {
+            configObj[row.key] = row.value;
+          }
+        });
+
+        dataStore.set(config.local, configObj);
+        log(`Fetch config ${ns}: ${nsRows.length} cles`, 'success');
+      }
+
+      return true;
+    } catch (e) {
+      log(`Exception fetch batched config: ${e.message}`, 'error');
+      return false;
+    }
+  }
+
+  /**
+   * Fetch batche pour les tables avec filtres differents (ex: professeurs)
+   * Au lieu de N requetes (1 par filtre), fait 1 requete sans filtre
+   * et distribue les resultats cote client.
+   *
+   * Ex: professeurs active + pending -> 1 requete au lieu de 2
+   * Note: RLS filtre deja cote serveur pour les pages publiques
+   */
+  async function fetchBatchedTable(configs) {
+    if (!window.MistralDB) return false;
+
+    const client = window.MistralDB.getClient();
+    if (!client) return false;
+
+    try {
+      const columns = getSelectColumns(configs[0].remote);
+      const { data, error } = await client
+        .from(configs[0].remote)
+        .select(columns)
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        log(`Erreur fetch batched ${configs[0].remote}: ${error.message}`, 'error');
+        return false;
+      }
+
+      // Distribuer les resultats par filtre
+      for (const config of configs) {
+        let filtered = data || [];
+        if (config.fetchFilter) {
+          filtered = filtered.filter(item =>
+            item[config.fetchFilter.column] === config.fetchFilter.value
+          );
+        }
+
+        const localData = filtered.map(item =>
+          transformFromSupabase(config.remote, item)
+        );
+        dataStore.set(config.local, localData);
+        log(`Fetch ${config.remote} -> ${config.local}: ${localData.length} enregistrements`, 'success');
+      }
+
+      return true;
+    } catch (e) {
+      log(`Exception fetch batched ${configs[0].remote}: ${e.message}`, 'error');
       return false;
     }
   }
@@ -566,6 +691,11 @@
 
   /**
    * Rafraichit les donnees depuis Supabase
+   *
+   * Optimisation : regroupe les requetes vers la meme table Supabase.
+   * Ex: 5 configs "configuration" (namespace different) -> 1 seule requete .in()
+   *     2 configs "professeurs" (filtre different)      -> 1 seule requete
+   * Resultat admin : 17 sources chargees en ~12 requetes HTTP au lieu de 17
    */
   async function refresh(tables) {
     if (isSyncing) {
@@ -582,9 +712,30 @@
       return;
     }
 
-    log(`Fetch depuis Supabase (${targetTables.map(t => t.remote).join(', ')})...`);
+    // Regrouper par table Supabase distante pour batching
+    const groups = new Map();
+    for (const tc of targetTables) {
+      if (!groups.has(tc.remote)) groups.set(tc.remote, []);
+      groups.get(tc.remote).push(tc);
+    }
 
-    await Promise.all(targetTables.map(tableConfig => fetchTable(tableConfig)));
+    log(`Fetch depuis Supabase (${targetTables.length} sources via ${groups.size} requetes)...`);
+
+    const promises = [];
+    for (const [, configs] of groups) {
+      if (configs.length === 1) {
+        // Table unique -> requete individuelle (pas de gain a batche)
+        promises.push(fetchTable(configs[0]));
+      } else if (configs[0].isKeyValue) {
+        // Plusieurs namespaces de configuration -> 1 requete .in()
+        promises.push(fetchBatchedKeyValue(configs));
+      } else {
+        // Plusieurs filtres sur la meme table -> 1 requete + split client
+        promises.push(fetchBatchedTable(configs));
+      }
+    }
+
+    await Promise.all(promises);
 
     lastSync = new Date().toISOString();
     isSyncing = false;
