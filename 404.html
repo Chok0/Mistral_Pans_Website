@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page introuvable | Mistral Pans</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230D7377'/></svg>">
+  <link rel="stylesheet" href="css/style.css?v=3.5.3">
+
+  <style>
+    .error-page {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: var(--space-2xl);
+      background: var(--color-bg);
+    }
+
+    /* --- 4 🥁 4 layout --- */
+    .error-page__code {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(0.25rem, 2vw, 1rem);
+      margin-bottom: var(--space-lg);
+      user-select: none;
+    }
+
+    .error-page__digit {
+      font-family: var(--font-display);
+      font-size: clamp(5rem, 15vw, 10rem);
+      font-weight: 700;
+      color: var(--color-accent);
+      line-height: 1;
+      opacity: 0.75;
+    }
+
+    /* Handpan SVG = le "0" */
+    .error-page__handpan {
+      width: clamp(5rem, 14vw, 9.5rem);
+      height: clamp(5rem, 14vw, 9.5rem);
+      flex-shrink: 0;
+      margin-top: clamp(0.5rem, 1.5vw, 1rem);
+      animation: handpan-float 3s ease-in-out infinite;
+      cursor: pointer;
+      filter: drop-shadow(0 8px 24px rgba(13, 115, 119, 0.2));
+      transition: filter 0.3s ease;
+    }
+
+    .error-page__handpan:hover {
+      filter: drop-shadow(0 12px 32px rgba(13, 115, 119, 0.35));
+    }
+
+    /* Wobble au clic */
+    .error-page__handpan.ping {
+      animation: handpan-ping 0.5s ease;
+    }
+
+    @keyframes handpan-float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(2deg); }
+    }
+
+    @keyframes handpan-ping {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.08) rotate(-3deg); }
+      60% { transform: scale(0.96) rotate(2deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    /* Note-dimple hover glow */
+    .hp-note {
+      transition: fill 0.2s ease, filter 0.2s ease;
+    }
+    .error-page__handpan:hover .hp-note {
+      filter: brightness(1.15);
+    }
+
+    .error-page__title {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 4vw, 2.25rem);
+      margin-bottom: var(--space-md);
+      color: var(--color-text);
+    }
+
+    .error-page__subtitle {
+      font-size: 1rem;
+      color: var(--color-accent);
+      font-style: italic;
+      margin-bottom: var(--space-sm);
+      opacity: 0.7;
+    }
+
+    .error-page__description {
+      font-size: 1.125rem;
+      color: var(--color-text-light);
+      max-width: 480px;
+      margin: 0 auto var(--space-2xl);
+      line-height: 1.6;
+    }
+
+    .error-page__actions {
+      display: flex;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main>
+    <div class="error-page" id="main-content">
+
+      <div class="error-page__code" aria-label="Erreur 404">
+        <span class="error-page__digit">4</span>
+
+        <!-- Handpan vu de dessus = le "0" -->
+        <svg class="error-page__handpan" id="handpan-404" viewBox="0 0 200 200"
+             xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Handpan">
+
+          <!-- Coque exterieure -->
+          <circle cx="100" cy="100" r="96" fill="#2C2825" />
+          <circle cx="100" cy="100" r="92" fill="#3D3A37" />
+
+          <!-- Reflet subtil -->
+          <ellipse cx="85" cy="70" rx="55" ry="40" fill="url(#sheen404)" opacity="0.12" />
+
+          <!-- Ding central -->
+          <circle cx="100" cy="100" r="22" fill="#4A4744" class="hp-note" />
+          <circle cx="100" cy="100" r="15" fill="#555250" class="hp-note" />
+          <circle cx="100" cy="100" r="6" fill="var(--color-accent, #0D7377)" opacity="0.6" />
+
+          <!-- 8 tone fields en cercle -->
+          <ellipse cx="100" cy="38"  rx="14" ry="18" fill="#4A4744" class="hp-note" transform="rotate(0 100 100)" />
+          <ellipse cx="144" cy="52"  rx="14" ry="18" fill="#4A4744" class="hp-note" transform="rotate(45 144 52)" />
+          <ellipse cx="162" cy="100" rx="14" ry="18" fill="#4A4744" class="hp-note" transform="rotate(90 162 100)" />
+          <ellipse cx="144" cy="148" rx="14" ry="18" fill="#4A4744" class="hp-note" transform="rotate(135 144 148)" />
+          <ellipse cx="100" cy="162" rx="14" ry="18" fill="#4A4744" class="hp-note" transform="rotate(0 100 162)" />
+          <ellipse cx="56"  cy="148" rx="14" ry="18" fill="#4A4744" class="hp-note" transform="rotate(-135 56 148)" />
+          <ellipse cx="38"  cy="100" rx="14" ry="18" fill="#4A4744" class="hp-note" transform="rotate(-90 38 100)" />
+          <ellipse cx="56"  cy="52"  rx="14" ry="18" fill="#4A4744" class="hp-note" transform="rotate(-45 56 52)" />
+
+          <!-- Lignes entre les notes (martelage) -->
+          <g stroke="#555250" stroke-width="0.8" opacity="0.3">
+            <line x1="100" y1="78" x2="100" y2="56" />
+            <line x1="116" y1="84" x2="132" y2="66" />
+            <line x1="122" y1="100" x2="148" y2="100" />
+            <line x1="116" y1="116" x2="132" y2="134" />
+            <line x1="100" y1="122" x2="100" y2="144" />
+            <line x1="84"  y1="116" x2="68"  y2="134" />
+            <line x1="78"  y1="100" x2="52"  y2="100" />
+            <line x1="84"  y1="84"  x2="68"  y2="66" />
+          </g>
+
+          <!-- Bord externe (rim) -->
+          <circle cx="100" cy="100" r="96" fill="none" stroke="#222" stroke-width="2" />
+          <circle cx="100" cy="100" r="92" fill="none" stroke="#555250" stroke-width="0.5" opacity="0.4" />
+
+          <defs>
+            <radialGradient id="sheen404" cx="40%" cy="35%">
+              <stop offset="0%" stop-color="#fff" />
+              <stop offset="100%" stop-color="#fff" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+        </svg>
+
+        <span class="error-page__digit">4</span>
+      </div>
+
+      <h1 class="error-page__title">Page introuvable</h1>
+      <p class="error-page__subtitle">Cette note n'existe pas dans la gamme...</p>
+      <p class="error-page__description">
+        La page que vous cherchez n'existe pas ou a peut-être été déplacée.
+        Pas de panique, voici quelques liens utiles.
+      </p>
+      <div class="error-page__actions">
+        <a href="index.html" class="btn btn--primary btn--lg">Retour à l'accueil</a>
+        <a href="boutique.html" class="btn btn--secondary btn--lg">Voir la boutique</a>
+      </div>
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+  <div id="contact-modal-container"></div>
+
+  <script src="js/core/cookie-consent.js?v=3.5.3"></script>
+  <script src="js/core/utils.js?v=3.5.3"></script>
+  <script src="js/core/main.js?v=3.5.3"></script>
+  <script src="js/pages/404.js?v=3.5.3"></script>
+</body>
+</html>

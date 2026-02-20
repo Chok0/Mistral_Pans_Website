@@ -8,14 +8,18 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
+  <!-- Preconnect: faster DNS + TLS for critical external origins -->
+  <link rel="preconnect" href="https://qnkyzhccudtaduqduoxn.supabase.co">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta name="robots" content="noindex, nofollow">
   <title>Administration – Mistral Pans</title>
   
   
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/admin.css">
-  <link rel="stylesheet" href="css/teacher-form.css">
-  <link href="js/vendor/quill.snow.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=3.5.3">
+  <link rel="stylesheet" href="css/admin.css?v=3.5.3">
+  <link rel="stylesheet" href="css/teacher-form.css?v=3.5.3">
+  <!-- Quill.js CSS chargé dynamiquement par admin-ui-content.js (lazy-load) -->
   
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,9 +28,10 @@
       background: var(--admin-bg, #0f0e0d);
       color: var(--admin-text, #f5f3ef);
       min-height: 100vh;
+      min-height: 100dvh;
     }
-    
-    .login-view { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+
+    .login-view { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
     .login-card { width: 100%; max-width: 400px; background: var(--admin-surface, #1a1815); border: 1px solid var(--admin-border, #2a2725); border-radius: 12px; padding: 2.5rem; }
     .login-header { text-align: center; margin-bottom: 2rem; }
     .login-logo { font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem; color: var(--admin-accent, #0D7377); }
@@ -34,7 +39,7 @@
     .login-error { background: rgba(231,76,60,0.1); border: 1px solid #e74c3c; color: #e74c3c; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; display: none; font-size: 0.875rem; }
     .login-error.show { display: block; }
     
-    .admin-header { background: var(--admin-surface, #1a1815); border-bottom: 1px solid var(--admin-border, #2a2725); padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .admin-header { background: var(--admin-surface, #1a1815); border-bottom: 1px solid var(--admin-border, #2a2725); padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: var(--z-sticky); }
     .admin-header__logo { font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; color: var(--admin-accent, #0D7377); text-decoration: none; }
     .admin-header__actions { display: flex; align-items: center; gap: 1rem; }
     .admin-header__user { font-size: 0.875rem; color: var(--admin-text-muted, #a8a5a0); }
@@ -44,12 +49,12 @@
     .admin-form__group { margin-bottom: 1.25rem; }
     .admin-form__label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; }
     .admin-form__input, .admin-form__select, .admin-form__textarea { width: 100%; padding: 0.625rem 0.875rem; background: var(--admin-bg, #0f0e0d); border: 1px solid var(--admin-border, #2a2725); border-radius: 8px; color: var(--admin-text, #f5f3ef); font-size: 0.875rem; font-family: inherit; }
-    .admin-form__input:focus, .admin-form__select:focus, .admin-form__textarea:focus { outline: none; border-color: var(--admin-accent, #0D7377); }
+    .admin-form__input:focus, .admin-form__select:focus, .admin-form__textarea:focus { outline: 2px solid var(--admin-accent, #0D7377); outline-offset: -1px; border-color: var(--admin-accent, #0D7377); }
     .admin-form__textarea { resize: vertical; min-height: 80px; }
     .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
     
     .searchable-select-container { position: relative; }
-    .searchable-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--admin-surface, #1a1815); border: 1px solid var(--admin-border, #2a2725); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; }
+    .searchable-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--admin-surface, #1a1815); border: 1px solid var(--admin-border, #2a2725); border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: var(--z-dropdown); display: none; }
     .searchable-dropdown.show { display: block; }
     .searchable-dropdown__item { padding: 0.625rem 0.875rem; cursor: pointer; transition: background 0.15s; }
     .searchable-dropdown__item:hover { background: var(--admin-surface-hover, #242220); }
@@ -99,7 +104,7 @@
     <header class="header header--admin">
       <div class="header__inner">
         <a href="index.html" class="logo">
-          <img src="ressources/images/Mistral_logov3_ball_black.png" alt="Mistral Pans" class="logo__img">
+          <picture><source srcset="ressources/images/Mistral_logov3_ball_black.webp" type="image/webp"><img src="ressources/images/Mistral_logov3_ball_black.png" alt="Mistral Pans" class="logo__img"></picture>
           <span class="logo__text">Mistral Pans</span>
         </a>
         
@@ -160,9 +165,9 @@
           <div class="dashboard__card">
             <div class="dashboard__card-title">Actions en attente</div>
             <div class="quick-actions">
-              <button class="quick-action" onclick="AdminUI.goToTab('professeurs')"><span class="quick-action__label">Demandes professeurs</span><span class="quick-action__badge" id="dash-pending-teachers">0</span></button>
-              <button class="quick-action" onclick="AdminUI.goToTab('commandes')"><span class="quick-action__label">Commandes en cours</span><span class="quick-action__badge" id="dash-pending-orders">0</span></button>
-              <button class="quick-action" onclick="AdminUI.goToTab('factures')"><span class="quick-action__label">Paiements en attente</span><span class="quick-action__badge quick-action__badge--warning" id="dash-pending-payments">0</span></button>
+              <button class="quick-action" data-action="go-to-tab" data-param="professeurs"><span class="quick-action__label">Demandes professeurs</span><span class="quick-action__badge" id="dash-pending-teachers">0</span></button>
+              <button class="quick-action" data-action="go-to-tab" data-param="commandes"><span class="quick-action__label">Commandes en cours</span><span class="quick-action__badge" id="dash-pending-orders">0</span></button>
+              <button class="quick-action" data-action="go-to-tab" data-param="factures"><span class="quick-action__label">Paiements en attente</span><span class="quick-action__badge quick-action__badge--warning" id="dash-pending-payments">0</span></button>
             </div>
           </div>
           <div class="dashboard__card">
@@ -177,12 +182,12 @@
           <div class="dashboard__card dashboard__card--wide">
             <div class="dashboard__card-title">Ma liste de tâches</div>
             <div class="todo-list" id="todo-list"></div>
-            <div class="todo-add"><input type="text" class="todo-add__input" id="todo-input" placeholder="Nouvelle tâche..." onkeypress="if(event.key==='Enter')AdminUI.addTodo()"><button class="todo-add__btn" onclick="AdminUI.addTodo()">Ajouter</button></div>
+            <div class="todo-add"><input type="text" class="todo-add__input" id="todo-input" placeholder="Nouvelle tâche..." data-action="add-todo-on-enter" data-on="keypress"><button class="todo-add__btn" data-action="add-todo">Ajouter</button></div>
           </div>
           <div class="dashboard__card dashboard__card--wide">
             <div class="dashboard__card-title" style="display: flex; justify-content: space-between; align-items: center;">
               Statistiques du site
-              <select class="admin-form__select" id="stats-period" style="width:auto; font-size: 0.8rem;" onchange="if(AdminUI.renderAnalytics)AdminUI.renderAnalytics()">
+              <select class="admin-form__select" id="stats-period" style="width:auto; font-size: 0.8rem;" data-action="stats-period-change" data-on="change">
                 <option value="7">7 jours</option>
                 <option value="30" selected>30 jours</option>
                 <option value="90">90 jours</option>
@@ -209,35 +214,35 @@
 
       <!-- FACTURES -->
       <section class="gestion-section" id="section-factures">
-        <div class="section-header"><h2 class="section-title">Gestion des factures</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('facture')">+ Nouvelle facture</button></div></div>
+        <div class="section-header"><h2 class="section-title">Gestion des factures</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" data-action="show-modal" data-param="facture">+ Nouvelle facture</button></div></div>
         <div class="gestion-table-container"><table class="gestion-table"><thead><tr><th>N° Facture</th><th>Date</th><th>Client</th><th>Type</th><th>Montant</th><th>Statut</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="table-factures"></tbody></table></div>
         <div class="gestion-empty" id="empty-factures" style="display:none;"><p class="gestion-empty__text">Aucune facture</p></div>
       </section>
       
       <!-- CLIENTS -->
       <section class="gestion-section" id="section-clients">
-        <div class="section-header"><h2 class="section-title">Gestion des clients</h2><div class="section-actions"><input type="text" class="admin-form__input" style="max-width:250px;" placeholder="Rechercher..." id="search-clients" aria-label="Rechercher un client" oninput="AdminUI.searchClients(this.value)"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('client')">+ Nouveau client</button></div></div>
+        <div class="section-header"><h2 class="section-title">Gestion des clients</h2><div class="section-actions"><input type="text" class="admin-form__input" style="max-width:250px;" placeholder="Rechercher..." id="search-clients" aria-label="Rechercher un client" data-action="search-clients" data-on="input"><button class="admin-btn admin-btn--primary" data-action="show-modal" data-param="client">+ Nouveau client</button></div></div>
         <div class="gestion-table-container"><table class="gestion-table"><thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Locations</th><th>Crédit fidélité</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="table-clients"></tbody></table></div>
         <div class="gestion-empty" id="empty-clients" style="display:none;"><p class="gestion-empty__text">Aucun client</p></div>
       </section>
       
       <!-- INSTRUMENTS -->
       <section class="gestion-section" id="section-instruments">
-        <div class="section-header"><h2 class="section-title">Gestion des instruments</h2><div class="section-actions"><input type="text" class="admin-form__input" style="max-width:250px;" placeholder="Rechercher..." id="search-instruments" aria-label="Rechercher un instrument" oninput="AdminUI.searchInstruments(this.value)"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('instrument')">+ Nouvel instrument</button></div></div>
+        <div class="section-header"><h2 class="section-title">Gestion des instruments</h2><div class="section-actions"><input type="text" class="admin-form__input" style="max-width:250px;" placeholder="Rechercher..." id="search-instruments" aria-label="Rechercher un instrument" data-action="search-instruments" data-on="input"><button class="admin-btn admin-btn--primary" data-action="show-modal" data-param="instrument">+ Nouvel instrument</button></div></div>
         <div class="gestion-table-container"><table class="gestion-table"><thead><tr><th>Référence</th><th>Nom</th><th>Gamme</th><th>Statut</th><th>Prix</th><th>Boutique</th><th>Location</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="table-instruments"></tbody></table></div>
         <div class="gestion-empty" id="empty-instruments" style="display:none;"><p class="gestion-empty__text">Aucun instrument</p></div>
       </section>
       
       <!-- LOCATIONS -->
       <section class="gestion-section" id="section-locations">
-        <div class="section-header"><h2 class="section-title">Gestion des locations</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('location')">+ Nouvelle location</button></div></div>
+        <div class="section-header"><h2 class="section-title">Gestion des locations</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" data-action="show-modal" data-param="location">+ Nouvelle location</button></div></div>
         <div class="gestion-table-container"><table class="gestion-table"><thead><tr><th>Client</th><th>Instrument</th><th>Début</th><th>Mode</th><th>Loyer</th><th>Caution</th><th>Statut</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="table-locations"></tbody></table></div>
         <div class="gestion-empty" id="empty-locations" style="display:none;"><p class="gestion-empty__text">Aucune location</p></div>
       </section>
       
       <!-- COMMANDES -->
       <section class="gestion-section" id="section-commandes">
-        <div class="section-header"><h2 class="section-title">Gestion des commandes</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('commande')">+ Nouvelle commande</button></div></div>
+        <div class="section-header"><h2 class="section-title">Gestion des commandes</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" data-action="show-modal" data-param="commande">+ Nouvelle commande</button></div></div>
         <div class="gestion-table-container"><table class="gestion-table"><thead><tr><th>Date</th><th>Client</th><th>Description</th><th>Montant</th><th>Paiement</th><th>Statut</th><th style="text-align:right;">Actions</th></tr></thead><tbody id="table-commandes"></tbody></table></div>
         <div class="gestion-empty" id="empty-commandes" style="display:none;"><p class="gestion-empty__text">Aucune commande</p></div>
       </section>
@@ -257,11 +262,11 @@
               <input type="text" class="admin-form__input searchable-input" id="boutique-instrument-search" placeholder="Sélectionner un instrument à publier..." autocomplete="off">
               <div class="searchable-dropdown" id="boutique-instrument-dropdown"></div>
             </div>
-            <button class="admin-btn admin-btn--primary" onclick="AdminUI.publierInstrumentSelectionne()">
+            <button class="admin-btn admin-btn--primary" data-action="publier-instrument-selectionne">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Publier
             </button>
-            <button class="admin-btn admin-btn--secondary" onclick="AdminUI.creerEtPublierInstrument()">+ Créer un instrument</button>
+            <button class="admin-btn admin-btn--secondary" data-action="creer-et-publier-instrument">+ Créer un instrument</button>
           </div>
           <div class="annonce-grid" id="boutique-instruments-list"></div>
           <div class="admin-empty" id="boutique-instruments-empty" style="display:none;">
@@ -273,7 +278,7 @@
         <!-- Sous-onglet Accessoires -->
         <div id="subtab-boutique-accessoires" style="display:none;">
           <div style="margin-bottom: 1rem;">
-            <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('accessoire')">+ Nouvel accessoire</button>
+            <button class="admin-btn admin-btn--primary" data-action="show-modal" data-param="accessoire">+ Nouvel accessoire</button>
           </div>
           <div class="annonce-grid" id="boutique-accessoires-list"></div>
           <div class="admin-empty" id="boutique-accessoires-empty" style="display:none;">
@@ -289,19 +294,19 @@
         <div class="admin-tabs" role="tablist"><button class="admin-tab active" data-subtab="pending">Demandes <span class="admin-tab__badge" id="pending-count">0</span></button><button class="admin-tab" data-subtab="active">Actifs</button><button class="admin-tab" data-subtab="add">Ajouter</button></div>
         <div id="subtab-pending"><div class="admin-list" id="pending-teachers-list"></div><div class="admin-empty" id="empty-pending" style="display:none;"><div class="admin-empty__title">Aucune demande</div></div></div>
         <div id="subtab-active" style="display:none;"><div class="admin-list" id="active-teachers-list"></div><div class="admin-empty" id="empty-teachers" style="display:none;"><div class="admin-empty__title">Aucun professeur</div></div></div>
-        <div id="subtab-add" style="display:none;"><div class="admin-card" style="max-width:700px; background:#fff; color:#333;"><div id="add-teacher-form-container"></div><div style="margin-top: 1.5rem;"><button type="button" class="admin-btn admin-btn--primary" onclick="AdminUI.submitAddTeacherForm()">Ajouter le professeur</button></div></div></div>
+        <div id="subtab-add" style="display:none;"><div class="admin-card" style="max-width:700px; background:#fff; color:#333;"><div id="add-teacher-form-container"></div><div style="margin-top: 1.5rem;"><button type="button" class="admin-btn admin-btn--primary" data-action="submit-add-teacher-form">Ajouter le professeur</button></div></div></div>
       </section>
       
       <!-- GALERIE -->
       <section class="gestion-section" id="section-galerie">
-        <div class="section-header"><h2 class="section-title">Gestion de la galerie</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('media')">+ Ajouter un média</button></div></div>
+        <div class="section-header"><h2 class="section-title">Gestion de la galerie</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" data-action="show-modal" data-param="media">+ Ajouter un média</button></div></div>
         <div class="gallery-grid" id="gallery-grid"></div>
         <div class="admin-empty" id="gallery-empty" style="display:none;"><div class="admin-empty__title">Galerie vide</div></div>
       </section>
       
       <!-- BLOG -->
       <section class="gestion-section" id="section-blog">
-        <div class="section-header"><h2 class="section-title">Gestion du blog</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('article')">+ Nouvel article</button></div></div>
+        <div class="section-header"><h2 class="section-title">Gestion du blog</h2><div class="section-actions"><button class="admin-btn admin-btn--primary" data-action="show-modal" data-param="article">+ Nouvel article</button></div></div>
         <div id="articles-list"></div>
         <div class="admin-empty" id="articles-empty" style="display:none;"><div class="admin-empty__title">Aucun article</div></div>
       </section>
@@ -311,13 +316,13 @@
         <div class="section-header">
           <h2 class="section-title">Comptabilité & URSSAF</h2>
           <div class="section-actions">
-            <select class="admin-form__select" id="compta-mois" style="width:auto;"></select>
-            <button class="admin-btn admin-btn--secondary" onclick="AdminUI.genererRapportMensuel()">
+            <select class="admin-form__select" id="compta-mois" style="width:auto;"><option value="" disabled selected>Mois...</option></select>
+            <button class="admin-btn admin-btn--secondary" data-action="generer-rapport-mensuel">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Télécharger PDF
             </button>
-            <button class="admin-btn admin-btn--primary" onclick="AdminUI.envoyerRapportMensuel()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <button class="admin-btn admin-btn--primary" data-action="envoyer-rapport-mensuel">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               Envoyer par email
             </button>
           </div>
@@ -326,13 +331,18 @@
         <!-- Résumé URSSAF -->
         <div class="stats-grid" style="margin-bottom: 2rem;">
           <div class="dashboard__card">
-            <div class="dashboard__card-title">BIC - Ventes & Locations</div>
-            <div class="dashboard__card-subtitle">Ventes instruments, accessoires, locations</div>
-            <div class="dashboard__card-value" id="compta-bic">0 €</div>
+            <div class="dashboard__card-title">BIC Ventes (71%)</div>
+            <div class="dashboard__card-subtitle">Instruments, accessoires, acomptes, soldes</div>
+            <div class="dashboard__card-value" id="compta-bic-ventes">0 €</div>
           </div>
           <div class="dashboard__card">
-            <div class="dashboard__card-title">BNC - Prestations</div>
-            <div class="dashboard__card-subtitle">Cours, formations, services</div>
+            <div class="dashboard__card-title">BIC Prestations (50%)</div>
+            <div class="dashboard__card-subtitle">Locations, réaccordages</div>
+            <div class="dashboard__card-value" id="compta-bic-prestations">0 €</div>
+          </div>
+          <div class="dashboard__card">
+            <div class="dashboard__card-title">BNC (34%)</div>
+            <div class="dashboard__card-subtitle">Modélisation 3D, design, formation</div>
             <div class="dashboard__card-value" id="compta-bnc">0 €</div>
           </div>
           <div class="dashboard__card">
@@ -390,7 +400,7 @@
               <label for="compta-include-pdf">Joindre les factures en PDF</label>
             </div>
           </div>
-          <button class="admin-btn admin-btn--secondary" onclick="AdminUI.saveComptaConfig()">Enregistrer la configuration</button>
+          <button class="admin-btn admin-btn--secondary" data-action="save-compta-config">Enregistrer la configuration</button>
         </div>
       </section>
       
@@ -401,7 +411,7 @@
 
           <!-- GESTION DES MATÉRIAUX -->
           <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
-            <div class="config-section__header collapsed" onclick="AdminUI.toggleConfigSection('materiaux')">
+            <div class="config-section__header collapsed" data-action="toggle-config-section" data-param="materiaux">
               <div class="dashboard__card-title">Matériaux disponibles</div>
               <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
@@ -411,15 +421,15 @@
                 <!-- Populated by JS -->
               </div>
               <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('materiau')">+ Ajouter un matériau</button>
-                <button class="admin-btn admin-btn--secondary" onclick="AdminUI.resetMateriaux()">Réinitialiser par défaut</button>
+                <button class="admin-btn admin-btn--primary" data-action="show-modal" data-param="materiau">+ Ajouter un matériau</button>
+                <button class="admin-btn admin-btn--secondary" data-action="reset-materiaux">Réinitialiser par défaut</button>
               </div>
             </div>
           </div>
 
           <!-- GESTION DES GAMMES -->
           <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
-            <div class="config-section__header collapsed" onclick="AdminUI.toggleConfigSection('gammes')">
+            <div class="config-section__header collapsed" data-action="toggle-config-section" data-param="gammes">
               <div class="dashboard__card-title">Gammes disponibles</div>
               <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
@@ -429,15 +439,15 @@
                 <!-- Populated by JS -->
               </div>
               <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('gamme')">+ Ajouter une gamme</button>
-                <button class="admin-btn admin-btn--secondary" onclick="AdminUI.resetGammes()">Réinitialiser par défaut</button>
+                <button class="admin-btn admin-btn--primary" data-action="show-modal" data-param="gamme">+ Ajouter une gamme</button>
+                <button class="admin-btn admin-btn--secondary" data-action="reset-gammes">Réinitialiser par défaut</button>
               </div>
             </div>
           </div>
 
           <!-- LOTS DE GAMMES -->
           <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
-            <div class="config-section__header collapsed" onclick="AdminUI.toggleConfigSection('gamme-batches')">
+            <div class="config-section__header collapsed" data-action="toggle-config-section" data-param="gamme-batches">
               <div class="dashboard__card-title">Lots de gammes</div>
               <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
@@ -446,13 +456,13 @@
               <div id="gamme-batches-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                 <!-- Populated by JS -->
               </div>
-              <button class="admin-btn admin-btn--primary" onclick="AdminUI.editGammeBatch()">+ Nouveau lot</button>
+              <button class="admin-btn admin-btn--primary" data-action="edit-gamme-batch">+ Nouveau lot</button>
             </div>
           </div>
 
           <!-- GESTION DES TAILLES -->
           <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
-            <div class="config-section__header collapsed" onclick="AdminUI.toggleConfigSection('tailles')">
+            <div class="config-section__header collapsed" data-action="toggle-config-section" data-param="tailles">
               <div class="dashboard__card-title">Tailles disponibles</div>
               <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
@@ -462,14 +472,14 @@
                 <!-- Populated by JS -->
               </div>
               <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                <button class="admin-btn admin-btn--primary" onclick="AdminUI.showModal('taille')">+ Ajouter une taille</button>
-                <button class="admin-btn admin-btn--secondary" onclick="AdminUI.resetTailles()">Réinitialiser par défaut</button>
+                <button class="admin-btn admin-btn--primary" data-action="show-modal" data-param="taille">+ Ajouter une taille</button>
+                <button class="admin-btn admin-btn--secondary" data-action="reset-tailles">Réinitialiser par défaut</button>
               </div>
             </div>
           </div>
 
           <div class="dashboard__card">
-            <div class="config-section__header" onclick="AdminUI.toggleConfigSection('entreprise')">
+            <div class="config-section__header" data-action="toggle-config-section" data-param="entreprise">
               <div class="dashboard__card-title">Informations entreprise</div>
               <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
@@ -478,24 +488,26 @@
               <div class="admin-form__group"><label class="admin-form__label">SIRET</label><input type="text" class="admin-form__input" id="config-siret" value=""></div>
               <div class="admin-form__group"><label class="admin-form__label">Email</label><input type="email" class="admin-form__input" id="config-email" value=""></div>
               <div class="admin-form__group"><label class="admin-form__label">Téléphone</label><input type="tel" class="admin-form__input" id="config-tel" value=""></div>
-              <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
+              <button class="admin-btn admin-btn--primary" data-action="save-config">Enregistrer</button>
             </div>
           </div>
           <div class="dashboard__card">
-            <div class="config-section__header" onclick="AdminUI.toggleConfigSection('tarifs')">
+            <div class="config-section__header" data-action="toggle-config-section" data-param="tarifs">
               <div class="dashboard__card-title">Tarifs par défaut</div>
               <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div class="config-section__body" id="config-body-tarifs">
-              <div class="admin-form__group"><label class="admin-form__label">Loyer (€)</label><input type="number" class="admin-form__input" id="config-loyer" value="50"></div>
+              <div class="admin-form__group"><label class="admin-form__label">Loyer (€)</label><input type="number" class="admin-form__input" id="config-loyer" value="60"></div>
               <div class="admin-form__group"><label class="admin-form__label">Caution (€)</label><input type="number" class="admin-form__input" id="config-caution" value="1150"></div>
               <div class="admin-form__group"><label class="admin-form__label">Frais distance (€)</label><input type="number" class="admin-form__input" id="config-frais" value="100"></div>
+              <div class="admin-form__group"><label class="admin-form__label">Frais Colissimo (€)</label><input type="number" class="admin-form__input" id="config-colissimo" value="50" min="0" step="5"></div>
+              <div class="admin-form__group"><label class="admin-form__label">Taux acompte (%)</label><input type="number" class="admin-form__input" id="config-acompte" value="30" min="0" max="100" step="5"></div>
               <div class="admin-form__group"><label class="admin-form__label">Crédit fidélité (%)</label><input type="number" class="admin-form__input" id="config-fidelite" value="50" min="0" max="100"></div>
-              <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
+              <button class="admin-btn admin-btn--primary" data-action="save-config">Enregistrer</button>
             </div>
           </div>
           <div class="dashboard__card">
-            <div class="config-section__header" onclick="AdminUI.toggleConfigSection('tarification')">
+            <div class="config-section__header" data-action="toggle-config-section" data-param="tarification">
               <div class="dashboard__card-title">Tarification configurateur</div>
               <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
@@ -508,12 +520,12 @@
               <div class="admin-form__group"><label class="admin-form__label">Bonus bottoms (€)</label><input type="number" class="admin-form__input" id="config-bonus-bottoms" value="25" min="0" step="5"></div>
               <div class="admin-form__group"><label class="admin-form__label">Malus difficulté warning (%)</label><input type="number" class="admin-form__input" id="config-malus-warning" value="5" min="0" max="100" step="1"></div>
               <div class="admin-form__group"><label class="admin-form__label">Malus difficulté difficile (%)</label><input type="number" class="admin-form__input" id="config-malus-difficile" value="10" min="0" max="100" step="1"></div>
-              <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveConfig()">Enregistrer</button>
+              <button class="admin-btn admin-btn--primary" data-action="save-config">Enregistrer</button>
             </div>
           </div>
           <!-- EMAILS AUTOMATIQUES -->
           <div class="dashboard__card dashboard__card--wide" style="grid-column: 1 / -1;">
-            <div class="config-section__header collapsed" onclick="AdminUI.toggleConfigSection('emails')">
+            <div class="config-section__header collapsed" data-action="toggle-config-section" data-param="emails">
               <div class="dashboard__card-title">Emails automatiques</div>
               <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
@@ -525,24 +537,52 @@
                 <!-- Populated by JS -->
               </div>
               <div style="margin-top: 1rem;">
-                <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveEmailConfig()">Enregistrer</button>
-                <button class="admin-btn admin-btn--secondary" style="margin-left: 0.5rem;" onclick="AdminUI.testEmailAutomation()">Envoyer un test</button>
+                <button class="admin-btn admin-btn--primary" data-action="save-email-config">Enregistrer</button>
+                <button class="admin-btn admin-btn--secondary" style="margin-left: 0.5rem;" data-action="test-email-automation">Envoyer un test</button>
               </div>
             </div>
           </div>
 
           <div class="dashboard__card">
-            <div class="config-section__header" onclick="AdminUI.toggleConfigSection('donnees')">
+            <div class="config-section__header" data-action="toggle-config-section" data-param="retention">
+              <div class="dashboard__card-title">Rétention des données (RGPD)</div>
+              <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="config-section__body" id="config-body-retention" style="display:none;">
+              <p style="font-size:0.8rem;color:var(--admin-text-muted);margin-bottom:1rem;">
+                Politique définie dans les <a href="mentions-legales.html" target="_blank" style="color:var(--admin-accent);">mentions légales</a> :
+                clients/commandes 3 ans, contacts 1 an, professeurs jusqu'à suppression.
+              </p>
+              <div id="retention-report" style="margin-bottom:1rem;">
+                <p style="font-size:0.85rem;color:var(--admin-text-muted);">Cliquez sur « Scanner » pour analyser les données.</p>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
+                <button class="admin-btn admin-btn--secondary" data-action="scan-retention">Scanner les données</button>
+                <button class="admin-btn admin-btn--danger" id="btn-purge-retention" data-action="purge-expired-data" style="display:none;">Purger les données expirées</button>
+              </div>
+              <hr style="border-color:var(--admin-border);margin:1rem 0 0.75rem;">
+              <div>
+                <p style="font-size:0.8rem;color:var(--admin-text-muted);margin-bottom:0.5rem;">Export RGPD (droit d'accès)</p>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                  <input type="email" class="admin-form__input" id="rgpd-export-email" placeholder="Email du demandeur" style="flex:1;font-size:0.85rem;">
+                  <button class="admin-btn admin-btn--secondary" data-action="export-client-data">Exporter</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="config-section">
+            <div class="config-section__header" data-action="toggle-config-section" data-param="donnees">
               <div class="dashboard__card-title">Données</div>
               <svg class="config-section__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div class="config-section__body" id="config-body-donnees">
               <div style="display:flex;flex-direction:column;gap:0.75rem;">
-                <button class="admin-btn admin-btn--secondary" onclick="AdminUI.exportAllData()">Exporter</button>
-                <button class="admin-btn admin-btn--secondary" onclick="document.getElementById('import-file').click()">Importer</button>
-                <input type="file" id="import-file" accept=".json" style="display:none;" onchange="AdminUI.importData(this.files[0])">
+                <button class="admin-btn admin-btn--secondary" data-action="export-all-data">Exporter</button>
+                <button class="admin-btn admin-btn--secondary" data-action="trigger-import-file">Importer</button>
+                <input type="file" id="import-file" accept=".json" style="display:none;" data-action="import-data-from-file" data-on="change">
                 <hr style="border-color:var(--admin-border);margin:0.5rem 0;">
-                <button class="admin-btn admin-btn--danger" onclick="AdminUI.resetAllData()">Réinitialiser</button>
+                <button class="admin-btn admin-btn--danger" data-action="reset-all-data">Réinitialiser</button>
               </div>
             </div>
           </div>
@@ -552,13 +592,13 @@
   </div>
 
   <!-- MODALS -->
-  <div class="admin-modal-overlay admin-modal--medium" id="modal-client"><div class="admin-modal"><div class="admin-modal__header"><h3 class="admin-modal__title" id="modal-client-title">Nouveau client</h3><button class="admin-modal__close" onclick="AdminUI.closeModal('client')">✕</button></div><div class="admin-modal__body"><form id="form-client"><input type="hidden" id="client-id"><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Prénom *</label><input type="text" class="admin-form__input" id="client-prenom" required></div><div class="admin-form__group"><label class="admin-form__label">Nom *</label><input type="text" class="admin-form__input" id="client-nom" required></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Email</label><input type="email" class="admin-form__input" id="client-email"></div><div class="admin-form__group"><label class="admin-form__label">Téléphone</label><input type="tel" class="admin-form__input" id="client-telephone"></div></div><div class="admin-form__group"><label class="admin-form__label">Adresse</label><textarea class="admin-form__textarea" id="client-adresse" rows="2"></textarea></div><div class="admin-form__group"><label class="admin-form__label">Notes</label><textarea class="admin-form__textarea" id="client-notes" rows="2"></textarea></div></form></div><div class="admin-modal__footer"><button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('client')">Annuler</button><button class="admin-btn admin-btn--primary" onclick="AdminUI.saveClient()">Enregistrer</button></div></div></div>
+  <div class="admin-modal-overlay admin-modal--medium" id="modal-client"><div class="admin-modal"><div class="admin-modal__header"><h3 class="admin-modal__title" id="modal-client-title">Nouveau client</h3><button class="admin-modal__close" data-action="close-modal" data-param="client">✕</button></div><div class="admin-modal__body"><form id="form-client"><input type="hidden" id="client-id"><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Prénom *</label><input type="text" class="admin-form__input" id="client-prenom" required maxlength="50"></div><div class="admin-form__group"><label class="admin-form__label">Nom *</label><input type="text" class="admin-form__input" id="client-nom" required maxlength="50"></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Email</label><input type="email" class="admin-form__input" id="client-email" maxlength="255"></div><div class="admin-form__group"><label class="admin-form__label">Téléphone</label><input type="tel" class="admin-form__input" id="client-telephone" maxlength="20"></div></div><div class="admin-form__group"><label class="admin-form__label">Adresse</label><textarea class="admin-form__textarea" id="client-adresse" rows="2" maxlength="500"></textarea></div><div class="admin-form__group"><label class="admin-form__label">Notes</label><textarea class="admin-form__textarea" id="client-notes" rows="2" maxlength="1000"></textarea></div></form></div><div class="admin-modal__footer"><button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="client">Annuler</button><button class="admin-btn admin-btn--primary" data-action="save-client">Enregistrer</button></div></div></div>
 
   <div class="admin-modal-overlay admin-modal--large" id="modal-instrument">
     <div class="admin-modal">
       <div class="admin-modal__header">
         <h3 class="admin-modal__title" id="modal-instrument-title">Nouvel instrument</h3>
-        <button class="admin-modal__close" onclick="AdminUI.closeModal('instrument')">✕</button>
+        <button class="admin-modal__close" data-action="close-modal" data-param="instrument">✕</button>
       </div>
       <div class="admin-modal__body">
         <form id="form-instrument">
@@ -575,11 +615,11 @@
           <div class="form-row">
             <div class="admin-form__group" style="max-width: 120px;">
               <label class="admin-form__label">N° série *</label>
-              <input type="text" class="admin-form__input" id="instrument-numero" placeholder="00102" required oninput="AdminUI.updateInstrumentReference()">
+              <input type="text" class="admin-form__input" id="instrument-numero" placeholder="00102" required maxlength="20" data-action="update-instrument-reference" data-on="input">
             </div>
             <div class="admin-form__group" style="flex: 1;">
               <label class="admin-form__label">Nom commercial</label>
-              <input type="text" class="admin-form__input" id="instrument-nom" placeholder="Kurd doré profond">
+              <input type="text" class="admin-form__input" id="instrument-nom" placeholder="Kurd doré profond" maxlength="100">
             </div>
           </div>
           
@@ -587,7 +627,7 @@
           <div class="form-row">
             <div class="admin-form__group">
               <label class="admin-form__label">Tonalité *</label>
-              <select class="admin-form__select" id="instrument-tonalite" required onchange="AdminUI.updateInstrumentReference()">
+              <select class="admin-form__select" id="instrument-tonalite" required data-action="update-instrument-reference" data-on="change">
                 <option value="">--</option>
                 <option value="C">C (Do)</option>
                 <option value="C#">C# (Do#)</option>
@@ -606,14 +646,14 @@
             <div class="admin-form__group" style="position: relative;">
               <label class="admin-form__label">Gamme *</label>
               <input type="hidden" id="instrument-gamme" required>
-              <input type="text" class="admin-form__input" id="instrument-gamme-search" placeholder="Rechercher une gamme..." autocomplete="off" oninput="AdminUI.filterGammeDropdown(this.value)" onfocus="AdminUI.filterGammeDropdown(this.value)">
+              <input type="text" class="admin-form__input" id="instrument-gamme-search" placeholder="Rechercher une gamme..." autocomplete="off" data-action="filter-gamme-dropdown" data-on="input focus">
               <div class="searchable-dropdown" id="instrument-gamme-dropdown" style="display:none;">
                 <!-- Populated dynamically by AdminUI.populateGammesSelect() -->
               </div>
             </div>
             <div class="admin-form__group">
               <label class="admin-form__label">Notes *</label>
-              <input type="number" class="admin-form__input" id="instrument-notes" min="7" max="36" value="9" required onchange="AdminUI.updateInstrumentReference()">
+              <input type="number" class="admin-form__input" id="instrument-notes" min="7" max="36" value="9" required data-action="update-instrument-reference" data-on="change">
             </div>
           </div>
           
@@ -621,7 +661,7 @@
           <div class="form-row">
             <div class="admin-form__group">
               <label class="admin-form__label">Matériau *</label>
-              <select class="admin-form__select" id="instrument-materiau" required onchange="AdminUI.updateInstrumentReference()">
+              <select class="admin-form__select" id="instrument-materiau" required data-action="update-instrument-reference" data-on="change">
                 <!-- Options populated dynamically by AdminUI.populateMateriauxSelect() -->
               </select>
             </div>
@@ -644,7 +684,22 @@
           <div class="form-row">
             <div class="admin-form__group">
               <label class="admin-form__label">Prix (€)</label>
-              <input type="number" class="admin-form__input" id="instrument-prix" min="0" step="5">
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="number" class="admin-form__input" id="instrument-prix" min="0" step="5" style="flex: 1;">
+                <button type="button" class="admin-btn admin-btn--secondary admin-btn--sm" data-action="auto-price-instrument" title="Calculer le prix automatiquement à partir du layout" style="white-space: nowrap; flex-shrink: 0;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px;">
+                    <rect x="4" y="2" width="16" height="20" rx="2"/>
+                    <line x1="8" y1="6" x2="16" y2="6"/>
+                    <line x1="8" y1="10" x2="10" y2="10"/>
+                    <line x1="14" y1="10" x2="16" y2="10"/>
+                    <line x1="8" y1="14" x2="10" y2="14"/>
+                    <line x1="14" y1="14" x2="16" y2="14"/>
+                    <line x1="8" y1="18" x2="16" y2="18"/>
+                  </svg>
+                  Auto
+                </button>
+              </div>
+              <small id="instrument-prix-detail" style="color: var(--admin-text-muted); font-size: 0.75rem; display: none;"></small>
             </div>
             <div class="admin-form__group">
               <label class="admin-form__label">Promo (%)</label>
@@ -681,14 +736,14 @@
           <!-- Layout -->
           <div class="admin-form__group">
             <label class="admin-form__label">Layout (notes)</label>
-            <input type="text" class="admin-form__input" id="instrument-layout" placeholder="D3 A3 Bb3 C4 D4 E4 F4 G4 A4">
+            <input type="text" class="admin-form__input" id="instrument-layout" placeholder="D3 A3 Bb3 C4 D4 E4 F4 G4 A4" maxlength="200">
             <div class="admin-form__hint">Séparez les notes par des espaces</div>
           </div>
           
           <!-- Description -->
           <div class="admin-form__group">
             <label class="admin-form__label">Description</label>
-            <textarea class="admin-form__textarea" id="instrument-description" rows="3" placeholder="Décrivez l'instrument, son caractère sonore, ses particularités..."></textarea>
+            <textarea class="admin-form__textarea" id="instrument-description" rows="3" placeholder="Décrivez l'instrument, son caractère sonore, ses particularités..." maxlength="1000"></textarea>
           </div>
           
           <hr style="border: none; border-top: 1px solid var(--admin-border); margin: 1.5rem 0;">
@@ -706,7 +761,7 @@
             <div style="margin-top: 0.75rem;">
               <details>
                 <summary style="cursor: pointer; font-size: 0.8rem; color: var(--admin-text-muted);">Ou entrer des URLs manuellement</summary>
-                <textarea class="admin-form__textarea" id="instrument-images-urls" rows="2" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg" style="margin-top: 0.5rem;"></textarea>
+                <textarea class="admin-form__textarea" id="instrument-images-urls" rows="2" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg" style="margin-top: 0.5rem;" maxlength="5000"></textarea>
               </details>
             </div>
           </div>
@@ -719,43 +774,43 @@
             <div style="margin-top: 0.75rem;">
               <details>
                 <summary style="cursor: pointer; font-size: 0.8rem; color: var(--admin-text-muted);">Ou entrer une URL manuellement</summary>
-                <input type="text" class="admin-form__input" id="instrument-video-url" placeholder="https://youtube.com/watch?v=... ou URL directe" style="margin-top: 0.5rem;">
+                <input type="text" class="admin-form__input" id="instrument-video-url" placeholder="https://youtube.com/watch?v=... ou URL directe" style="margin-top: 0.5rem;" maxlength="500">
               </details>
             </div>
           </div>
           
           <div class="admin-form__group">
             <label class="admin-form__label">Lien Handpaner</label>
-            <input type="url" class="admin-form__input" id="instrument-handpaner" placeholder="https://handpaner.com/#D/-A-Bb-C-D-E-F-G-A-C_" oninput="AdminUI.parseHandpanerUrl()">
+            <input type="url" class="admin-form__input" id="instrument-handpaner" placeholder="https://handpaner.com/#D/-A-Bb-C-D-E-F-G-A-C_" maxlength="500" data-action="parse-handpaner-url" data-on="input">
             <div class="admin-form__hint">Coller le lien pour remplir automatiquement les notes</div>
           </div>
           
           <!-- Commentaires internes -->
           <div class="admin-form__group">
             <label class="admin-form__label">Commentaires internes</label>
-            <textarea class="admin-form__textarea" id="instrument-commentaires" rows="2" placeholder="Notes privées, historique..."></textarea>
+            <textarea class="admin-form__textarea" id="instrument-commentaires" rows="2" placeholder="Notes privées, historique..." maxlength="1000"></textarea>
           </div>
         </form>
       </div>
       <div class="admin-modal__footer">
-        <button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('instrument')">Annuler</button>
-        <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveInstrument()">Enregistrer</button>
+        <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="instrument">Annuler</button>
+        <button class="admin-btn admin-btn--primary" data-action="save-instrument">Enregistrer</button>
       </div>
     </div>
   </div>
 
-  <div class="admin-modal-overlay admin-modal--large" id="modal-location"><div class="admin-modal"><div class="admin-modal__header"><h3 class="admin-modal__title" id="modal-location-title">Nouvelle location</h3><button class="admin-modal__close" onclick="AdminUI.closeModal('location')">✕</button></div><div class="admin-modal__body"><form id="form-location"><input type="hidden" id="location-id"><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Client *</label><div class="searchable-select-container"><input type="text" class="admin-form__input searchable-input" id="location-client-search" placeholder="Rechercher..." autocomplete="off"><input type="hidden" id="location-client-id"><div class="searchable-dropdown" id="location-client-dropdown"></div></div></div><div class="admin-form__group"><label class="admin-form__label">Instrument *</label><div class="searchable-select-container"><input type="text" class="admin-form__input searchable-input" id="location-instrument-search" placeholder="Rechercher..." autocomplete="off"><input type="hidden" id="location-instrument-id"><div class="searchable-dropdown" id="location-instrument-dropdown"></div></div></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Date début *</label><input type="date" class="admin-form__input" id="location-date-debut" required></div><div class="admin-form__group"><label class="admin-form__label">Mode</label><select class="admin-form__select" id="location-mode"><option value="local">Local (chèque)</option><option value="distance">Distance (Swikly)</option></select></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Loyer (€)</label><input type="number" class="admin-form__input" id="location-loyer" value="50" min="0"></div><div class="admin-form__group"><label class="admin-form__label">Caution (€)</label><input type="number" class="admin-form__input" id="location-caution" value="1150" min="0"></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Caution statut</label><select class="admin-form__select" id="location-caution-statut"><option value="en_attente">En attente</option><option value="recue">Reçue</option><option value="restituee">Restituée</option></select></div><div class="admin-form__group"><label class="admin-form__label">Statut</label><select class="admin-form__select" id="location-statut"><option value="en_cours">En cours</option><option value="terminee">Terminée</option></select></div></div><div class="admin-form__group"><label class="admin-form__label">Notes</label><textarea class="admin-form__textarea" id="location-notes" rows="2"></textarea></div></form></div><div class="admin-modal__footer"><button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('location')">Annuler</button><button class="admin-btn admin-btn--primary" onclick="AdminUI.saveLocation()">Enregistrer</button></div></div></div>
+  <div class="admin-modal-overlay admin-modal--large" id="modal-location"><div class="admin-modal"><div class="admin-modal__header"><h3 class="admin-modal__title" id="modal-location-title">Nouvelle location</h3><button class="admin-modal__close" data-action="close-modal" data-param="location">✕</button></div><div class="admin-modal__body"><form id="form-location"><input type="hidden" id="location-id"><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Client *</label><div class="searchable-select-container"><input type="text" class="admin-form__input searchable-input" id="location-client-search" placeholder="Rechercher..." autocomplete="off"><input type="hidden" id="location-client-id"><div class="searchable-dropdown" id="location-client-dropdown"></div></div></div><div class="admin-form__group"><label class="admin-form__label">Instrument *</label><div class="searchable-select-container"><input type="text" class="admin-form__input searchable-input" id="location-instrument-search" placeholder="Rechercher..." autocomplete="off"><input type="hidden" id="location-instrument-id"><div class="searchable-dropdown" id="location-instrument-dropdown"></div></div></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Date début *</label><input type="date" class="admin-form__input" id="location-date-debut" required></div><div class="admin-form__group"><label class="admin-form__label">Mode</label><select class="admin-form__select" id="location-mode"><option value="local">Local (chèque)</option><option value="distance">Distance (Swikly)</option></select></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Loyer (€)</label><input type="number" class="admin-form__input" id="location-loyer" value="50" min="0"></div><div class="admin-form__group"><label class="admin-form__label">Caution (€)</label><input type="number" class="admin-form__input" id="location-caution" value="1150" min="0"></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Caution statut</label><select class="admin-form__select" id="location-caution-statut"><option value="en_attente">En attente</option><option value="recue">Reçue</option><option value="restituee">Restituée</option></select></div><div class="admin-form__group"><label class="admin-form__label">Statut</label><select class="admin-form__select" id="location-statut"><option value="en_cours">En cours</option><option value="terminee">Terminée</option></select></div></div><div class="admin-form__group"><label class="admin-form__label">Notes</label><textarea class="admin-form__textarea" id="location-notes" rows="2" maxlength="500"></textarea></div></form></div><div class="admin-modal__footer"><button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="location">Annuler</button><button class="admin-btn admin-btn--primary" data-action="save-location">Enregistrer</button></div></div></div>
 
-  <div class="admin-modal-overlay admin-modal--large" id="modal-commande"><div class="admin-modal"><div class="admin-modal__header"><h3 class="admin-modal__title" id="modal-commande-title">Nouvelle commande</h3><button class="admin-modal__close" onclick="AdminUI.closeModal('commande')">✕</button></div><div class="admin-modal__body"><form id="form-commande"><input type="hidden" id="commande-id"><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Client *</label><div class="searchable-select-container"><input type="text" class="admin-form__input searchable-input" id="commande-client-search" placeholder="Rechercher..." autocomplete="off"><input type="hidden" id="commande-client-id"><div class="searchable-dropdown" id="commande-client-dropdown"></div></div></div><div class="admin-form__group"><label class="admin-form__label">Date</label><input type="date" class="admin-form__input" id="commande-date"></div></div><div class="admin-form__group"><label class="admin-form__label">Description</label><textarea class="admin-form__textarea" id="commande-description" rows="2"></textarea></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Montant (€)</label><input type="number" class="admin-form__input" id="commande-montant" min="0" step="5"></div><div class="admin-form__group"><label class="admin-form__label">Acompte (€)</label><input type="number" class="admin-form__input" id="commande-acompte" min="0" value="0"></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Paiement</label><select class="admin-form__select" id="commande-paiement-statut"><option value="en_attente">En attente</option><option value="partiel">Partiel</option><option value="paye">Payé</option></select></div><div class="admin-form__group"><label class="admin-form__label">Statut</label><select class="admin-form__select" id="commande-statut"><option value="en_attente">En attente</option><option value="en_fabrication">En fabrication</option><option value="accordage">Accordage</option><option value="pret">Prêt</option><option value="expedie">Expédié</option><option value="livre">Livré</option><option value="annule">Annulé</option></select></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">N° suivi colis</label><input type="text" class="admin-form__input" id="commande-tracking" placeholder="Numéro de suivi"></div><div class="admin-form__group"><label class="admin-form__label">Livraison estimée</label><input type="text" class="admin-form__input" id="commande-delivery" placeholder="ex: 3-5 jours ouvrés"></div></div><div class="admin-form__group"><label class="admin-form__label">Notes</label><textarea class="admin-form__textarea" id="commande-notes" rows="2"></textarea></div></form></div><div class="admin-modal__footer"><button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('commande')">Annuler</button><button class="admin-btn admin-btn--primary" onclick="AdminUI.saveCommande()">Enregistrer</button></div></div></div>
+  <div class="admin-modal-overlay admin-modal--large" id="modal-commande"><div class="admin-modal"><div class="admin-modal__header"><h3 class="admin-modal__title" id="modal-commande-title">Nouvelle commande</h3><button class="admin-modal__close" data-action="close-modal" data-param="commande">✕</button></div><div class="admin-modal__body"><form id="form-commande"><input type="hidden" id="commande-id"><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Client *</label><div class="searchable-select-container"><input type="text" class="admin-form__input searchable-input" id="commande-client-search" placeholder="Rechercher..." autocomplete="off"><input type="hidden" id="commande-client-id"><div class="searchable-dropdown" id="commande-client-dropdown"></div></div></div><div class="admin-form__group"><label class="admin-form__label">Date</label><input type="date" class="admin-form__input" id="commande-date"></div></div><div class="admin-form__group"><label class="admin-form__label">Description</label><textarea class="admin-form__textarea" id="commande-description" rows="2" maxlength="1000"></textarea></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Montant (€)</label><input type="number" class="admin-form__input" id="commande-montant" min="0" step="5"></div><div class="admin-form__group"><label class="admin-form__label">Acompte (€)</label><input type="number" class="admin-form__input" id="commande-acompte" min="0" value="0"></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Paiement</label><select class="admin-form__select" id="commande-paiement-statut"><option value="en_attente">En attente</option><option value="partiel">Partiel</option><option value="paye">Payé</option></select></div><div class="admin-form__group"><label class="admin-form__label">Statut</label><select class="admin-form__select" id="commande-statut"><option value="en_attente">En attente</option><option value="en_fabrication">En fabrication</option><option value="accordage">Accordage</option><option value="pret">Prêt</option><option value="expedie">Expédié</option><option value="livre">Livré</option><option value="annule">Annulé</option></select></div></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">N° suivi colis</label><input type="text" class="admin-form__input" id="commande-tracking" placeholder="Numéro de suivi" maxlength="50"></div><div class="admin-form__group"><label class="admin-form__label">Livraison estimée</label><input type="text" class="admin-form__input" id="commande-delivery" placeholder="ex: 3-5 jours ouvrés" maxlength="100"></div></div><div class="admin-form__group"><label class="admin-form__label">Notes</label><textarea class="admin-form__textarea" id="commande-notes" rows="2" maxlength="500"></textarea></div></form></div><div class="admin-modal__footer"><button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="commande">Annuler</button><button class="admin-btn admin-btn--primary" data-action="save-commande">Enregistrer</button></div></div></div>
 
-  <div class="admin-modal-overlay admin-modal--large" id="modal-facture"><div class="admin-modal"><div class="admin-modal__header"><h3 class="admin-modal__title" id="modal-facture-title">Nouvelle facture</h3><button class="admin-modal__close" onclick="AdminUI.closeModal('facture')">✕</button></div><div class="admin-modal__body"><form id="form-facture"><input type="hidden" id="facture-id"><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Client *</label><div class="searchable-select-container"><input type="text" class="admin-form__input searchable-input" id="facture-client-search" placeholder="Rechercher..." autocomplete="off"><input type="hidden" id="facture-client-id"><div class="searchable-dropdown" id="facture-client-dropdown"></div></div></div><div class="admin-form__group"><label class="admin-form__label">Date</label><input type="date" class="admin-form__input" id="facture-date"></div><div class="admin-form__group"><label class="admin-form__label">Type</label><select class="admin-form__select" id="facture-type"><option value="vente">Vente</option><option value="acompte">Acompte</option><option value="solde">Solde</option><option value="location">Location</option><option value="prestation">Prestation</option><option value="avoir">Avoir</option></select></div></div><div class="admin-form__group"><label class="admin-form__label">Lignes</label><div class="facture-lignes" id="facture-lignes"></div><div style="margin-top:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;"><div class="searchable-select-container" style="flex:1; min-width:200px;"><input type="text" class="admin-form__input searchable-input" id="facture-instrument-search" placeholder="Ajouter un instrument..." autocomplete="off"><div class="searchable-dropdown" id="facture-instrument-dropdown"></div></div><button type="button" class="admin-btn admin-btn--secondary admin-btn--sm" onclick="AdminUI.addFactureLigne()">+ Ligne libre</button></div></div><div class="facture-totaux"><div class="facture-total-row"><span>Total HT</span><span id="facture-total-ht">0 €</span></div><div class="facture-total-row facture-total-row--final"><span>Total TTC</span><span id="facture-total-ttc">0 €</span></div></div><div class="form-row" style="margin-top:1rem;"><div class="admin-form__group"><label class="admin-form__label">Paiement</label><select class="admin-form__select" id="facture-paiement-statut"><option value="en_attente">En attente</option><option value="partiel">Partiel</option><option value="paye">Payé</option></select></div><div class="admin-form__group"><label class="admin-form__label">Échéance</label><input type="date" class="admin-form__input" id="facture-echeance"></div></div><div class="admin-form__group"><label class="admin-form__label">Notes</label><textarea class="admin-form__textarea" id="facture-notes" rows="2"></textarea></div></form></div><div class="admin-modal__footer"><button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('facture')">Annuler</button><button class="admin-btn admin-btn--primary" onclick="AdminUI.saveFacture()">Enregistrer</button></div></div></div>
+  <div class="admin-modal-overlay admin-modal--large" id="modal-facture"><div class="admin-modal"><div class="admin-modal__header"><h3 class="admin-modal__title" id="modal-facture-title">Nouvelle facture</h3><button class="admin-modal__close" data-action="close-modal" data-param="facture">✕</button></div><div class="admin-modal__body"><form id="form-facture"><input type="hidden" id="facture-id"><input type="hidden" id="facture-origine-id"><input type="hidden" id="facture-classification-origine"><div id="facture-avoir-info" style="display:none; background:#FEF3CD; border:1px solid #F0D77B; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.9rem; color:#92610C;"><strong>Avoir</strong> relatif à la facture <strong id="facture-avoir-ref"></strong></div><div class="form-row"><div class="admin-form__group"><label class="admin-form__label">Client *</label><div class="searchable-select-container"><input type="text" class="admin-form__input searchable-input" id="facture-client-search" placeholder="Rechercher..." autocomplete="off"><input type="hidden" id="facture-client-id"><div class="searchable-dropdown" id="facture-client-dropdown"></div></div></div><div class="admin-form__group"><label class="admin-form__label">Date</label><input type="date" class="admin-form__input" id="facture-date"></div><div class="admin-form__group"><label class="admin-form__label">Type</label><select class="admin-form__select" id="facture-type"><option value="vente">Vente</option><option value="acompte">Acompte</option><option value="solde">Solde</option><option value="location">Location</option><option value="prestation">Prestation</option><option value="reaccordage">Réaccordage</option></select></div></div><div class="admin-form__group"><label class="admin-form__label">Lignes</label><div class="facture-lignes" id="facture-lignes"></div><div style="margin-top:0.5rem; display:flex; gap:0.5rem; flex-wrap:wrap;"><div class="searchable-select-container" style="flex:1; min-width:200px;"><input type="text" class="admin-form__input searchable-input" id="facture-instrument-search" placeholder="Ajouter un instrument..." autocomplete="off"><div class="searchable-dropdown" id="facture-instrument-dropdown"></div></div><button type="button" class="admin-btn admin-btn--secondary admin-btn--sm" data-action="add-facture-ligne">+ Ligne libre</button></div></div><div class="facture-totaux"><div class="facture-total-row"><span>Total HT</span><span id="facture-total-ht">0 €</span></div><div class="facture-total-row facture-total-row--final"><span>Total TTC</span><span id="facture-total-ttc">0 €</span></div></div><div class="form-row" style="margin-top:1rem;"><div class="admin-form__group"><label class="admin-form__label">Paiement</label><select class="admin-form__select" id="facture-paiement-statut"><option value="en_attente">En attente</option><option value="partiel">Partiel</option><option value="paye">Payé</option></select></div><div class="admin-form__group"><label class="admin-form__label">Échéance</label><input type="date" class="admin-form__input" id="facture-echeance"></div></div><div class="admin-form__group"><label class="admin-form__label">Notes</label><textarea class="admin-form__textarea" id="facture-notes" rows="2" maxlength="500"></textarea></div></form></div><div class="admin-modal__footer"><button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="facture">Annuler</button><button class="admin-btn admin-btn--primary" data-action="save-facture">Enregistrer</button></div></div></div>
 
   <!-- Modal Accessoire -->
   <div class="admin-modal-overlay admin-modal--medium" id="modal-accessoire">
     <div class="admin-modal">
       <div class="admin-modal__header">
         <h3 class="admin-modal__title" id="modal-accessoire-title">Nouvel accessoire</h3>
-        <button class="admin-modal__close" onclick="AdminUI.closeModal('accessoire')">✕</button>
+        <button class="admin-modal__close" data-action="close-modal" data-param="accessoire">✕</button>
       </div>
       <div class="admin-modal__body">
         <form id="form-accessoire">
@@ -764,7 +819,7 @@
           <div class="form-row">
             <div class="admin-form__group">
               <label class="admin-form__label">Nom *</label>
-              <input type="text" class="admin-form__input" id="accessoire-nom" required placeholder="Housse rigide Evatek">
+              <input type="text" class="admin-form__input" id="accessoire-nom" required placeholder="Housse rigide Evatek" maxlength="100">
             </div>
             <div class="admin-form__group">
               <label class="admin-form__label">Catégorie *</label>
@@ -800,7 +855,7 @@
           
           <div class="admin-form__group">
             <label class="admin-form__label">Description</label>
-            <textarea class="admin-form__textarea" id="accessoire-description" rows="3" placeholder="Description de l'accessoire..."></textarea>
+            <textarea class="admin-form__textarea" id="accessoire-description" rows="3" placeholder="Description de l'accessoire..." maxlength="1000"></textarea>
           </div>
           
           <div class="admin-form__group">
@@ -815,7 +870,7 @@
             <div style="margin-top: 0.5rem;">
               <details>
                 <summary style="cursor: pointer; font-size: 0.8rem; color: var(--admin-text-muted);">Ou entrer une URL manuellement</summary>
-                <input type="text" class="admin-form__input" id="accessoire-image-url" placeholder="https://..." style="margin-top: 0.5rem;">
+                <input type="text" class="admin-form__input" id="accessoire-image-url" placeholder="https://..." style="margin-top: 0.5rem;" maxlength="500">
               </details>
             </div>
           </div>
@@ -849,8 +904,8 @@
         </form>
       </div>
       <div class="admin-modal__footer">
-        <button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('accessoire')">Annuler</button>
-        <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveAccessoire()">Enregistrer</button>
+        <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="accessoire">Annuler</button>
+        <button class="admin-btn admin-btn--primary" data-action="save-accessoire">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -860,7 +915,7 @@
     <div class="admin-modal">
       <div class="admin-modal__header">
         <h3 class="admin-modal__title" id="modal-materiau-title">Nouveau matériau</h3>
-        <button class="admin-modal__close" onclick="AdminUI.closeModal('materiau')">✕</button>
+        <button class="admin-modal__close" data-action="close-modal" data-param="materiau">✕</button>
       </div>
       <div class="admin-modal__body">
         <form id="form-materiau">
@@ -874,14 +929,14 @@
             </div>
             <div class="admin-form__group" style="flex: 1;">
               <label class="admin-form__label">Nom complet *</label>
-              <input type="text" class="admin-form__input" id="materiau-nom" required placeholder="Acier Nitruré">
+              <input type="text" class="admin-form__input" id="materiau-nom" required placeholder="Acier Nitruré" maxlength="100">
             </div>
           </div>
 
           <div class="form-row">
             <div class="admin-form__group">
               <label class="admin-form__label">Nom court</label>
-              <input type="text" class="admin-form__input" id="materiau-nom-court" placeholder="Nitrure">
+              <input type="text" class="admin-form__input" id="materiau-nom-court" placeholder="Nitrure" maxlength="20">
               <div class="admin-form__hint">Affiché dans les specs</div>
             </div>
             <div class="admin-form__group">
@@ -893,7 +948,7 @@
 
           <div class="admin-form__group">
             <label class="admin-form__label">Description</label>
-            <textarea class="admin-form__textarea" id="materiau-description" rows="2" placeholder="Description du matériau..."></textarea>
+            <textarea class="admin-form__textarea" id="materiau-description" rows="2" placeholder="Description du matériau..." maxlength="500"></textarea>
           </div>
 
           <div class="form-row">
@@ -901,7 +956,7 @@
               <label class="admin-form__label">Couleur (hex)</label>
               <div style="display: flex; gap: 0.5rem; align-items: center;">
                 <input type="color" id="materiau-couleur-picker" value="#C9A227" style="width: 40px; height: 32px; padding: 0; border: 1px solid var(--admin-border); border-radius: 4px; cursor: pointer;">
-                <input type="text" class="admin-form__input" id="materiau-couleur" placeholder="#C9A227" style="flex: 1;">
+                <input type="text" class="admin-form__input" id="materiau-couleur" placeholder="#C9A227" style="flex: 1;" maxlength="7">
               </div>
             </div>
             <div class="admin-form__group">
@@ -927,18 +982,18 @@
         </form>
       </div>
       <div class="admin-modal__footer">
-        <button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('materiau')">Annuler</button>
-        <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveMateriau()">Enregistrer</button>
+        <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="materiau">Annuler</button>
+        <button class="admin-btn admin-btn--primary" data-action="save-materiau">Enregistrer</button>
       </div>
     </div>
   </div>
 
   <!-- Modal Gamme -->
-  <div class="admin-modal-overlay admin-modal--medium" id="modal-gamme">
+  <div class="admin-modal-overlay admin-modal--large" id="modal-gamme">
     <div class="admin-modal">
       <div class="admin-modal__header">
         <h3 class="admin-modal__title" id="modal-gamme-title">Nouvelle gamme</h3>
-        <button class="admin-modal__close" onclick="AdminUI.closeModal('gamme')">✕</button>
+        <button class="admin-modal__close" data-action="close-modal" data-param="gamme">&#10005;</button>
       </div>
       <div class="admin-modal__body">
         <form id="form-gamme">
@@ -946,19 +1001,19 @@
           <div class="form-row">
             <div class="admin-form__group" style="max-width: 140px;">
               <label class="admin-form__label">Code *</label>
-              <input type="text" class="admin-form__input" id="gamme-code" required placeholder="kurd" style="text-transform: lowercase;">
+              <input type="text" class="admin-form__input" id="gamme-code" required placeholder="kurd" style="text-transform: lowercase;" maxlength="20">
               <div class="admin-form__hint">Identifiant unique</div>
             </div>
             <div class="admin-form__group" style="flex: 1;">
               <label class="admin-form__label">Nom *</label>
-              <input type="text" class="admin-form__input" id="gamme-nom" required placeholder="Kurd">
+              <input type="text" class="admin-form__input" id="gamme-nom" required placeholder="Kurd" maxlength="100">
             </div>
           </div>
           <div class="form-row">
             <div class="admin-form__group">
-              <label class="admin-form__label">Catégorie</label>
+              <label class="admin-form__label">Cat&eacute;gorie</label>
               <select class="admin-form__select" id="gamme-categorie">
-                <option value="debutant">Débutant</option>
+                <option value="debutant">D&eacute;butant</option>
                 <option value="mineur">Mineur</option>
                 <option value="majeur">Majeur</option>
                 <option value="modal">Modal</option>
@@ -970,7 +1025,7 @@
             <div class="admin-form__group">
               <label class="admin-form__label">Mode musical</label>
               <select class="admin-form__select" id="gamme-mode">
-                <option value="aeolian">Éolien (mineur naturel)</option>
+                <option value="aeolian">&Eacute;olien (mineur naturel)</option>
                 <option value="dorian">Dorien</option>
                 <option value="phrygian">Phrygien</option>
                 <option value="phrygian_dominant">Phrygien dominant</option>
@@ -983,7 +1038,7 @@
           </div>
           <div class="form-row">
             <div class="admin-form__group">
-              <label class="admin-form__label">Tonalité de base</label>
+              <label class="admin-form__label">Tonalit&eacute; de base</label>
               <input type="text" class="admin-form__input" id="gamme-baseroot" placeholder="D" maxlength="2">
             </div>
             <div class="admin-form__group">
@@ -997,12 +1052,35 @@
           </div>
           <div class="admin-form__group">
             <label class="admin-form__label">Description</label>
-            <textarea class="admin-form__textarea" id="gamme-description" rows="2" placeholder="Description de la gamme..."></textarea>
+            <textarea class="admin-form__textarea" id="gamme-description" rows="2" placeholder="Description de la gamme..." maxlength="500"></textarea>
           </div>
           <div class="admin-form__group">
             <label class="admin-form__label">Ambiance</label>
-            <input type="text" class="admin-form__input" id="gamme-mood" placeholder="Ex: Mélancolique, introspectif">
+            <input type="text" class="admin-form__input" id="gamme-mood" placeholder="Ex: M&eacute;lancolique, introspectif" maxlength="100">
           </div>
+
+          <!-- Notes de base -->
+          <div class="admin-form__group">
+            <label class="admin-form__label">Notes de base</label>
+            <input type="text" class="admin-form__input" id="gamme-basenotes" placeholder="D3, A3, Bb3, C4, D4, E4, F4, G4, A4" maxlength="500">
+            <div class="admin-form__hint">Notes de r&eacute;f&eacute;rence de la gamme (s&eacute;par&eacute;es par des virgules)</div>
+          </div>
+
+          <!-- Patterns configurateur -->
+          <div class="admin-form__group" id="gamme-patterns-section">
+            <label class="admin-form__label" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Patterns configurateur (9-17 notes)</span>
+              <button type="button" class="admin-btn admin-btn--sm admin-btn--secondary" data-action="import-patterns-from-scales-data" id="gamme-import-patterns-btn">
+                Importer existants
+              </button>
+            </label>
+            <div id="gamme-patterns-container" style="display: grid; gap: 0.4rem; margin-top: 0.5rem;"></div>
+            <div class="admin-form__hint">
+              Format : <code>Root/note1-note2-(bottom)-[mutant]</code> &mdash; Laisser vide = non disponible pour ce nombre de notes.
+            </div>
+          </div>
+
+          <!-- Checkboxes -->
           <div class="form-row" style="margin-top: 1rem;">
             <div class="admin-form__group">
               <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
@@ -1015,14 +1093,14 @@
                 <input type="checkbox" id="gamme-visible-config" style="width: 18px; height: 18px;">
                 <span>Visible dans le configurateur</span>
               </label>
-              <div class="admin-form__hint">Nécessite des patterns de layout dans scales-data.js</div>
+              <div class="admin-form__hint">N&eacute;cessite des patterns (ci-dessus ou dans scales-data.js)</div>
             </div>
           </div>
         </form>
       </div>
       <div class="admin-modal__footer">
-        <button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('gamme')">Annuler</button>
-        <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveGamme()">Enregistrer</button>
+        <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="gamme">Annuler</button>
+        <button class="admin-btn admin-btn--primary" data-action="save-gamme">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -1032,14 +1110,20 @@
     <div class="admin-modal">
       <div class="admin-modal__header">
         <h3 class="admin-modal__title" id="modal-gamme-batch-title">Nouveau lot de gammes</h3>
-        <button class="admin-modal__close" onclick="AdminUI.closeModal('gamme-batch')">&#10005;</button>
+        <button class="admin-modal__close" data-action="close-modal" data-param="gamme-batch">&#10005;</button>
       </div>
       <div class="admin-modal__body">
         <form id="form-gamme-batch">
           <input type="hidden" id="gamme-batch-id">
-          <div class="admin-form__group">
-            <label class="admin-form__label">Nom du lot *</label>
-            <input type="text" class="admin-form__input" id="gamme-batch-nom" required placeholder="Ex: Collection Printemps 2026">
+          <div class="form-row">
+            <div class="admin-form__group" style="flex: 1;">
+              <label class="admin-form__label">Nom du lot *</label>
+              <input type="text" class="admin-form__input" id="gamme-batch-nom" required placeholder="Ex: Débutant, Modal, Oriental..." maxlength="100">
+            </div>
+            <div class="admin-form__group" style="max-width: 80px;">
+              <label class="admin-form__label">Ordre</label>
+              <input type="number" class="admin-form__input" id="gamme-batch-ordre" min="1" value="1">
+            </div>
           </div>
           <div class="admin-form__group">
             <label class="admin-form__label">Gammes incluses *</label>
@@ -1050,8 +1134,8 @@
         </form>
       </div>
       <div class="admin-modal__footer">
-        <button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('gamme-batch')">Annuler</button>
-        <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveGammeBatch()">Enregistrer</button>
+        <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="gamme-batch">Annuler</button>
+        <button class="admin-btn admin-btn--primary" data-action="save-gamme-batch">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -1061,7 +1145,7 @@
     <div class="admin-modal">
       <div class="admin-modal__header">
         <h3 class="admin-modal__title" id="modal-taille-title">Nouvelle taille</h3>
-        <button class="admin-modal__close" onclick="AdminUI.closeModal('taille')">✕</button>
+        <button class="admin-modal__close" data-action="close-modal" data-param="taille">✕</button>
       </div>
       <div class="admin-modal__body">
         <form id="form-taille">
@@ -1069,12 +1153,12 @@
           <div class="form-row">
             <div class="admin-form__group" style="max-width: 100px;">
               <label class="admin-form__label">Code *</label>
-              <input type="text" class="admin-form__input" id="taille-code" required placeholder="53">
+              <input type="text" class="admin-form__input" id="taille-code" required placeholder="53" maxlength="10">
               <div class="admin-form__hint">Ex: 45, 50, 53</div>
             </div>
             <div class="admin-form__group" style="flex: 1;">
               <label class="admin-form__label">Label</label>
-              <input type="text" class="admin-form__input" id="taille-label" placeholder="53 cm">
+              <input type="text" class="admin-form__input" id="taille-label" placeholder="53 cm" maxlength="50">
             </div>
             <div class="admin-form__group">
               <label class="admin-form__label">Malus prix (€)</label>
@@ -1083,7 +1167,7 @@
           </div>
           <div class="admin-form__group">
             <label class="admin-form__label">Description</label>
-            <input type="text" class="admin-form__input" id="taille-description" placeholder="Standard — meilleure résonance">
+            <input type="text" class="admin-form__input" id="taille-description" placeholder="Standard — meilleure résonance" maxlength="200">
           </div>
           <div class="form-row">
             <div class="admin-form__group">
@@ -1103,11 +1187,16 @@
               </label>
             </div>
           </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label">Notes interdites (faisabilité)</label>
+            <input type="text" class="admin-form__input" id="taille-forbidden-notes" placeholder="Ex: C#5, B4, A#4" maxlength="200">
+            <div class="admin-form__hint">Notes en conflit avec la cavité pour cette taille. Format : Note+Octave, séparées par des virgules.</div>
+          </div>
         </form>
       </div>
       <div class="admin-modal__footer">
-        <button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('taille')">Annuler</button>
-        <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveTaille()">Enregistrer</button>
+        <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="taille">Annuler</button>
+        <button class="admin-btn admin-btn--primary" data-action="save-taille">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -1117,7 +1206,7 @@
     <div class="admin-modal">
       <div class="admin-modal__header">
         <h3 class="admin-modal__title" id="modal-professeur-title">Modifier le professeur</h3>
-        <button class="admin-modal__close" onclick="AdminUI.closeModal('professeur')">✕</button>
+        <button class="admin-modal__close" data-action="close-modal" data-param="professeur">✕</button>
       </div>
       <div class="admin-modal__body">
         <div id="edit-teacher-form-container" style="background:#fff; color:#333; padding: 1rem; border-radius: 8px;">
@@ -1125,8 +1214,8 @@
         </div>
       </div>
       <div class="admin-modal__footer">
-        <button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('professeur')">Annuler</button>
-        <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveTeacher()">Enregistrer</button>
+        <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="professeur">Annuler</button>
+        <button class="admin-btn admin-btn--primary" data-action="save-teacher">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -1136,7 +1225,7 @@
     <div class="admin-modal">
       <div class="admin-modal__header">
         <h3 class="admin-modal__title" id="modal-media-title">Ajouter un média</h3>
-        <button class="admin-modal__close" onclick="AdminUI.closeModal('media')">✕</button>
+        <button class="admin-modal__close" data-action="close-modal" data-param="media">✕</button>
       </div>
       <div class="admin-modal__body">
         <form id="form-media">
@@ -1144,12 +1233,12 @@
           
           <div class="admin-form__group">
             <label class="admin-form__label">Titre *</label>
-            <input type="text" class="admin-form__input" id="media-titre" required placeholder="Ma création">
+            <input type="text" class="admin-form__input" id="media-titre" required placeholder="Ma création" maxlength="100">
           </div>
           
           <div class="admin-form__group">
             <label class="admin-form__label">Description</label>
-            <textarea class="admin-form__textarea" id="media-description" rows="2" placeholder="Description du média..."></textarea>
+            <textarea class="admin-form__textarea" id="media-description" rows="2" placeholder="Description du média..." maxlength="500"></textarea>
           </div>
           
           <div class="admin-form__group">
@@ -1163,7 +1252,7 @@
             </label>
             <details style="margin-top: 0.5rem;">
               <summary style="cursor: pointer; font-size: 0.8rem; color: var(--admin-text-muted);">Ou entrer une URL</summary>
-              <input type="text" class="admin-form__input" id="media-image-url" placeholder="https://..." style="margin-top: 0.5rem;">
+              <input type="text" class="admin-form__input" id="media-image-url" placeholder="https://..." style="margin-top: 0.5rem;" maxlength="500">
             </details>
           </div>
           
@@ -1173,14 +1262,14 @@
             <div id="media-video-preview" style="margin-top: 0.75rem;"></div>
             <details style="margin-top: 0.5rem;">
               <summary style="cursor: pointer; font-size: 0.8rem; color: var(--admin-text-muted);">Ou entrer une URL YouTube/Vimeo</summary>
-              <input type="text" class="admin-form__input" id="media-video-url" placeholder="https://youtube.com/..." style="margin-top: 0.5rem;">
+              <input type="text" class="admin-form__input" id="media-video-url" placeholder="https://youtube.com/..." style="margin-top: 0.5rem;" maxlength="500">
             </details>
           </div>
           
           <div class="form-row">
             <div class="admin-form__group">
               <label class="admin-form__label">Instrument lié</label>
-              <input type="text" class="admin-form__input" id="media-instrument" placeholder="D Kurd 9 notes">
+              <input type="text" class="admin-form__input" id="media-instrument" placeholder="D Kurd 9 notes" maxlength="100">
             </div>
             <div class="admin-form__group">
               <label class="admin-form__label">Date</label>
@@ -1190,8 +1279,8 @@
         </form>
       </div>
       <div class="admin-modal__footer">
-        <button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('media')">Annuler</button>
-        <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveMedia()">Enregistrer</button>
+        <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="media">Annuler</button>
+        <button class="admin-btn admin-btn--primary" data-action="save-media">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -1201,7 +1290,7 @@
     <div class="admin-modal">
       <div class="admin-modal__header">
         <h3 class="admin-modal__title" id="modal-article-title">Nouvel article</h3>
-        <button class="admin-modal__close" onclick="AdminUI.closeModal('article')">✕</button>
+        <button class="admin-modal__close" data-action="close-modal" data-param="article">✕</button>
       </div>
       <div class="admin-modal__body">
         <form id="form-article">
@@ -1209,7 +1298,7 @@
           
           <div class="admin-form__group">
             <label class="admin-form__label">Titre *</label>
-            <input type="text" class="admin-form__input" id="article-titre" required placeholder="Titre de l'article">
+            <input type="text" class="admin-form__input" id="article-titre" required placeholder="Titre de l'article" maxlength="200">
           </div>
           
           <div class="form-row">
@@ -1242,7 +1331,7 @@
           
           <div class="admin-form__group">
             <label class="admin-form__label">Résumé</label>
-            <textarea class="admin-form__textarea" id="article-resume" rows="2" placeholder="Résumé affiché dans la liste..."></textarea>
+            <textarea class="admin-form__textarea" id="article-resume" rows="2" placeholder="Résumé affiché dans la liste..." maxlength="500"></textarea>
           </div>
           
           <div class="admin-form__group">
@@ -1261,8 +1350,8 @@
         </form>
       </div>
       <div class="admin-modal__footer">
-        <button class="admin-btn admin-btn--secondary" onclick="AdminUI.closeModal('article')">Annuler</button>
-        <button class="admin-btn admin-btn--primary" onclick="AdminUI.saveArticle()">Enregistrer</button>
+        <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="article">Annuler</button>
+        <button class="admin-btn admin-btn--primary" data-action="save-article">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -1272,31 +1361,31 @@
     <div class="modal">
       <div class="modal__header">
         <h3 class="modal__title">Contact</h3>
-        <button class="modal__close" onclick="closeContactModal()" aria-label="Fermer">&times;</button>
+        <button class="modal__close" data-action="close-contact-modal" aria-label="Fermer">&times;</button>
       </div>
       <div class="modal__body">
-        <form id="contact-form" onsubmit="submitContactForm(event)">
+        <form id="contact-form" data-action="submit-contact-form" data-on="submit">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="contact-firstname">Prénom *</label>
-              <input type="text" id="contact-firstname" name="firstname" class="form-input" required>
+              <input type="text" id="contact-firstname" name="firstname" class="form-input" required maxlength="50">
             </div>
             <div class="form-group">
               <label class="form-label" for="contact-lastname">Nom *</label>
-              <input type="text" id="contact-lastname" name="lastname" class="form-input" required>
+              <input type="text" id="contact-lastname" name="lastname" class="form-input" required maxlength="50">
             </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="contact-email">Email *</label>
-            <input type="email" id="contact-email" name="email" class="form-input" required>
+            <input type="email" id="contact-email" name="email" class="form-input" required maxlength="255">
           </div>
           <div class="form-group">
             <label class="form-label" for="contact-phone">Téléphone</label>
-            <input type="tel" id="contact-phone" name="phone" class="form-input">
+            <input type="tel" id="contact-phone" name="phone" class="form-input" maxlength="20">
           </div>
           <div class="form-group">
             <label class="form-label" for="contact-message">Votre message *</label>
-            <textarea id="contact-message" name="message" class="form-textarea" rows="4" required></textarea>
+            <textarea id="contact-message" name="message" class="form-textarea" rows="4" required maxlength="2000"></textarea>
           </div>
           <button type="submit" class="btn btn--primary btn--full">Envoyer</button>
         </form>
@@ -1309,38 +1398,50 @@
 
   <!-- SCRIPTS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
-  <script src="js/vendor/chart.umd.js" defer></script>
+  <!-- Chart.js chargé dynamiquement par admin-ui-content.js (lazy-load) -->
   <!-- Cookie Consent -->
-  <script src="js/core/cookie-consent.js"></script>
+  <script src="js/core/cookie-consent.js?v=3.5.3"></script>
+  <script src="js/core/utils.js?v=3.5.3"></script>
   <!-- Configuration Supabase (copier config.example.js vers config.js) -->
-  <script src="js/core/config.js"></script>
+  <script src="js/core/config.js?v=3.5.3"></script>
   <!-- Supabase -->
-  <script src="js/vendor/supabase.js"></script>
-  <script src="js/services/supabase-client.js"></script>
-  <script src="js/services/supabase-auth.js"></script>
-  <script src="js/admin/admin-core.js"></script>
-  <script src="js/admin/gestion.js" defer></script>
-  <script src="js/admin/gestion-pdf.js" defer></script>
-  <script src="js/admin/gestion-boutique.js" defer></script>
-  <script src="js/features/mistral-stats.js" defer></script>
-  <script src="js/features/upload.js" defer></script>
-  <script src="js/features/teacher-form.js" defer></script>
-  <script src="js/vendor/quill.min.js" defer></script>
-  <script src="js/data/materiaux-data.js" defer></script>
-  <script src="js/data/gammes-data.js" defer></script>
-  <script src="js/data/tailles-data.js" defer></script>
+  <script src="js/vendor/supabase.js?v=3.5.3"></script>
+  <script src="js/services/supabase-client.js?v=3.5.3"></script>
+  <script src="js/services/supabase-auth.js?v=3.5.3"></script>
+  <script src="js/admin/admin-core.js?v=3.5.3"></script>
+  <script src="js/vendor/purify.min.js?v=3.5.3" defer></script>
+  <script src="js/admin/gestion.js?v=3.5.3" defer></script>
+  <script src="js/admin/gestion-pdf.js?v=3.5.3" defer></script>
+  <script src="js/admin/gestion-boutique.js?v=3.5.3" defer></script>
+  <script src="js/features/mistral-stats.js?v=3.5.3" defer></script>
+  <script src="js/features/upload.js?v=3.5.3" defer></script>
+  <script src="js/features/teacher-form.js?v=3.5.3" defer></script>
+  <!-- Quill.js chargé dynamiquement par admin-ui-content.js (lazy-load) -->
+  <script src="js/data/scales-data.js?v=3.5.3" defer></script>
+  <script src="js/data/materiaux-data.js?v=3.5.3" defer></script>
+  <script src="js/data/gammes-data.js?v=3.5.3" defer></script>
+  <script src="js/data/tailles-data.js?v=3.5.3" defer></script>
+  <script src="js/features/feasibility-module.js?v=3.5.3" defer></script>
+  <!-- Admin Event Delegation (remplace les inline onclick) -->
+  <script src="js/admin/admin-delegation.js?v=3.5.3" defer></script>
   <!-- Admin UI Modulaire -->
-  <script src="js/admin/admin-ui-core.js" defer></script>
-  <script src="js/admin/admin-ui-gestion.js" defer></script>
-  <script src="js/admin/admin-ui-boutique.js" defer></script>
-  <script src="js/admin/admin-ui-content.js" defer></script>
-  <script src="js/admin/admin-ui-config.js" defer></script>
-  <script src="js/admin/admin-ui-modals.js" defer></script>
-  <script src="js/admin/admin-ui-compta.js" defer></script>
-  <script src="js/admin/admin-vendor-check.js" defer></script>
+  <script src="js/admin/admin-ui-core.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-gestion.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-boutique.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-content.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-config.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-modals.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-modals-clients.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-modals-instruments.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-modals-locations.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-modals-commandes.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-modals-factures.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-modals-teachers.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-ui-compta.js?v=3.5.3" defer></script>
+  <script src="js/admin/admin-vendor-check.js?v=3.5.3" defer></script>
   
-  <script src="js/pages/admin-init.js" defer></script>
-   <script src="js/services/supabase-sync.js"></script>
+  <script src="js/pages/admin-init.js?v=3.5.3" defer></script>
+   <script src="js/services/supabase-sync.js?v=3.5.3"></script>
 
 </body>
 </html>

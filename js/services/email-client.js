@@ -90,6 +90,29 @@
     },
 
     /**
+     * Envoyer un rapport comptable mensuel
+     * @param {Object} reportData - Donnees du rapport
+     * @param {string} reportData.emailDest - Email de destination
+     * @param {string} reportData.moisLabel - Label du mois (ex: "Fevrier 2026")
+     * @param {string} reportData.mois - Mois format YYYY-MM
+     * @param {number} reportData.totalBIC - Total BIC
+     * @param {number} reportData.totalBNC - Total BNC
+     * @param {number} reportData.totalAvoir - Total avoirs
+     * @param {number} reportData.totalCA - Total CA
+     * @param {number} reportData.nbFactures - Nombre de factures
+     * @param {Array} reportData.factures - Detail des factures
+     * @param {Object} reportData.config - Config entreprise (nom, siret)
+     * @param {string} [reportData.pdfBase64] - PDF en base64 (optionnel)
+     * @returns {Promise<Object>} - Resultat de l'envoi
+     */
+    async sendMonthlyReport(reportData) {
+      return this._send({
+        emailType: 'monthly_report',
+        ...reportData
+      });
+    },
+
+    /**
      * Méthode interne d'envoi
      * @private
      */

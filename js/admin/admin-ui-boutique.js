@@ -13,8 +13,11 @@
 
   const { $, $$, escapeHtml, formatPrice, Toast, Confirm, Modal, Storage } = window.AdminUIHelpers;
 
-  // État local du module
-  let accessoireUploadedImage = null;
+  // État local du module (non-modal, regroupé)
+  const _boutiqueState = {
+    selectedInstrument: null,
+    publishAfterCreation: false
+  };
 
   function renderBoutique() {
     renderBoutiqueInstruments();
@@ -66,8 +69,8 @@
           </div>
         </div>
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-          <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editInstrument('${i.id}')">Modifier</button>
-          <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.retirerDeBoutique('${i.id}')">Retirer</button>
+          <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit-instrument" data-id="${i.id}">Modifier</button>
+          <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="retirer-de-boutique" data-id="${i.id}">Retirer</button>
         </div>
       </div>
     `).join('');
@@ -124,11 +127,11 @@
           </div>
         </div>
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-          <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editAccessoire('${a.id}')">Modifier</button>
-          <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.toggleAccessoire('${a.id}')">
+          <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit-accessoire" data-id="${a.id}">Modifier</button>
+          <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="toggle-accessoire" data-id="${a.id}">
             ${a.statut === 'en_ligne' ? 'Masquer' : 'Mettre en ligne'}
           </button>
-          <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.deleteAccessoire('${a.id}')">Supprimer</button>
+          <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="delete-accessoire" data-id="${a.id}">Supprimer</button>
         </div>
       </div>
     `).join('');
@@ -144,18 +147,15 @@
     Toast.success('Instrument retiré de la boutique');
   }
   
-  // Variable pour stocker l'instrument sélectionné pour publication
-  let selectedInstrumentForBoutique = null;
-  
   // Initialiser le searchable select pour les instruments disponibles
   function initBoutiqueInstrumentSelect() {
     const searchInput = $('#boutique-instrument-search');
     const dropdown = $('#boutique-instrument-dropdown');
-    
+
     if (!searchInput || !dropdown) return;
-    
+
     // Reset
-    selectedInstrumentForBoutique = null;
+    _boutiqueState.selectedInstrument = null;
     searchInput.value = '';
     
     searchInput.addEventListener('input', (e) => {
@@ -200,7 +200,7 @@
         const id = item.dataset.id;
         const instrument = MistralGestion.Instruments.get(id);
         if (instrument) {
-          selectedInstrumentForBoutique = instrument;
+          _boutiqueState.selectedInstrument = instrument;
           searchInput.value = instrument.nom || instrument.reference;
           dropdown.style.display = 'none';
         }
@@ -236,22 +236,22 @@
   
   // Publier l'instrument sélectionné
   function publierInstrumentSelectionne() {
-    if (!selectedInstrumentForBoutique) {
+    if (!_boutiqueState.selectedInstrument) {
       Toast.error('Sélectionnez un instrument à publier');
       return;
     }
-    
+
     // Vérifier qu'il a un prix
-    if (!selectedInstrumentForBoutique.prix_vente || selectedInstrumentForBoutique.prix_vente <= 0) {
+    if (!_boutiqueState.selectedInstrument.prix_vente || _boutiqueState.selectedInstrument.prix_vente <= 0) {
       Toast.error('Cet instrument n\'a pas de prix de vente défini');
       return;
     }
-    
+
     // Passer en statut "en_ligne"
-    MistralGestion.Instruments.update(selectedInstrumentForBoutique.id, { statut: 'en_ligne' });
-    
+    MistralGestion.Instruments.update(_boutiqueState.selectedInstrument.id, { statut: 'en_ligne' });
+
     // Reset
-    selectedInstrumentForBoutique = null;
+    _boutiqueState.selectedInstrument = null;
     if ($('#boutique-instrument-search')) $('#boutique-instrument-search').value = '';
     
     renderBoutique();
@@ -259,20 +259,17 @@
     Toast.success('Instrument publié dans la boutique');
   }
   
-  // Variable pour indiquer qu'on vient de la boutique
-  let publishAfterInstrumentCreation = false;
-
   function shouldPublishAfterCreation() {
-    return publishAfterInstrumentCreation;
+    return _boutiqueState.publishAfterCreation;
   }
 
   function resetPublishAfterCreation() {
-    publishAfterInstrumentCreation = false;
+    _boutiqueState.publishAfterCreation = false;
   }
 
   // Créer un instrument et le publier
   function creerEtPublierInstrument() {
-    publishAfterInstrumentCreation = true;
+    _boutiqueState.publishAfterCreation = true;
     AdminUI.showModal('instrument');
   }
   
@@ -280,16 +277,14 @@
   // GESTION DES ACCESSOIRES
   // ============================================================================
 
-  // Note: accessoireUploadedImage est déclaré en haut du module (ligne 17)
-
   function initAccessoireUpload() {
     if (typeof MistralUpload === 'undefined') {
       console.warn('[Admin UI] MistralUpload non disponible');
       return;
     }
-    
-    // Reset
-    accessoireUploadedImage = null;
+
+    // Reset (scopé au modal accessoire)
+    AdminUI.getModalState('accessoire').uploadedImage = null;
     
     const container = $('#accessoire-image-upload');
     if (container) {
@@ -302,7 +297,7 @@
           try {
             const compress = AdminUI.isCompressionEnabled ? AdminUI.isCompressionEnabled('accessoire') : false;
             const base64 = AdminUI.fileToBase64 ? await AdminUI.fileToBase64(file, compress, 'standard') : await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
-            accessoireUploadedImage = {
+            AdminUI.getModalState('accessoire').uploadedImage = {
               type: 'base64',
               data: base64,
               name: file.name
@@ -336,21 +331,22 @@
     container.innerHTML = `
       <div class="upload-preview-item" style="width: 120px; height: 120px;">
         <img src="${src}" alt="Preview">
-        <button type="button" class="upload-preview-remove" onclick="AdminUI.removeAccessoireImage()">×</button>
+        <button type="button" class="upload-preview-remove" data-action="remove-accessoire-image">×</button>
       </div>
     `;
   }
   
   function removeAccessoireImage() {
-    accessoireUploadedImage = null;
+    AdminUI.getModalState('accessoire').uploadedImage = null;
     const preview = $('#accessoire-image-preview');
     if (preview) preview.innerHTML = '';
   }
   
   function getAccessoireImageForSave() {
     // Priorité : image uploadée > URL manuelle
-    if (accessoireUploadedImage) {
-      return accessoireUploadedImage.data;
+    const accState = AdminUI.getModalState('accessoire');
+    if (accState.uploadedImage) {
+      return accState.uploadedImage.data;
     }
     
     const urlManuelle = $('#accessoire-image-url')?.value?.trim();
@@ -362,14 +358,15 @@
   }
   
   function loadAccessoireImageForEdit(accessoire) {
-    accessoireUploadedImage = null;
+    const accState = AdminUI.getModalState('accessoire');
+    accState.uploadedImage = null;
     const preview = $('#accessoire-image-preview');
     if (preview) preview.innerHTML = '';
     if ($('#accessoire-image-url')) $('#accessoire-image-url').value = '';
-    
+
     if (accessoire.image) {
       // Charger l'image existante
-      accessoireUploadedImage = {
+      accState.uploadedImage = {
         type: 'url',
         data: accessoire.image
       };
@@ -435,7 +432,6 @@
     
     Storage.set('mistral_accessoires', accessoires);
     AdminUI.closeModal('accessoire');
-    accessoireUploadedImage = null;
     renderBoutique();
   }
   

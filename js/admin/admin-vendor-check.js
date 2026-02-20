@@ -240,7 +240,7 @@
 
       // Check now button
       html += '<div style="margin-top: 0.75rem;">';
-      html += '<button onclick="VendorCheck.forceCheck()" style="background: none; border: 1px solid var(--admin-border); color: var(--admin-text-muted); padding: 0.375rem 0.75rem; border-radius: var(--admin-radius-sm); cursor: pointer; font-size: 0.8125rem; transition: var(--admin-transition);" onmouseover="this.style.borderColor=\'var(--admin-accent)\';this.style.color=\'var(--admin-accent)\'" onmouseout="this.style.borderColor=\'var(--admin-border)\';this.style.color=\'var(--admin-text-muted)\'">';
+      html += '<button data-action="force-check" data-ns="VendorCheck" class="vendor-check-btn" style="background: none; border: 1px solid var(--admin-border); color: var(--admin-text-muted); padding: 0.375rem 0.75rem; border-radius: var(--admin-radius-sm); cursor: pointer; font-size: 0.8125rem; transition: var(--admin-transition);">';
       html += 'Verifier maintenant';
       html += '</button>';
       html += '</div>';

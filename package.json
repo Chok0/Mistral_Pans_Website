@@ -1,0 +1,15 @@
+{
+  "name": "mistral-pans-website",
+  "version": "3.5.0",
+  "private": true,
+  "description": "Mistral Pans - Site vitrine artisanal handpan",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0",
+    "jsdom": "^25.0.0"
+  }
+}

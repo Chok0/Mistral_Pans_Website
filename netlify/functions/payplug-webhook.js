@@ -1,10 +1,21 @@
 // Netlify Function : Webhook Payplug
 // Reçoit les notifications de paiement/remboursement
 // Orchestre: création commande, mise à jour stock, emails
+//
+// SECURITE : PayPlug n'utilise pas de signature HMAC dans ses webhooks
+// (contrairement à Swikly). Leur méthode recommandée de vérification est
+// de rappeler l'API PayPlug avec l'ID du paiement reçu pour confirmer
+// l'authenticité et le statut réel. C'est ce que fait getPaymentDetails().
+// Voir: https://docs.payplug.com/api — section "Notifications"
+// Double couche: vérification API + idempotence via table paiements.
 
 /**
- * Récupère les détails d'un paiement via l'API Payplug
- * Sert aussi de vérification d'authenticité (cf. doc PayPlug Security notice)
+ * Récupère les détails d'un paiement via l'API Payplug.
+ * Sert de vérification d'authenticité : un attaquant peut envoyer un faux
+ * webhook, mais ne peut pas falsifier la réponse de l'API PayPlug.
+ * @param {string} paymentId - ID du paiement PayPlug
+ * @param {string} secretKey - Clé secrète PayPlug
+ * @returns {Promise<object>} Détails du paiement vérifiés
  */
 async function getPaymentDetails(paymentId, secretKey) {
   const response = await fetch(`https://api.payplug.com/v1/payments/${paymentId}`, {
@@ -703,14 +714,23 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const notification = JSON.parse(event.body);
-    const { id, object: objectType, is_live } = notification;
-
-    if (!id) {
+    // Validation du body (protection contre payloads malformes)
+    if (!event.body || typeof event.body !== 'string' || event.body.length > 50000) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'ID manquant dans la notification' })
+        body: JSON.stringify({ error: 'Corps de requête invalide' })
+      };
+    }
+
+    const notification = JSON.parse(event.body);
+    const { id, object: objectType, is_live } = notification;
+
+    if (!id || typeof id !== 'string' || !/^pay_|^re_/.test(id)) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'ID manquant ou format invalide' })
       };
     }
 
@@ -735,6 +755,136 @@ exports.handler = async (event, context) => {
 // ============================================================================
 // VALIDATION PRIX
 // ============================================================================
+
+/**
+ * Récupère la config tarification depuis Supabase pour valider les prix custom.
+ */
+async function getPricingConfigFromDb(sb) {
+  const defaults = {
+    prixParNote: 115,
+    bonusOctave2: 50,
+    bonusBottoms: 25,
+    malusDifficulteWarning: 5,
+    malusDifficulteDifficile: 10
+  };
+
+  if (!sb) return defaults;
+
+  try {
+    const response = await fetch(
+      `${sb.url}/rest/v1/configuration?namespace=eq.gestion&key=eq.mistral_gestion_config&select=value`,
+      { method: 'GET', headers: sb.headers }
+    );
+
+    if (response.ok) {
+      const rows = await response.json();
+      if (rows.length > 0 && rows[0].value) {
+        let config = rows[0].value;
+        if (typeof config === 'string') {
+          try { config = JSON.parse(config); } catch { /* keep as-is */ }
+        }
+        return {
+          prixParNote: config.prixParNote ?? defaults.prixParNote,
+          bonusOctave2: config.bonusOctave2 ?? defaults.bonusOctave2,
+          bonusBottoms: config.bonusBottoms ?? defaults.bonusBottoms,
+          malusDifficulteWarning: config.malusDifficulteWarning ?? defaults.malusDifficulteWarning,
+          malusDifficulteDifficile: config.malusDifficulteDifficile ?? defaults.malusDifficulteDifficile
+        };
+      }
+    }
+  } catch (error) {
+    console.warn('getPricingConfigFromDb: fallback', error.message);
+  }
+
+  return defaults;
+}
+
+/**
+ * Récupère le malus prix d'une taille depuis Supabase.
+ */
+async function getSizeMalusFromDb(sizeCode, sb) {
+  if (!sb || !sizeCode) return 0;
+
+  const defaultMalus = { '45': 100, '50': 100, '53': 0 };
+
+  try {
+    const response = await fetch(
+      `${sb.url}/rest/v1/tailles?code=eq.${encodeURIComponent(sizeCode)}&select=prix_malus`,
+      { method: 'GET', headers: sb.headers }
+    );
+
+    if (response.ok) {
+      const rows = await response.json();
+      if (rows.length > 0) return rows[0].prix_malus || 0;
+    }
+  } catch (error) {
+    console.warn('getSizeMalusFromDb: fallback', error.message);
+  }
+
+  return defaultMalus[sizeCode] || 0;
+}
+
+/**
+ * Valide le prix d'un item custom (recalcul du prix plancher côté serveur).
+ */
+async function validateCustomPriceWebhook(item, sb) {
+  const noteCount = item.notes || item.details?.notes || item.details?.nombre_notes;
+  const sizeCode = item.taille || item.details?.taille;
+
+  if (!noteCount || noteCount < 9 || noteCount > 17) {
+    const absoluteMin = Math.floor((9 * 115) / 5) * 5;
+    if ((item.prix || item.total || 0) < absoluteMin) {
+      return { valid: false, reason: `Prix custom ${item.prix || item.total}€ < minimum absolu ${absoluteMin}€` };
+    }
+    return { valid: true };
+  }
+
+  const pricing = await getPricingConfigFromDb(sb);
+  const sizeMalus = await getSizeMalusFromDb(sizeCode, sb);
+
+  const minPrice = Math.floor((noteCount * pricing.prixParNote + sizeMalus) / 5) * 5;
+
+  const claimedPrice = item.prix || item.total || 0;
+  if (claimedPrice < minPrice - 10) {
+    return {
+      valid: false,
+      reason: `Prix custom ${claimedPrice}€ < plancher ${minPrice}€ (${noteCount} notes, taille ${sizeCode || '?'})`
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Valide le prix d'un accessoire contre la base de données.
+ */
+async function validateAccessoirePriceWebhook(accessoireId, claimedPrice, sb) {
+  if (!sb || !accessoireId) return { valid: true };
+
+  try {
+    const response = await fetch(
+      `${sb.url}/rest/v1/accessoires?id=eq.${encodeURIComponent(accessoireId)}&select=prix,nom`,
+      { method: 'GET', headers: sb.headers }
+    );
+
+    if (!response.ok) return { valid: false, reason: 'Impossible de vérifier le prix accessoire' };
+
+    const rows = await response.json();
+    if (!rows || rows.length === 0) return { valid: false, reason: `Accessoire ${accessoireId} non trouvé` };
+
+    const dbPrice = rows[0].prix || 0;
+    if (claimedPrice < dbPrice - 1) {
+      return {
+        valid: false,
+        reason: `Accessoire "${rows[0].nom}" : ${claimedPrice}€ déclaré vs ${dbPrice}€ en base`
+      };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, reason: 'Erreur validation accessoire' };
+  }
+}
 
 /**
  * Récupère le prix d'un instrument depuis Supabase.
@@ -813,8 +963,8 @@ async function validatePaymentAmount(payment, metadata) {
     for (const item of items) {
       const itemTotalCents = Math.round((item.total || item.prix || 0) * 100);
 
+      // 1. Instruments en stock : vérifier prix DB
       if (item.type === 'instrument' && item.sourceId) {
-        // Vérifier le prix de chaque instrument contre la DB
         const { price: dbPrice, error } = await fetchInstrumentPrice(item.sourceId, sb);
         if (error) {
           console.warn(`Validation instrument ${item.sourceId}: ${error}`);
@@ -831,6 +981,37 @@ async function validatePaymentAmount(payment, metadata) {
             valid: false,
             reason: `Prix inférieur au catalogue pour instrument ${item.sourceId} (${dbPrice}€ vs ${itemTotalCents / 100}€)`
           };
+        }
+      }
+
+      // 2. Configurations custom : recalculer prix plancher
+      if (item.type === 'custom') {
+        const customCheck = await validateCustomPriceWebhook(item, sb);
+        if (!customCheck.valid) {
+          console.error(`ALERTE PRIX PANIER (custom): ${customCheck.reason}`);
+          return customCheck;
+        }
+      }
+
+      // 3. Accessoires : vérifier prix DB
+      if (item.type === 'accessoire' && item.sourceId) {
+        const accCheck = await validateAccessoirePriceWebhook(item.sourceId, item.prix || 0, sb);
+        if (!accCheck.valid) {
+          console.error(`ALERTE PRIX PANIER (accessoire): ${accCheck.reason}`);
+          return accCheck;
+        }
+      }
+
+      // 4. Options (housse) sur un item : vérifier prix DB
+      if (item.options && Array.isArray(item.options)) {
+        for (const opt of item.options) {
+          if (opt.type === 'housse' && opt.id) {
+            const optCheck = await validateAccessoirePriceWebhook(opt.id, opt.prix || 0, sb);
+            if (!optCheck.valid) {
+              console.error(`ALERTE PRIX PANIER (option housse): ${optCheck.reason}`);
+              return optCheck;
+            }
+          }
         }
       }
 
@@ -852,8 +1033,39 @@ async function validatePaymentAmount(payment, metadata) {
     return { valid: true };
   }
 
-  // ── Mode single : seuls les achats stock avec un ID instrument ──
-  if (source !== 'stock' || !instrumentId) return { valid: true };
+  // ── Mode single ──
+
+  // Instruments en stock : vérifier prix DB
+  if (source === 'stock' && instrumentId) {
+    // (existing instrument validation continues below)
+  } else if (source === 'custom') {
+    // Custom single : recalculer prix plancher
+    const totalEur = (metadata.total_price_cents || payment.amount) / 100;
+    const houssePrice = metadata.housse_prix || 0;
+    const customItem = {
+      prix: totalEur - houssePrice,
+      notes: metadata.notes || null,
+      taille: metadata.taille || null
+    };
+    const customCheck = await validateCustomPriceWebhook(customItem, sb);
+    if (!customCheck.valid) {
+      console.error(`ALERTE PRIX (legacy custom): ${customCheck.reason}`);
+      return customCheck;
+    }
+
+    // Valider la housse si présente
+    if (metadata.housse_id) {
+      const housseCheck = await validateAccessoirePriceWebhook(metadata.housse_id, houssePrice, sb);
+      if (!housseCheck.valid) {
+        console.error(`ALERTE PRIX (legacy housse): ${housseCheck.reason}`);
+        return housseCheck;
+      }
+    }
+
+    return { valid: true };
+  } else if (!instrumentId) {
+    return { valid: true };
+  }
 
   const { price: dbPrice, error } = await fetchInstrumentPrice(instrumentId, sb);
   if (error) {
@@ -886,6 +1098,19 @@ async function validatePaymentAmount(payment, metadata) {
       valid: false,
       reason: `Paiement intégral insuffisant (${payment.amount / 100}€ vs ${dbPrice}€ minimum)`
     };
+  }
+
+  // Valider la housse si présente (mode stock single)
+  if (metadata.housse_id) {
+    const housseCheck = await validateAccessoirePriceWebhook(
+      metadata.housse_id,
+      metadata.housse_prix || 0,
+      sb
+    );
+    if (!housseCheck.valid) {
+      console.error(`ALERTE PRIX (stock housse): ${housseCheck.reason}`);
+      return housseCheck;
+    }
   }
 
   return { valid: true };

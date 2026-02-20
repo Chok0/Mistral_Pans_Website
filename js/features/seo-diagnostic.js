@@ -6,7 +6,7 @@
   'use strict';
 
   // Pages publiques à analyser
-  var PAGES = [
+  const PAGES = [
     { url: 'index.html', label: 'Accueil', priority: 'haute' },
     { url: 'boutique.html', label: 'Boutique / Configurateur', priority: 'haute' },
     { url: 'commander.html', label: 'Commander', priority: 'haute' },
@@ -21,20 +21,20 @@
   ];
 
   // Fichiers techniques
-  var TECH_FILES = [
+  const TECH_FILES = [
     { url: 'robots.txt', label: 'robots.txt' },
     { url: 'sitemap.xml', label: 'sitemap.xml' }
   ];
 
-  var results = [];
-  var globalScore = 0;
+  let results = [];
+  let globalScore = 0;
 
   // ── Lancement ──
   window.runSEODiagnostic = async function() {
-    var container = document.getElementById('seo-results');
-    var scoreEl = document.getElementById('seo-global-score');
-    var progressEl = document.getElementById('seo-progress');
-    var btnRun = document.getElementById('btn-run-diagnostic');
+    const container = document.getElementById('seo-results');
+    const scoreEl = document.getElementById('seo-global-score');
+    const progressEl = document.getElementById('seo-progress');
+    const btnRun = document.getElementById('btn-run-diagnostic');
 
     container.innerHTML = '';
     btnRun.disabled = true;
@@ -43,13 +43,13 @@
     results = [];
 
     // 1. Vérification fichiers techniques
-    var techResults = await checkTechnicalFiles();
+    const techResults = await checkTechnicalFiles();
 
     // 2. Analyse de chaque page
-    var total = PAGES.length;
-    for (var i = 0; i < total; i++) {
+    const total = PAGES.length;
+    for (let i = 0; i < total; i++) {
       progressEl.textContent = 'Analyse ' + (i + 1) + '/' + total + ' : ' + PAGES[i].label + '...';
-      var result = await analyzePage(PAGES[i]);
+      const result = await analyzePage(PAGES[i]);
       results.push(result);
     }
 
@@ -69,11 +69,11 @@
 
   // ── Vérification fichiers techniques ──
   async function checkTechnicalFiles() {
-    var techResults = [];
-    for (var i = 0; i < TECH_FILES.length; i++) {
-      var file = TECH_FILES[i];
+    const techResults = [];
+    for (let i = 0; i < TECH_FILES.length; i++) {
+      const file = TECH_FILES[i];
       try {
-        var response = await fetch(file.url, { method: 'HEAD' });
+        const response = await fetch(file.url, { method: 'HEAD' });
         techResults.push({
           label: file.label,
           exists: response.ok,
@@ -88,7 +88,7 @@
 
   // ── Analyse d'une page ──
   async function analyzePage(page) {
-    var result = {
+    const result = {
       page: page,
       checks: [],
       score: 0,
@@ -96,15 +96,15 @@
     };
 
     try {
-      var response = await fetch(page.url);
+      const response = await fetch(page.url);
       if (!response.ok) {
         result.error = 'HTTP ' + response.status;
         return result;
       }
 
-      var html = await response.text();
-      var parser = new DOMParser();
-      var doc = parser.parseFromString(html, 'text/html');
+      const html = await response.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
 
       // ── Checks ──
       result.checks.push(checkTitle(doc));
@@ -122,8 +122,8 @@
       result.checks.push(checkRobotsMeta(doc));
 
       // Score par page
-      var passed = result.checks.filter(function(c) { return c.status === 'ok'; }).length;
-      var warnings = result.checks.filter(function(c) { return c.status === 'warning'; }).length;
+      const passed = result.checks.filter(function(c) { return c.status === 'ok'; }).length;
+      const warnings = result.checks.filter(function(c) { return c.status === 'warning'; }).length;
       result.score = Math.round(((passed + warnings * 0.5) / result.checks.length) * 100);
 
     } catch (e) {
@@ -136,11 +136,11 @@
   // ── Individual checks ──
 
   function checkTitle(doc) {
-    var title = doc.querySelector('title');
+    const title = doc.querySelector('title');
     if (!title || !title.textContent.trim()) {
       return { name: 'Balise <title>', status: 'error', detail: 'Absente' };
     }
-    var len = title.textContent.trim().length;
+    const len = title.textContent.trim().length;
     if (len < 30) {
       return { name: 'Balise <title>', status: 'warning', detail: 'Trop courte (' + len + ' car.) - viser 30-60 caractères', value: title.textContent.trim() };
     }
@@ -151,11 +151,11 @@
   }
 
   function checkMetaDescription(doc) {
-    var meta = doc.querySelector('meta[name="description"]');
+    const meta = doc.querySelector('meta[name="description"]');
     if (!meta || !meta.content.trim()) {
       return { name: 'Meta description', status: 'error', detail: 'Absente' };
     }
-    var len = meta.content.trim().length;
+    const len = meta.content.trim().length;
     if (len < 70) {
       return { name: 'Meta description', status: 'warning', detail: 'Trop courte (' + len + ' car.) - viser 70-160 caractères', value: meta.content.trim() };
     }
@@ -166,11 +166,11 @@
   }
 
   function checkCanonical(doc, pageUrl) {
-    var link = doc.querySelector('link[rel="canonical"]');
+    const link = doc.querySelector('link[rel="canonical"]');
     if (!link || !link.href) {
       return { name: 'URL canonique', status: 'error', detail: 'Absente - risque de contenu dupliqué' };
     }
-    var href = link.getAttribute('href');
+    const href = link.getAttribute('href');
     if (!href.startsWith('https://')) {
       return { name: 'URL canonique', status: 'warning', detail: 'Non HTTPS : ' + href };
     }
@@ -178,11 +178,11 @@
   }
 
   function checkLang(doc) {
-    var html = doc.querySelector('html');
+    const html = doc.querySelector('html');
     if (!html || !html.getAttribute('lang')) {
       return { name: 'Attribut lang', status: 'error', detail: 'Absent sur <html>' };
     }
-    var lang = html.getAttribute('lang');
+    const lang = html.getAttribute('lang');
     if (lang !== 'fr') {
       return { name: 'Attribut lang', status: 'warning', detail: 'Valeur "' + lang + '" (attendu "fr")' };
     }
@@ -190,7 +190,7 @@
   }
 
   function checkViewport(doc) {
-    var meta = doc.querySelector('meta[name="viewport"]');
+    const meta = doc.querySelector('meta[name="viewport"]');
     if (!meta) {
       return { name: 'Meta viewport', status: 'error', detail: 'Absente - problème mobile' };
     }
@@ -198,27 +198,27 @@
   }
 
   function checkH1(doc) {
-    var h1s = doc.querySelectorAll('h1');
+    const h1s = doc.querySelectorAll('h1');
     if (h1s.length === 0) {
       return { name: 'Balise H1', status: 'error', detail: 'Aucun H1 trouvé' };
     }
     if (h1s.length > 1) {
       return { name: 'Balise H1', status: 'warning', detail: h1s.length + ' H1 trouvés (recommandé : 1 seul)', value: Array.from(h1s).map(function(h) { return h.textContent.trim(); }).join(' | ') };
     }
-    var text = h1s[0].textContent.trim();
+    const text = h1s[0].textContent.trim();
     return { name: 'Balise H1', status: 'ok', detail: '1 H1 trouvé', value: text };
   }
 
   function checkHeadingHierarchy(doc) {
-    var headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
     if (headings.length === 0) {
       return { name: 'Hiérarchie Hn', status: 'warning', detail: 'Aucun titre trouvé' };
     }
 
-    var issues = [];
-    var prevLevel = 0;
+    const issues = [];
+    let prevLevel = 0;
     headings.forEach(function(h) {
-      var level = parseInt(h.tagName.substring(1));
+      const level = parseInt(h.tagName.substring(1));
       if (prevLevel > 0 && level > prevLevel + 1) {
         issues.push('Saut de H' + prevLevel + ' à H' + level);
       }
@@ -232,10 +232,10 @@
   }
 
   function checkOGTags(doc) {
-    var required = ['og:title', 'og:description', 'og:image', 'og:url', 'og:type'];
-    var missing = [];
+    const required = ['og:title', 'og:description', 'og:image', 'og:url', 'og:type'];
+    const missing = [];
     required.forEach(function(prop) {
-      var tag = doc.querySelector('meta[property="' + prop + '"]');
+      const tag = doc.querySelector('meta[property="' + prop + '"]');
       if (!tag || !tag.content.trim()) missing.push(prop);
     });
 
@@ -249,14 +249,14 @@
   }
 
   function checkTwitterCard(doc) {
-    var card = doc.querySelector('meta[name="twitter:card"]');
+    const card = doc.querySelector('meta[name="twitter:card"]');
     if (!card) {
       return { name: 'Twitter Card', status: 'warning', detail: 'Absente (utilise OG en fallback)' };
     }
-    var required = ['twitter:title', 'twitter:description', 'twitter:image'];
-    var missing = [];
+    const required = ['twitter:title', 'twitter:description', 'twitter:image'];
+    const missing = [];
     required.forEach(function(name) {
-      var tag = doc.querySelector('meta[name="' + name + '"]');
+      const tag = doc.querySelector('meta[name="' + name + '"]');
       if (!tag || !tag.content.trim()) missing.push(name);
     });
 
@@ -267,15 +267,15 @@
   }
 
   function checkStructuredData(doc) {
-    var scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+    const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
     if (scripts.length === 0) {
       return { name: 'Données structurées (JSON-LD)', status: 'warning', detail: 'Aucun schema trouvé' };
     }
 
-    var types = [];
+    const types = [];
     scripts.forEach(function(script) {
       try {
-        var data = JSON.parse(script.textContent);
+        const data = JSON.parse(script.textContent);
         if (data['@type']) types.push(data['@type']);
       } catch (e) {
         types.push('(JSON invalide)');
@@ -286,19 +286,19 @@
   }
 
   function checkImagesAlt(doc) {
-    var images = doc.querySelectorAll('img');
+    const images = doc.querySelectorAll('img');
     if (images.length === 0) {
       return { name: 'Images alt', status: 'ok', detail: 'Aucune image dans le HTML statique' };
     }
 
-    var noAlt = 0;
-    var emptyAlt = 0;
+    let noAlt = 0;
+    let emptyAlt = 0;
     images.forEach(function(img) {
       if (!img.hasAttribute('alt')) noAlt++;
       else if (!img.alt.trim()) emptyAlt++;
     });
 
-    var total = images.length;
+    const total = images.length;
     if (noAlt > 0) {
       return { name: 'Images alt', status: 'error', detail: noAlt + '/' + total + ' image(s) sans attribut alt' };
     }
@@ -309,13 +309,13 @@
   }
 
   function checkInternalLinks(doc) {
-    var links = doc.querySelectorAll('a[href]');
-    var broken = [];
-    var external = 0;
-    var noOpener = 0;
+    const links = doc.querySelectorAll('a[href]');
+    const broken = [];
+    let external = 0;
+    let noOpener = 0;
 
     links.forEach(function(a) {
-      var href = a.getAttribute('href');
+      const href = a.getAttribute('href');
       if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
       if (href.startsWith('http')) {
         external++;
@@ -332,11 +332,11 @@
   }
 
   function checkRobotsMeta(doc) {
-    var meta = doc.querySelector('meta[name="robots"]');
+    const meta = doc.querySelector('meta[name="robots"]');
     if (!meta) {
       return { name: 'Meta robots', status: 'ok', detail: 'Absente (indexation par défaut)' };
     }
-    var content = meta.content.toLowerCase();
+    const content = meta.content.toLowerCase();
     if (content.includes('noindex')) {
       return { name: 'Meta robots', status: 'warning', detail: 'noindex détecté - page non indexée', value: meta.content };
     }
@@ -346,8 +346,8 @@
   // ── Score global ──
 
   function calculateGlobalScore(results, techResults) {
-    var totalPoints = 0;
-    var maxPoints = 0;
+    let totalPoints = 0;
+    let maxPoints = 0;
 
     // Fichiers techniques (20 points chacun)
     techResults.forEach(function(t) {
@@ -357,7 +357,7 @@
 
     // Score des pages (pondéré par priorité)
     results.forEach(function(r) {
-      var weight = r.page.priority === 'haute' ? 3 : r.page.priority === 'moyenne' ? 2 : 1;
+      const weight = r.page.priority === 'haute' ? 3 : r.page.priority === 'moyenne' ? 2 : 1;
       maxPoints += 100 * weight;
       totalPoints += (r.score || 0) * weight;
     });
@@ -368,8 +368,8 @@
   // ── Rendu ──
 
   function renderGlobalScore(el, score) {
-    var color = score >= 80 ? '#4A7C59' : score >= 60 ? '#F59E0B' : '#EF4444';
-    var label = score >= 80 ? 'Bon' : score >= 60 ? 'Moyen' : 'Faible';
+    const color = score >= 80 ? '#3D6B4A' : score >= 60 ? '#D97706' : '#DC2626';
+    const label = score >= 80 ? 'Bon' : score >= 60 ? 'Moyen' : 'Faible';
 
     el.innerHTML =
       '<div class="seo-score-circle" style="--score-color: ' + color + ';">' +
@@ -388,13 +388,13 @@
   }
 
   function renderTechnicalFiles(container, techResults) {
-    var html = '<div class="seo-section">' +
+    let html = '<div class="seo-section">' +
       '<h2>Fichiers techniques</h2>' +
       '<div class="seo-checks-grid">';
 
     techResults.forEach(function(t) {
-      var icon = t.exists ? '&#10003;' : '&#10007;';
-      var cls = t.exists ? 'seo-check--ok' : 'seo-check--error';
+      const icon = t.exists ? '&#10003;' : '&#10007;';
+      const cls = t.exists ? 'seo-check--ok' : 'seo-check--error';
       html += '<div class="seo-check ' + cls + '">' +
         '<span class="seo-check__icon">' + icon + '</span>' +
         '<span class="seo-check__name">' + escapeHtml(t.label) + '</span>' +
@@ -408,8 +408,8 @@
 
   function renderResults(container, results) {
     results.forEach(function(r) {
-      var statusClass = r.score >= 80 ? 'seo-page--good' : r.score >= 60 ? 'seo-page--medium' : 'seo-page--poor';
-      var html = '<div class="seo-section seo-page ' + statusClass + '">' +
+      const statusClass = r.score >= 80 ? 'seo-page--good' : r.score >= 60 ? 'seo-page--medium' : 'seo-page--poor';
+      let html = '<div class="seo-section seo-page ' + statusClass + '">' +
         '<div class="seo-page__header" onclick="this.parentElement.classList.toggle(\'seo-page--open\')">' +
           '<div class="seo-page__info">' +
             '<h3>' + escapeHtml(r.page.label) + '</h3>' +
@@ -427,7 +427,7 @@
       } else {
         html += '<div class="seo-page__body"><div class="seo-checks-list">';
         r.checks.forEach(function(c) {
-          var icon = c.status === 'ok' ? '&#10003;' : c.status === 'warning' ? '&#9888;' : '&#10007;';
+          const icon = c.status === 'ok' ? '&#10003;' : c.status === 'warning' ? '&#9888;' : '&#10007;';
           html += '<div class="seo-check seo-check--' + c.status + '">' +
             '<span class="seo-check__icon">' + icon + '</span>' +
             '<div class="seo-check__content">' +
@@ -446,7 +446,7 @@
   }
 
   function renderRecommendations(container, results, techResults) {
-    var recs = [];
+    const recs = [];
 
     // Fichiers techniques manquants
     techResults.forEach(function(t) {
@@ -475,11 +475,11 @@
 
     if (recs.length === 0) return;
 
-    var html = '<div class="seo-section seo-recommendations">' +
+    let html = '<div class="seo-section seo-recommendations">' +
       '<h2>Recommandations</h2>' +
       '<div class="seo-recs-list">';
 
-    var grouped = { critique: [], haute: [], moyenne: [] };
+    const grouped = { critique: [], haute: [], moyenne: [] };
     recs.forEach(function(r) { grouped[r.priority].push(r); });
 
     ['critique', 'haute', 'moyenne'].forEach(function(prio) {
@@ -498,9 +498,10 @@
     container.insertAdjacentHTML('beforeend', html);
   }
 
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
+  const escapeHtml = MistralUtils.escapeHtml;
+
+  // Bind button (CSP-safe)
+  const btnRun = document.getElementById('btn-run-diagnostic');
+  if (btnRun) btnRun.addEventListener('click', window.runSEODiagnostic);
 
 })();

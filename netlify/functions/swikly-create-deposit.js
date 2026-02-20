@@ -1,6 +1,8 @@
 // Netlify Function : Créer une caution Swikly
 // Gère les dépôts de garantie pour les locations d'instruments
 
+const { checkRateLimit, getClientIp } = require('./utils/rate-limit');
+
 /**
  * Valide le format d'une adresse email
  */
@@ -32,28 +34,7 @@ function generateRentalReference() {
   return `LOC${year}${month}-${random}`;
 }
 
-// ============================================================================
-// RATE LIMITING (in-memory, best-effort pour serverless)
-// ============================================================================
-const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 3; // 3 cautions par minute par IP
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(ip, { windowStart: now, count: 1 });
-    return true;
-  }
-
-  entry.count++;
-  if (entry.count > RATE_LIMIT_MAX) {
-    return false;
-  }
-  return true;
-}
+// Rate limiting : voir utils/rate-limit.js (persistant via Supabase)
 
 /**
  * Retourne l'origine CORS autorisée
@@ -100,12 +81,10 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Origin': allowedOrigin
   };
 
-  // Rate limiting
-  const clientIp = event.headers['x-forwarded-for']?.split(',')[0]?.trim()
-    || event.headers['client-ip']
-    || 'unknown';
-
-  if (!checkRateLimit(clientIp)) {
+  // Rate limiting persistant (Supabase)
+  const clientIp = getClientIp(event);
+  const { allowed: rateLimitOk } = await checkRateLimit(clientIp, 'swikly', 3);
+  if (!rateLimitOk) {
     console.warn(`Rate limit dépassé pour ${clientIp}`);
     return {
       statusCode: 429,

@@ -8,34 +8,40 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
+  <!-- Preconnect: faster DNS + TLS for critical external origins -->
+  <link rel="preconnect" href="https://qnkyzhccudtaduqduoxn.supabase.co">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.payplug.com">
   <meta name="description" content="Commander votre handpan Mistral Pans. Réservez avec un acompte ou prenez rendez-vous pour personnaliser votre projet.">
   <link rel="canonical" href="https://mistralpans.fr/commander.html">
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://mistralpans.fr/commander.html">
-  <meta property="og:title" content="Commander un Handpan - Mistral Pans">
+  <meta property="og:title" content="Commander votre Handpan sur mesure | Mistral Pans">
   <meta property="og:description" content="Commandez votre handpan sur mesure fabriqué en Île-de-France.">
   <meta property="og:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
   <meta property="og:locale" content="fr_FR">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Commander un Handpan - Mistral Pans">
+  <meta name="twitter:title" content="Commander votre Handpan sur mesure | Mistral Pans">
   <meta name="twitter:description" content="Commandez votre handpan sur mesure.">
   <meta name="twitter:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
   
-  <title>Commander - Mistral Pans</title>
+  <title>Commander un Handpan sur mesure | Mistral Pans</title>
   
   <!-- Fonts -->
   
   <!-- Styles -->
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3.5.3">
   
   <style>
     .order-page {
       padding-top: calc(var(--header-height) + var(--space-3xl));
       min-height: 100vh;
+      min-height: 100dvh;
       background: var(--color-bg);
     }
     
@@ -43,7 +49,59 @@
       text-align: center;
       margin-bottom: var(--space-3xl);
     }
-    
+
+    /* ---- 2-column layout (desktop) ---- */
+    .order-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-2xl);
+    }
+    @media (min-width: 1025px) {
+      .order-layout {
+        grid-template-columns: 1fr 380px;
+        /* align-items default (stretch) — required for sticky sidebar */
+      }
+    }
+    .order-layout__main {
+      min-width: 0;
+    }
+    .order-layout__sidebar {
+      min-width: 0;
+    }
+    /* On mobile, sidebar (product + shipping) appears BEFORE the options */
+    @media (max-width: 1024px) {
+      .order-layout__sidebar {
+        order: -1;
+      }
+    }
+    @media (min-width: 1025px) {
+      .order-sidebar-sticky {
+        position: sticky;
+        top: calc(var(--header-height) + var(--space-xl));
+      }
+      /* Compact sidebar spacing and sizing */
+      .order-layout__sidebar .order-product,
+      .order-layout__sidebar .cart-items-summary {
+        margin-bottom: var(--space-lg);
+      }
+      .order-layout__sidebar .order-product__image {
+        width: 80px;
+        height: 80px;
+      }
+      .order-layout__sidebar .order-product__price {
+        font-size: 1.25rem;
+      }
+      .order-layout__sidebar .shipping-option {
+        padding: var(--space-md);
+      }
+      .order-layout__sidebar .shipping-selector {
+        margin-bottom: 0;
+      }
+      .order-layout__sidebar .shipping-selector__title {
+        font-size: 1rem;
+      }
+    }
+
     .order-product {
       display: flex;
       align-items: center;
@@ -85,14 +143,8 @@
     .order-options {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: var(--space-xl);
+      gap: var(--space-lg);
       margin-bottom: var(--space-3xl);
-    }
-    
-    @media (min-width: 769px) {
-      .order-options--three {
-        grid-template-columns: repeat(3, 1fr);
-      }
     }
     @media (max-width: 768px) {
       .order-options {
@@ -214,6 +266,14 @@
       font-weight: 600;
       font-size: 1.125rem;
     }
+    .order-summary__row--accent {
+      color: var(--color-accent);
+    }
+    .order-summary__row--muted {
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
+      font-weight: 400;
+    }
     
     .paypal-note {
       background: #FFF8E7;
@@ -228,9 +288,16 @@
       color: #0070BA;
     }
 
-    /* ---- 4-column grid (stock items) ---- */
-    .order-options--four {
-      grid-template-columns: repeat(4, 1fr);
+    /* ---- 4-column grid (stock items — full-width only) ---- */
+    @media (min-width: 1025px) {
+      .order-options--four {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 1024px) and (min-width: 901px) {
+      .order-options--four {
+        grid-template-columns: repeat(4, 1fr);
+      }
     }
     @media (max-width: 900px) {
       .order-options--four {
@@ -475,6 +542,12 @@
       border-radius: 50%;
       transition: all 0.15s;
     }
+    /* Touch target 44px via pseudo-element (WCAG 2.5.5) */
+    .cart-item__remove::after {
+      content: '';
+      position: absolute;
+      inset: -10px;
+    }
     .cart-item__remove:hover {
       background: var(--color-error);
       color: white;
@@ -509,7 +582,12 @@
     .shipping-selector__options {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: var(--space-lg);
+      gap: var(--space-md);
+    }
+    @media (min-width: 1025px) {
+      .order-layout__sidebar .shipping-selector__options {
+        grid-template-columns: 1fr;
+      }
     }
     @media (max-width: 500px) {
       .shipping-selector__options {
@@ -601,6 +679,26 @@
   
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230D7377'/></svg>">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "Handpan sur mesure Mistral Pans",
+    "description": "Handpan artisanal fabriqué sur mesure en Île-de-France. Choix de gamme, tonalité, matériau et nombre de notes.",
+    "image": "https://mistralpans.fr/ressources/images/20230801_1622372.jpg",
+    "brand": { "@type": "Brand", "name": "Mistral Pans" },
+    "manufacturer": { "@type": "Organization", "name": "Mistral Pans", "url": "https://mistralpans.fr" },
+    "category": "Instruments de musique",
+    "countryOfOrigin": "FR",
+    "offers": {
+      "@type": "AggregateOffer",
+      "priceCurrency": "EUR",
+      "lowPrice": "920",
+      "highPrice": "2500",
+      "availability": "https://schema.org/MadeToOrder"
+    }
+  }
+  </script>
 </head>
 <body data-page="commander" data-footer="minimal">
 
@@ -610,69 +708,25 @@
   <main id="main-content">
   <!-- ========== ORDER PAGE ========== -->
   <section class="order-page">
-    <div class="container container--narrow">
-      
+    <div class="container">
+
       <div class="order-header">
         <p class="eyebrow">Étape 1 sur 2</p>
         <h1>Commander</h1>
       </div>
-      
-      <!-- Cart Items Summary (multi-item) -->
-      <div id="cart-items-summary" class="cart-items-summary" style="display:none;">
-        <div id="cart-items-list" class="cart-items-list"></div>
-        <div class="cart-items-total">
-          <span>Total</span>
-          <span id="cart-items-total-price" class="order-product__price">0 €</span>
-        </div>
-      </div>
 
-      <!-- Single Product Summary (legacy URL params) -->
-      <div id="single-product-summary" class="order-product">
-        <div class="order-product__image">
-          <span style="font-size: 2.5rem; opacity: 0.3;">🎵</span>
-        </div>
-        <div class="order-product__info">
-          <h3 id="product-name">D Kurd • 9 notes</h3>
-          <p class="order-product__notes" id="product-notes">D3 • A3 • Bb3 • C4 • D4 • E4 • F4 • G4 • A4</p>
-          <p class="order-product__price" id="product-price">1 400 €</p>
-        </div>
-      </div>
+      <!-- ===== 2-column layout (desktop) ===== -->
+      <div class="order-layout">
 
-      <!-- Accessory summary (populated by JS if housse present) -->
-      <div id="order-accessories" class="order-accessories" style="display:none;">
-        <div class="order-accessories__list" id="accessories-list"></div>
-      </div>
+        <!-- LEFT: options + forms -->
+        <div class="order-layout__main">
 
-      <!-- Shipping method selector -->
-      <div class="shipping-selector" id="shipping-selector">
-        <h2 class="shipping-selector__title">Mode de livraison *</h2>
-        <div class="shipping-selector__options">
-          <div class="shipping-option" data-shipping="colissimo" onclick="selectShipping('colissimo')" onkeydown="if(event.key==='Enter'||event.key===' ')selectShipping('colissimo')" tabindex="0" role="button" aria-label="Livraison La Poste Colissimo">
-            <div class="shipping-option__header">
-              <div class="shipping-option__icon">📦</div>
-              <div class="shipping-option__title">Livraison Colissimo</div>
-            </div>
-            <p class="shipping-option__description">Livraison à domicile par La Poste Colissimo avec suivi. Délai : 2-4 jours ouvrés.</p>
-            <div class="shipping-option__price" id="shipping-colissimo-price">+ 50 €</div>
-          </div>
-          <div class="shipping-option" data-shipping="retrait" onclick="selectShipping('retrait')" onkeydown="if(event.key==='Enter'||event.key===' ')selectShipping('retrait')" tabindex="0" role="button" aria-label="Retrait à l'atelier">
-            <div class="shipping-option__header">
-              <div class="shipping-option__icon">🏠</div>
-              <div class="shipping-option__title">Retrait à l'atelier</div>
-            </div>
-            <p class="shipping-option__description">Récupérez votre instrument directement à l'atelier en Île-de-France. Sur rendez-vous.</p>
-            <div class="shipping-option__price shipping-option__price--free">Gratuit</div>
-          </div>
-        </div>
-        <p class="shipping-error" id="shipping-error">Veuillez choisir un mode de livraison.</p>
-      </div>
-
-      <h2 style="margin-bottom: var(--space-lg);">Choisissez votre option</h2>
+          <h2 style="margin-bottom: var(--space-lg);">Choisissez votre option</h2>
 
       <div class="order-options order-options--three" id="order-options-grid">
 
         <!-- Option 0: Paiement intégral (stock only, hidden by default) -->
-        <div class="order-option" data-option="full" style="display:none;" onclick="selectOption('full')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('full')" tabindex="0" role="button" aria-label="Payer maintenant">
+        <div class="order-option" data-option="full" style="display:none;" tabindex="0" role="button" aria-label="Payer maintenant">
           <span class="order-option__badge" id="badge-full">Recommandé</span>
           <div class="order-option__icon">💳</div>
           <h3 class="order-option__title">Payer maintenant</h3>
@@ -687,7 +741,7 @@
         </div>
 
         <!-- Option 1: Acompte 30% -->
-        <div class="order-option" data-option="deposit" onclick="selectOption('deposit')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('deposit')" tabindex="0" role="button" aria-label="Réserver avec acompte de 30%">
+        <div class="order-option" data-option="deposit" tabindex="0" role="button" aria-label="Réserver avec acompte de 30%">
           <span class="order-option__badge" id="badge-deposit">Populaire</span>
           <div class="order-option__icon">💳</div>
           <h3 class="order-option__title">Réserver avec acompte</h3>
@@ -697,12 +751,12 @@
           <ul class="order-option__details">
             <li>Acompte de <strong id="option-deposit-amount">30 %</strong></li>
             <li>Solde à la livraison</li>
-            <li>Délai : 8-12 semaines</li>
+            <li id="delay-estimate">Délai : estimation en cours…</li>
           </ul>
         </div>
 
         <!-- Option 2: Oney 3x/4x -->
-        <div class="order-option" data-option="oney" onclick="selectOption('oney')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('oney')" tabindex="0" role="button" aria-label="Payer en 3 ou 4 fois avec Oney">
+        <div class="order-option" data-option="oney" tabindex="0" role="button" aria-label="Payer en 3 ou 4 fois avec Oney">
           <div class="order-option__icon">🔄</div>
           <h3 class="order-option__title">Payer en 3x ou 4x</h3>
           <p class="order-option__description">
@@ -716,7 +770,7 @@
         </div>
 
         <!-- Option 3: RDV -->
-        <div class="order-option" data-option="appointment" onclick="selectOption('appointment')" onkeydown="if(event.key==='Enter'||event.key===' ')selectOption('appointment')" tabindex="0" role="button" aria-label="Personnaliser mon projet avec un rendez-vous">
+        <div class="order-option" data-option="appointment" tabindex="0" role="button" aria-label="Personnaliser mon projet avec un rendez-vous">
           <div class="order-option__icon">📅</div>
           <h3 class="order-option__title">Personnaliser mon projet</h3>
           <p class="order-option__description">
@@ -749,12 +803,12 @@
             <span>Prix total</span>
             <span id="summary-total">1 400 €</span>
           </div>
-          <div class="order-summary__row">
-            <span>Acompte aujourd'hui (30 %)</span>
+          <div class="order-summary__row total order-summary__row--accent">
+            <span>À payer aujourd'hui (30 %)</span>
             <span id="summary-deposit">420 €</span>
           </div>
-          <div class="order-summary__row total">
-            <span>Reste à payer</span>
+          <div class="order-summary__row order-summary__row--muted">
+            <span>Reste à la livraison</span>
             <span id="summary-remaining">980 €</span>
           </div>
         </div>
@@ -805,6 +859,12 @@
             <label class="form-checkbox">
               <input type="checkbox" name="cgv" required>
               <span>J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="form-checkbox">
+              <input type="checkbox" name="rgpd-consent" required>
+              <span>J'accepte que mes donnees soient utilisees pour traiter ma commande. <a href="mentions-legales.html" target="_blank">Politique de confidentialite</a> *</span>
             </label>
           </div>
 
@@ -928,6 +988,12 @@
               <span>J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</span>
             </label>
           </div>
+          <div class="form-group">
+            <label class="form-checkbox">
+              <input type="checkbox" name="rgpd-consent" required>
+              <span>J'accepte que mes donnees soient utilisees pour traiter ma commande. <a href="mentions-legales.html" target="_blank">Politique de confidentialite</a> *</span>
+            </label>
+          </div>
 
           <button type="submit" class="btn btn--primary btn--lg btn--full" id="full-submit-btn">
             Payer <span id="full-btn-amount">1 400 €</span>
@@ -1046,6 +1112,12 @@
                 <span>J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</span>
               </label>
             </div>
+            <div class="form-group">
+              <label class="form-checkbox">
+                <input type="checkbox" name="rgpd-consent" required>
+                <span>J'accepte que mes donnees soient utilisees pour traiter ma commande. <a href="mentions-legales.html" target="_blank">Politique de confidentialite</a> *</span>
+              </label>
+            </div>
 
             <button type="submit" class="btn btn--primary btn--lg btn--full" id="oney-submit-btn">
               Payer en <span id="oney-btn-installments">3</span>x (<span id="oney-btn-total">1 400 €</span>)
@@ -1062,7 +1134,7 @@
           <p><strong>Paiement en plusieurs fois non disponible</strong></p>
           <p>Le paiement Oney est disponible pour les montants entre 100 € et 3 000 €.</p>
           <p style="margin-top: var(--space-md);">
-            <a href="#" onclick="selectOption('deposit'); return false;" class="btn btn--ghost">Réserver avec acompte (30 %)</a>
+            <a href="#" id="link-fallback-deposit" class="btn btn--ghost">Réserver avec acompte (30 %)</a>
           </p>
         </div>
       </div>
@@ -1128,7 +1200,13 @@
             <label class="form-label" for="rdv-project">Décrivez votre projet *</label>
             <textarea id="rdv-project" name="message" class="form-textarea" rows="4" placeholder="Quel type d'instrument recherchez-vous ? Avez-vous déjà joué du handpan ? Questions particulières ?" required></textarea>
           </div>
-          
+          <div class="form-group">
+            <label class="form-checkbox">
+              <input type="checkbox" name="rgpd-consent" required>
+              <span>J'accepte que mes donnees soient utilisees pour traiter ma demande. <a href="mentions-legales.html" target="_blank">Politique de confidentialite</a> *</span>
+            </label>
+          </div>
+
           <button type="submit" class="btn btn--primary btn--lg btn--full">
             Envoyer ma demande
           </button>
@@ -1139,11 +1217,84 @@
         </form>
       </div>
       
-      <!-- Back link -->
-      <div class="text-center" style="margin-top: var(--space-2xl);">
-        <a href="boutique.html" class="btn btn--ghost">← Retour à la boutique</a>
-      </div>
-      
+          <!-- Back link -->
+          <div class="text-center" style="margin-top: var(--space-2xl);">
+            <a href="boutique.html" class="btn btn--ghost">← Retour à la boutique</a>
+          </div>
+
+        </div><!-- /.order-layout__main -->
+
+        <!-- RIGHT: product recap + shipping (sticky sidebar on desktop) -->
+        <aside class="order-layout__sidebar">
+          <div class="order-sidebar-sticky">
+
+            <!-- Cart Items Summary (multi-item) -->
+            <div id="cart-items-summary" class="cart-items-summary" style="display:none;" aria-live="polite">
+              <div id="cart-items-list" class="cart-items-list"></div>
+              <div class="cart-items-total">
+                <span>Total</span>
+                <span id="cart-items-total-price" class="order-product__price">0 €</span>
+              </div>
+            </div>
+
+            <!-- Single Product Summary (legacy URL params) -->
+            <div id="single-product-summary" class="order-product">
+              <div class="order-product__image">
+                <span style="font-size: 2.5rem; opacity: 0.3;">🎵</span>
+              </div>
+              <div class="order-product__info">
+                <h2 id="product-name">D Kurd • 9 notes</h2>
+                <p class="order-product__notes" id="product-notes">D3 • A3 • Bb3 • C4 • D4 • E4 • F4 • G4 • A4</p>
+                <p class="order-product__price" id="product-price">1 400 €</p>
+              </div>
+            </div>
+
+            <!-- Accessory summary (populated by JS if housse present) -->
+            <div id="order-accessories" class="order-accessories" style="display:none;">
+              <div class="order-accessories__list" id="accessories-list"></div>
+            </div>
+
+            <!-- Shipping method selector -->
+            <div class="shipping-selector" id="shipping-selector">
+              <h3 class="shipping-selector__title">Mode de livraison *</h3>
+              <div class="shipping-selector__options">
+                <div class="shipping-option" data-shipping="colissimo" tabindex="0" role="button" aria-label="Livraison La Poste Colissimo">
+                  <div class="shipping-option__header">
+                    <div class="shipping-option__icon">📦</div>
+                    <div class="shipping-option__title">Livraison Colissimo</div>
+                  </div>
+                  <p class="shipping-option__description">Livraison à domicile par La Poste Colissimo avec suivi. Délai : 2-4 jours ouvrés.</p>
+                  <div class="shipping-option__price" id="shipping-colissimo-price">+ 50 €</div>
+                </div>
+                <div class="shipping-option" data-shipping="retrait" tabindex="0" role="button" aria-label="Retrait à l'atelier">
+                  <div class="shipping-option__header">
+                    <div class="shipping-option__icon">🏠</div>
+                    <div class="shipping-option__title">Retrait à l'atelier</div>
+                  </div>
+                  <p class="shipping-option__description">Récupérez votre instrument directement à l'atelier en Île-de-France. Sur rendez-vous.</p>
+                  <div class="shipping-option__price shipping-option__price--free">Gratuit</div>
+                </div>
+              </div>
+              <p class="shipping-error" id="shipping-error">Veuillez choisir un mode de livraison.</p>
+            </div>
+
+            <!-- Calendly: retrait à l'atelier -->
+            <div id="calendly-retrait" class="calendly-retrait-card" style="display:none;">
+              <div class="calendly-retrait-card__header">
+                <span class="calendly-retrait-card__icon">📅</span>
+                <div>
+                  <p class="calendly-retrait-card__title">Planifier le retrait</p>
+                  <p class="calendly-retrait-card__subtitle">Réservez un créneau pour récupérer votre instrument à l'atelier.</p>
+                </div>
+              </div>
+              <div id="calendly-commander-container" class="calendly-embed-container"></div>
+            </div>
+
+          </div><!-- /.order-sidebar-sticky -->
+        </aside><!-- /.order-layout__sidebar -->
+
+      </div><!-- /.order-layout -->
+
     </div>
   </section>
   </main>
@@ -1151,18 +1302,20 @@
   <div id="contact-modal-container"></div>
 
 <!-- Scripts -->
-<script src="js/features/cart.js"></script>
-<script src="js/core/cookie-consent.js"></script>
-<script src="js/core/main.js"></script>
+<script src="js/features/cart.js?v=3.5.3"></script>
+<script src="js/data/materiaux-data.js?v=3.5.3"></script>
+<script src="js/core/cookie-consent.js?v=3.5.3"></script>
+<script src="js/core/utils.js?v=3.5.3"></script>
+<script src="js/core/main.js?v=3.5.3"></script>
 
 <!-- PayPlug Integrated Payment SDK -->
 <script src="https://cdn.payplug.com/js/integrated-payment/v1@1/index.js"></script>
 
 <!-- Payment & Email modules -->
-<script src="js/services/email-client.js" defer></script>
-<script src="js/services/payplug-client.js" defer></script>
-<script src="js/pages/commander.js" defer></script>
+<script src="js/services/email-client.js?v=3.5.3" defer></script>
+<script src="js/services/payplug-client.js?v=3.5.3" defer></script>
+<script src="js/pages/commander.js?v=3.5.3" defer></script>
 
-<script src="js/features/mistral-stats.js" defer></script>
+<script src="js/features/mistral-stats.js?v=3.5.3" defer></script>
 </body>
 </html>

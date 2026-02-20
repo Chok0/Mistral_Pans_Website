@@ -222,6 +222,19 @@
   // ECOUTE DES CHANGEMENTS D'AUTH
   // ============================================================================
 
+  /**
+   * Enregistre un listener sur les changements d'etat d'authentification Supabase.
+   *
+   * Evenements geres :
+   *   - SIGNED_IN      → met a jour currentUser/currentSession, dispatch 'mistral-auth-change'
+   *   - SIGNED_OUT     → vide l'etat en memoire, dispatch 'mistral-auth-change'
+   *   - TOKEN_REFRESHED → met a jour la session en memoire (JWT renouvele)
+   *
+   * La subscription est stockee dans `authSubscription` et nettoyee
+   * automatiquement via destroy() au beforeunload de la page.
+   *
+   * @fires window#mistral-auth-change - CustomEvent { detail: { event: 'login'|'logout', user } }
+   */
   function setupAuthListener() {
     const client = getSupabaseClient();
     if (!client) return;
@@ -251,8 +264,20 @@
       }
     });
 
-    // Stocker la subscription pour pouvoir la nettoyer
     authSubscription = data?.subscription || null;
+  }
+
+  /**
+   * Nettoie le listener d'authentification Supabase.
+   * Appele automatiquement au beforeunload de la page pour eviter
+   * les fuites memoire (subscription Supabase jamais unsubscribed).
+   */
+  function destroy() {
+    if (authSubscription) {
+      authSubscription.unsubscribe();
+      authSubscription = null;
+      log('Auth listener unsubscribed');
+    }
   }
 
   // ============================================================================
@@ -317,6 +342,10 @@
     init();
   }
 
+  // Nettoyer le listener Supabase au dechargement de la page
+  // (evite la fuite memoire sur les sessions longues)
+  window.addEventListener('beforeunload', destroy);
+
   // ============================================================================
   // API PUBLIQUE
   // ============================================================================
@@ -337,7 +366,8 @@
     // Protection
     requireAuth,
 
-    // Etat
+    // Cycle de vie
+    destroy,
     isInitialized: () => isInitialized
   };
 

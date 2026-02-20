@@ -292,7 +292,7 @@
           }
         },
         invalid: {
-          color: '#EF4444'
+          color: '#DC2626'
         }
       };
 

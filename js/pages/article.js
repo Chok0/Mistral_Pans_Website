@@ -7,21 +7,10 @@
     return params.get('slug');
   }
 
-  function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  }
-
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
+  // --- Delegations vers MistralUtils (js/core/utils.js) ---
+  const formatDate   = MistralUtils.formatDate;
+  const escapeHtml   = MistralUtils.escapeHtml;
+  const sanitizeHtml = MistralUtils.sanitizeHtml;
 
   function loadArticle() {
     const container = document.getElementById('main-content');
@@ -53,19 +42,59 @@
       return;
     }
 
-    // Mettre à jour le titre et les meta OG
+    // Mettre à jour le titre et les meta OG + Twitter + canonical + JSON-LD
     document.title = article.title + ' \u2014 Mistral Pans';
+    const articleUrl = 'https://mistralpans.fr/article.html?slug=' + encodeURIComponent(slug);
+
     const setMeta = (prop, content) => {
       let el = document.querySelector('meta[property="' + prop + '"]');
       if (el) el.setAttribute('content', content);
     };
+    const setMetaName = (name, content) => {
+      let el = document.querySelector('meta[name="' + name + '"]');
+      if (el) el.setAttribute('content', content);
+    };
+
+    // Open Graph
     setMeta('og:title', article.title + ' \u2014 Mistral Pans');
+    setMeta('og:url', articleUrl);
     if (article.excerpt) setMeta('og:description', article.excerpt);
     if (article.coverImage) {
       let ogImg = document.querySelector('meta[property="og:image"]');
       if (!ogImg) { ogImg = document.createElement('meta'); ogImg.setAttribute('property', 'og:image'); document.head.appendChild(ogImg); }
       ogImg.setAttribute('content', article.coverImage);
     }
+
+    // Twitter Card
+    setMetaName('twitter:title', article.title + ' \u2014 Mistral Pans');
+    if (article.excerpt) setMetaName('twitter:description', article.excerpt);
+    if (article.coverImage) setMetaName('twitter:image', article.coverImage);
+
+    // Canonical
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute('href', articleUrl);
+
+    // Meta description
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc && article.excerpt) metaDesc.setAttribute('content', article.excerpt);
+
+    // JSON-LD Article
+    const jsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      'headline': article.title,
+      'url': articleUrl,
+      'author': { '@type': 'Organization', 'name': 'Mistral Pans', 'url': 'https://mistralpans.fr' },
+      'publisher': { '@type': 'Organization', 'name': 'Mistral Pans', 'url': 'https://mistralpans.fr' }
+    };
+    if (article.excerpt) jsonLd.description = article.excerpt;
+    if (article.coverImage) jsonLd.image = article.coverImage;
+    if (article.publishedAt) jsonLd.datePublished = article.publishedAt;
+    if (article.updatedAt) jsonLd.dateModified = article.updatedAt;
+
+    let ldScript = document.querySelector('script[type="application/ld+json"]');
+    if (!ldScript) { ldScript = document.createElement('script'); ldScript.type = 'application/ld+json'; document.head.appendChild(ldScript); }
+    ldScript.textContent = JSON.stringify(jsonLd);
 
     // Afficher l'article
     container.innerHTML =
@@ -86,7 +115,7 @@
           '</div>' +
         '</div>' +
         '<div class="article-content">' +
-          (article.content || '<p>Contenu de l\'article...</p>') +
+          sanitizeHtml(article.content || '<p>Contenu de l\'article...</p>') +
         '</div>' +
         '<nav class="article-nav">' +
           '<a href="blog.html" class="article-nav__link">' +
@@ -99,7 +128,7 @@
         '</nav>' +
       '</article>' +
       (article.status === 'draft'
-        ? '<div style="position:fixed;bottom:1rem;left:1rem;background:#f59e0b;color:white;padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.875rem;font-weight:500;">Brouillon (non publié)</div>'
+        ? '<div style="position:fixed;bottom:1rem;left:1rem;background:#D97706;color:white;padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.875rem;font-weight:500;">Brouillon (non publié)</div>'
         : '');
   }
 

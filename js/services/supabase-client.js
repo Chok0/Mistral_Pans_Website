@@ -82,25 +82,9 @@
     return null;
   }
 
-  /**
-   * Formate une date pour affichage
-   */
-  function formatDate(dateString) {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('fr-FR');
-  }
-
-  /**
-   * Formate un prix
-   */
-  function formatPrice(price) {
-    if (price === null || price === undefined) return '0 €';
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0
-    }).format(price);
-  }
+  // --- Delegations vers MistralUtils (js/core/utils.js) ---
+  const formatDate  = MistralUtils.formatDateShort;
+  const formatPrice = MistralUtils.formatPrice;
 
   // ============================================================================
   // AUTHENTIFICATION

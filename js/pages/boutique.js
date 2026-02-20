@@ -17,13 +17,22 @@
   const shouldUseFlats = MistralScales.shouldUseFlats;
   const getTonalityChipNotation = MistralScales.getTonalityChipNotation;
 
+  // Unified scale data accessor: custom_layouts (admin) > SCALES_DATA (hardcoded)
+  function getScaleDataUnified(code) {
+    if (typeof MistralGammes !== 'undefined' && MistralGammes.getScaleDataForConfigurateur) {
+      const data = MistralGammes.getScaleDataForConfigurateur(code);
+      if (data) return data;
+    }
+    return SCALES_DATA[code] || null;
+  }
+
   // Update tonality chips labels based on music theory rules
   // Each chip displays its correct notation according to the cycle of fifths:
   // - Eb, Ab, Bb always shown as flats (D#, G#, A# are theoretically impractical)
   // - Db shown as flat (easier than C# with 7 sharps)
   // - F#/Gb depends on scale preference
   function updateTonalityChipsLabels() {
-    const scaleData = SCALES_DATA[state.scale];
+    const scaleData = getScaleDataUnified(state.scale);
     const isFrench = MistralScales.getNotationMode() === 'french';
 
     document.querySelectorAll('#chips-tonality .chip').forEach(chip => {
@@ -48,6 +57,10 @@
     housse: null     // Selected housse accessory (null = none)
   };
 
+  // Lot navigator state
+  let currentLotIndex = 0;
+  let lotNavBound = false;
+
   // ===== PRICING =====
   // Defaults (overridden by admin config if available)
   const PRICING_DEFAULTS = {
@@ -59,56 +72,80 @@
   };
 
   function getPricingConfig() {
-    if (typeof MistralGestion !== 'undefined') {
-      const config = MistralGestion.getConfig();
-      return {
-        prixParNote: config.prixParNote ?? PRICING_DEFAULTS.prixParNote,
-        bonusOctave2: config.bonusOctave2 ?? PRICING_DEFAULTS.bonusOctave2,
-        bonusBottoms: config.bonusBottoms ?? PRICING_DEFAULTS.bonusBottoms,
-        malusDifficulteWarning: config.malusDifficulteWarning ?? PRICING_DEFAULTS.malusDifficulteWarning,
-        malusDifficulteDifficile: config.malusDifficulteDifficile ?? PRICING_DEFAULTS.malusDifficulteDifficile
-      };
-    }
-    return { ...PRICING_DEFAULTS };
+    const config = MistralUtils.getTarifsPublics();
+    return {
+      prixParNote: config.prixParNote,
+      bonusOctave2: config.bonusOctave2,
+      bonusBottoms: config.bonusBottoms,
+      malusDifficulteWarning: config.malusDifficulteWarning,
+      malusDifficulteDifficile: config.malusDifficulteDifficile
+    };
   }
 
   function calculatePrice(notes, size, feasibilityStatus, materialCode) {
     const pricing = getPricingConfig();
-    let price = 0;
+    let basePrice = 0;
+    let octave2Bonus = 0;
     let hasBottom = false;
+    let octave2Count = 0;
 
     notes.forEach(note => {
-      price += pricing.prixParNote;
+      basePrice += pricing.prixParNote;
       if (note.octave === 2) {
-        price += pricing.bonusOctave2;
+        octave2Bonus += pricing.bonusOctave2;
+        octave2Count++;
       }
       if (note.type === 'bottom') {
         hasBottom = true;
       }
     });
 
-    // Bonus bottom (une seule fois)
-    if (hasBottom) {
-      price += pricing.bonusBottoms;
-    }
+    const bottomsBonus = hasBottom ? pricing.bonusBottoms : 0;
 
     // Malus taille (montant fixe en EUR)
     const sizeMalus = typeof MistralTailles !== 'undefined'
       ? MistralTailles.getSizeMalusEur(size)
       : 0;
-    price += sizeMalus;
 
-    // Note: tous les materiaux sont au meme prix (pas de malus)
+    // Sous-total avant difficulte
+    const subtotal = basePrice + octave2Bonus + bottomsBonus + sizeMalus;
 
     // Pourcentage selon difficulte
+    let difficultyPercent = 0;
+    let difficultyAmount = 0;
     if (feasibilityStatus === 'warning') {
-      price = price * (1 + pricing.malusDifficulteWarning / 100);
+      difficultyPercent = pricing.malusDifficulteWarning;
+      difficultyAmount = subtotal * (difficultyPercent / 100);
     } else if (feasibilityStatus === 'difficult') {
-      price = price * (1 + pricing.malusDifficulteDifficile / 100);
+      difficultyPercent = pricing.malusDifficulteDifficile;
+      difficultyAmount = subtotal * (difficultyPercent / 100);
     }
 
+    const rawPrice = subtotal + difficultyAmount;
+
     // Arrondir a la tranche de 5 inferieure
-    return Math.floor(price / 5) * 5;
+    const finalPrice = Math.floor(rawPrice / 5) * 5;
+
+    // Stocker la decomposition pour affichage
+    state._priceBreakdown = {
+      noteCount: notes.length,
+      prixParNote: pricing.prixParNote,
+      basePrice: basePrice,
+      octave2Count: octave2Count,
+      octave2Bonus: octave2Bonus,
+      bottomsBonus: bottomsBonus,
+      sizeMalus: sizeMalus,
+      sizeLabel: size + ' cm',
+      subtotal: subtotal,
+      difficultyPercent: difficultyPercent,
+      difficultyAmount: difficultyAmount,
+      feasibilityStatus: feasibilityStatus,
+      rawPrice: rawPrice,
+      rounding: finalPrice - rawPrice,
+      finalPrice: finalPrice
+    };
+
+    return finalPrice;
   }
 
   // ===== AUDIO (FLAC Samples) =====
@@ -332,7 +369,7 @@
   }
 
   function getTransposition() {
-    const scaleData = SCALES_DATA[state.scale];
+    const scaleData = getScaleDataUnified(state.scale);
     const baseNote = scaleData.baseRoot;
     const baseOctave = scaleData.baseOctave;
 
@@ -349,7 +386,7 @@
   }
 
   function getCurrentNotes() {
-    const scaleData = SCALES_DATA[state.scale];
+    const scaleData = getScaleDataUnified(state.scale);
     const pattern = scaleData.patterns[state.notes];
     if (!pattern) return [];
 
@@ -360,7 +397,7 @@
   // ===== RENDER PLAYER =====
   function renderPlayer() {
     const notes = getCurrentNotes();
-    const scaleData = SCALES_DATA[state.scale];
+    const scaleData = getScaleDataUnified(state.scale);
     const useFlats = shouldUseFlats(state.tonality, scaleData);
     const size = 900;
     const center = size / 2;
@@ -586,7 +623,7 @@
 
   // ===== UPDATE DISPLAY =====
   function updateDisplay() {
-    const scaleData = SCALES_DATA[state.scale];
+    const scaleData = getScaleDataUnified(state.scale);
     // Music theory rules: Eb/Ab/Bb/Db roots use flats, F# depends on scale, natural roots use scale preference
     const useFlats = shouldUseFlats(state.tonality, scaleData);
     const notes = getCurrentNotes();
@@ -632,7 +669,9 @@
 
     // Mettre a jour l'UI de faisabilite (chips, hint, bouton)
     if (typeof FeasibilityModule !== 'undefined') {
-      FeasibilityModule.update(state, notes, SCALES_DATA, parsePattern, {
+      const scalesProxy = {};
+      scalesProxy[state.scale] = getScaleDataUnified(state.scale);
+      FeasibilityModule.update(state, notes, scalesProxy, parsePattern, {
         configName: configName
       });
     }
@@ -642,15 +681,15 @@
 
   // ===== CTA BUTTONS STATE =====
   function isHousseRequired() {
-    var accessoires = getAccessoiresForConfigurateur(state.size);
+    const accessoires = getAccessoiresForConfigurateur(state.size);
     return accessoires.some(function(a) { return a.categorie === 'housse'; });
   }
 
   function scrollToHousseSection() {
-    var section = document.getElementById('accessoires-section');
+    const section = document.getElementById('accessoires-section');
     if (section) {
       section.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      section.style.outline = '2px solid var(--color-error, #EF4444)';
+      section.style.outline = '2px solid var(--color-error, #DC2626)';
       section.style.outlineOffset = '4px';
       section.style.borderRadius = '8px';
       setTimeout(function() { section.style.outline = ''; section.style.outlineOffset = ''; }, 2000);
@@ -665,7 +704,7 @@
   }
 
   function openFeasibilityContact(message) {
-    var messageField = document.getElementById('contact-message');
+    const messageField = document.getElementById('contact-message');
     if (messageField && message) messageField.value = message;
     if (typeof openContactModal === 'function') {
       openContactModal();
@@ -677,21 +716,79 @@
     const instrumentPrice = state._instrumentPrice || 0;
     const houssePrice = state.housse ? (state.housse.prix || 0) : 0;
     const totalPrice = instrumentPrice + houssePrice;
+    const bd = state._priceBreakdown || {};
+    const fmt = function(n) { return Math.round(n).toLocaleString('fr-FR') + ' \u20AC'; };
 
-    // Update price breakdown
-    const priceBreakdown = document.getElementById('price-breakdown');
-    const priceInstrument = document.getElementById('price-instrument');
-    const priceHousseLine = document.getElementById('price-housse-line');
-    const priceHousse = document.getElementById('price-housse');
+    // --- Ligne base : "9 notes × 115 €" ---
+    const baseLabel = document.getElementById('price-base-label');
+    const baseVal = document.getElementById('price-base');
+    if (baseLabel) baseLabel.textContent = bd.noteCount + ' notes \u00D7 ' + (bd.prixParNote || 115) + ' \u20AC';
+    if (baseVal) baseVal.textContent = fmt(bd.basePrice || 0);
 
-    if (state.housse && priceBreakdown) {
-      priceBreakdown.style.display = 'block';
-      if (priceInstrument) priceInstrument.textContent = instrumentPrice.toLocaleString('fr-FR') + ' \u20AC';
-      if (priceHousseLine) priceHousseLine.style.display = 'block';
-      if (priceHousse) priceHousse.textContent = houssePrice.toLocaleString('fr-FR') + ' \u20AC';
-    } else if (priceBreakdown) {
-      priceBreakdown.style.display = 'none';
-      if (priceHousseLine) priceHousseLine.style.display = 'none';
+    // --- Ligne octave 2 (masquee si 0) ---
+    const oct2Line = document.getElementById('price-octave2-line');
+    const oct2Label = document.getElementById('price-octave2-label');
+    const oct2Val = document.getElementById('price-octave2');
+    if (oct2Line) {
+      if (bd.octave2Bonus > 0) {
+        oct2Line.style.display = '';
+        if (oct2Label) oct2Label.textContent = bd.octave2Count + ' note' + (bd.octave2Count > 1 ? 's' : '') + ' octave 2';
+        if (oct2Val) oct2Val.textContent = '+' + fmt(bd.octave2Bonus);
+      } else {
+        oct2Line.style.display = 'none';
+      }
+    }
+
+    // --- Ligne bottoms (masquee si 0) ---
+    const bottomsLine = document.getElementById('price-bottoms-line');
+    const bottomsVal = document.getElementById('price-bottoms');
+    if (bottomsLine) {
+      if (bd.bottomsBonus > 0) {
+        bottomsLine.style.display = '';
+        if (bottomsVal) bottomsVal.textContent = '+' + fmt(bd.bottomsBonus);
+      } else {
+        bottomsLine.style.display = 'none';
+      }
+    }
+
+    // --- Ligne taille (masquee si 0) ---
+    const sizeLine = document.getElementById('price-size-line');
+    const sizeLabel = document.getElementById('price-size-label');
+    const sizeVal = document.getElementById('price-size');
+    if (sizeLine) {
+      if (bd.sizeMalus > 0) {
+        sizeLine.style.display = '';
+        if (sizeLabel) sizeLabel.textContent = 'Taille ' + bd.sizeLabel;
+        if (sizeVal) sizeVal.textContent = '+' + fmt(bd.sizeMalus);
+      } else {
+        sizeLine.style.display = 'none';
+      }
+    }
+
+    // --- Ligne difficulte (masquee si 0) ---
+    const diffLine = document.getElementById('price-difficulty-line');
+    const diffLabel = document.getElementById('price-difficulty-label');
+    const diffVal = document.getElementById('price-difficulty');
+    if (diffLine) {
+      if (bd.difficultyAmount > 0) {
+        diffLine.style.display = '';
+        if (diffLabel) diffLabel.textContent = 'Difficult\u00E9 (+' + bd.difficultyPercent + ' %)';
+        if (diffVal) diffVal.textContent = '+' + fmt(bd.difficultyAmount);
+      } else {
+        diffLine.style.display = 'none';
+      }
+    }
+
+    // --- Ligne housse (masquee si pas de housse) ---
+    const housseLine = document.getElementById('price-housse-line');
+    const housseVal = document.getElementById('price-housse');
+    if (housseLine) {
+      if (state.housse) {
+        housseLine.style.display = '';
+        if (housseVal) housseVal.textContent = '+' + fmt(houssePrice);
+      } else {
+        housseLine.style.display = 'none';
+      }
     }
 
     // Update total price
@@ -760,20 +857,88 @@
     const container = document.getElementById('chips-scale');
     if (!container) return;
 
-    // Get gammes from centralized module, with fallback
-    const gammes = typeof MistralGammes !== 'undefined'
-      ? MistralGammes.getForConfigurateur()
-      : [
-          { code: 'kurd', nom: 'Kurd' },
-          { code: 'amara', nom: 'Amara' },
-          { code: 'lowpygmy', nom: 'Low Pygmy' },
-          { code: 'hijaz', nom: 'Hijaz' },
-          { code: 'myxolydian', nom: 'Myxolydian' },
-          { code: 'equinox', nom: 'Equinox' }
-        ];
+    const navigator = document.getElementById('lot-navigator');
+    const labelEl = document.getElementById('lot-label');
+
+    // Check for published lots
+    const lots = typeof MistralGammes !== 'undefined' && MistralGammes.getPublishedLots
+      ? MistralGammes.getPublishedLots()
+      : null;
+
+    let gammes;
+
+    if (lots && lots.length > 0) {
+      // Multi-lot mode: show navigator, filter gammes by current lot
+      if (navigator) navigator.style.display = 'flex';
+
+      // Clamp index
+      if (currentLotIndex >= lots.length) currentLotIndex = 0;
+      if (currentLotIndex < 0) currentLotIndex = lots.length - 1;
+
+      const currentLot = lots[currentLotIndex];
+      if (labelEl) labelEl.textContent = currentLot.nom;
+
+      // Get gamme objects for this lot's codes
+      gammes = (currentLot.gammes || []).map(code => {
+        if (typeof MistralGammes !== 'undefined') {
+          return MistralGammes.getByCode(code);
+        }
+        return null;
+      }).filter(Boolean);
+
+      // Update prev/next button states (wrap-around, always enabled if > 1 lot)
+      const prevBtn = document.getElementById('lot-prev');
+      const nextBtn = document.getElementById('lot-next');
+      if (prevBtn) prevBtn.disabled = lots.length <= 1;
+      if (nextBtn) nextBtn.disabled = lots.length <= 1;
+
+      // Bind lot nav buttons (once)
+      if (!lotNavBound) {
+        lotNavBound = true;
+        if (prevBtn) {
+          prevBtn.addEventListener('click', function() {
+            const l = typeof MistralGammes !== 'undefined' && MistralGammes.getPublishedLots
+              ? MistralGammes.getPublishedLots() : null;
+            if (!l || l.length <= 1) return;
+            currentLotIndex = (currentLotIndex - 1 + l.length) % l.length;
+            renderScaleChips();
+            updateDisplay();
+          });
+        }
+        if (nextBtn) {
+          nextBtn.addEventListener('click', function() {
+            const l = typeof MistralGammes !== 'undefined' && MistralGammes.getPublishedLots
+              ? MistralGammes.getPublishedLots() : null;
+            if (!l || l.length <= 1) return;
+            currentLotIndex = (currentLotIndex + 1) % l.length;
+            renderScaleChips();
+            updateDisplay();
+          });
+        }
+      }
+    } else {
+      // Flat mode: hide navigator, use all configurateur gammes
+      if (navigator) navigator.style.display = 'none';
+
+      gammes = typeof MistralGammes !== 'undefined'
+        ? MistralGammes.getForConfigurateur()
+        : [
+            { code: 'kurd', nom: 'Kurd' },
+            { code: 'amara', nom: 'Amara' },
+            { code: 'lowpygmy', nom: 'Low Pygmy' },
+            { code: 'hijaz', nom: 'Hijaz' },
+            { code: 'myxolydian', nom: 'Myxolydian' },
+            { code: 'equinox', nom: 'Equinox' }
+          ];
+    }
 
     // Only show gammes that have patterns in scales-data.js
-    const availableGammes = gammes.filter(g => SCALES_DATA[g.code]);
+    const availableGammes = gammes.filter(g => {
+      if (typeof MistralGammes !== 'undefined' && MistralGammes.hasConfiguratorPatterns) {
+        return MistralGammes.hasConfiguratorPatterns(g.code);
+      }
+      return SCALES_DATA[g.code] && SCALES_DATA[g.code].patterns !== null;
+    });
 
     let html = '';
     availableGammes.forEach(g => {
@@ -790,7 +955,7 @@
         chip.classList.add('active');
         state.scale = chip.dataset.value;
 
-        const scaleData = SCALES_DATA[state.scale];
+        const scaleData = getScaleDataUnified(state.scale);
         state.tonality = scaleData.baseRoot + scaleData.baseOctave;
         document.querySelectorAll('#chips-tonality .chip').forEach(c => {
           c.classList.toggle('active', c.dataset.value === state.tonality);
@@ -809,7 +974,7 @@
     }
   }
 
-  // Re-render scale chips when gammes change (batch activation, etc.)
+  // Re-render scale chips when gammes change (lot publish/unpublish, etc.)
   window.addEventListener('gammesUpdated', function() {
     renderScaleChips();
     updateDisplay();
@@ -901,7 +1066,7 @@
     const label = section.querySelector('.option-label');
     if (label) {
       label.innerHTML = housseRequired
-        ? 'Choisir une housse <span style="color:var(--color-error,#EF4444);">*</span>'
+        ? 'Choisir une housse <span style="color:var(--color-error,#DC2626);">*</span>'
         : 'Ajouter une housse';
     }
 
@@ -932,7 +1097,7 @@
 
     // Add validation hint when housse required but not selected
     if (housseRequired && !state.housse) {
-      html += '<p class="accessoire-hint" style="color:var(--color-error,#EF4444);font-size:0.85rem;margin:0.5rem 0 0;">Veuillez sélectionner une housse pour continuer</p>';
+      html += '<p class="accessoire-hint" style="color:var(--color-error,#DC2626);font-size:0.85rem;margin:0.5rem 0 0;">Veuillez sélectionner une housse pour continuer</p>';
     }
 
     container.innerHTML = html;
@@ -1109,7 +1274,11 @@
       if (window.innerWidth <= 768) {
         // Mobile: horizontal scroll in wrapper (CSS snap)
         const target = panel === 'config' ? panelConfig : panelStock;
-        if (target) wrapper.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+        if (target) {
+          // Reset le scroll vertical du panel cible pour afficher le haut
+          target.scrollTop = 0;
+          wrapper.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+        }
       } else {
         // Desktop/Tablet: native vertical scroll
         if (panel === 'config') {
@@ -1145,11 +1314,18 @@
 
     // Mobile: detect horizontal scroll position in wrapper
     let scrollTimeout;
+    let lastActivePanel = 'config';
     wrapper.addEventListener('scroll', () => {
       if (window.innerWidth > 768) return;
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         const activePanel = wrapper.scrollLeft < wrapper.offsetWidth / 2 ? 'config' : 'stock';
+        // Si on change de panel, reset le scroll vertical du nouveau panel
+        if (activePanel !== lastActivePanel) {
+          const target = activePanel === 'config' ? panelConfig : panelStock;
+          if (target) target.scrollTop = 0;
+          lastActivePanel = activePanel;
+        }
         updateActiveState(activePanel);
       }, 50);
     });
@@ -1182,8 +1358,7 @@
 
       if (typeof BoutiqueAdmin !== 'undefined') {
         const instruments = BoutiqueAdmin.getInstrumentsEnLigne();
-        const accessoires = BoutiqueAdmin.getAccessoiresActifs();
-        count = instruments.length + accessoires.length;
+        count = instruments.length;
       }
 
       if (stockCountTab) stockCountTab.textContent = count;
@@ -1210,7 +1385,7 @@
 
   // ===== COMMANDER DIRECTEMENT =====
   window.orderDirectly = function() {
-    var btn = document.getElementById('btn-order');
+    const btn = document.getElementById('btn-order');
     // Guard: feasibility blocked
     if (btn && btn.dataset.blocked === 'true') {
       showFeasibilityNotice();
@@ -1227,7 +1402,7 @@
     }
     // Add current config to cart, then go to checkout
     if (typeof MistralCart !== 'undefined') {
-      var config = {
+      const config = {
         name: (state._rootDisplay || '') + ' ' + (state._scaleData?.name || state.scale || ''),
         price: state._instrumentPrice || 0,
         gamme: state.scale,
@@ -1249,7 +1424,7 @@
   // ===== PANIER - Ajout configuration sur mesure =====
   window.addConfigToCart = function() {
     if (typeof MistralCart === 'undefined') return;
-    var cartBtn = document.getElementById('btn-add-cart');
+    const cartBtn = document.getElementById('btn-add-cart');
     // Guard: feasibility blocked
     if (cartBtn && cartBtn.dataset.blocked === 'true') {
       showFeasibilityNotice();
@@ -1265,7 +1440,7 @@
       return;
     }
 
-    var config = {
+    const config = {
       name: (state._rootDisplay || '') + ' ' + (state._scaleData?.name || state.scale || ''),
       price: state._instrumentPrice || 0,
       gamme: state.scale,
@@ -1277,14 +1452,14 @@
       housse: state.housse ? { id: state.housse.id, nom: state.housse.nom, prix: state.housse.prix } : null
     };
 
-    var id = MistralCart.addCustom(config);
+    const id = MistralCart.addCustom(config);
     if (id) {
-      var btn = document.getElementById('btn-add-cart');
+      const btn = document.getElementById('btn-add-cart');
       if (btn) {
         btn.textContent = 'Ajouté au panier !';
-        btn.style.background = 'var(--color-success, #4A7C59)';
+        btn.style.background = 'var(--color-success, #3D6B4A)';
         btn.style.color = 'white';
-        btn.style.borderColor = 'var(--color-success, #4A7C59)';
+        btn.style.borderColor = 'var(--color-success, #3D6B4A)';
         setTimeout(function() {
           btn.textContent = 'Ajouter au panier';
           btn.style.background = '';
@@ -1338,6 +1513,12 @@
     updateTonalityChipsLabels();  // Set chip labels based on default scale (Kurd = flats)
     updateDisplay();
 
+    // Bind cart/order buttons (CSP-safe, pas de onclick inline)
+    const btnAddCart = document.getElementById('btn-add-cart');
+    const btnOrder = document.getElementById('btn-order');
+    if (btnAddCart) btnAddCart.addEventListener('click', () => window.addConfigToCart());
+    if (btnOrder) btnOrder.addEventListener('click', () => window.orderDirectly());
+
     // Listen for data module updates from admin
     window.addEventListener('materiauxUpdated', () => {
       renderMaterialCards();
@@ -1352,10 +1533,11 @@
       updateDisplay();
     });
 
-    // Re-render accessoires when Supabase data arrives
+    // Re-render accessoires + recalculer prix quand Supabase data arrive
+    // (getPricingConfig() retourne les vraies valeurs admin apres sync)
     window.addEventListener('mistral-sync-complete', () => {
       renderAccessoiresSection();
-      updatePriceDisplay();
+      updateDisplay();
     });
     window.addEventListener('mistral-data-change', (e) => {
       if (e.detail?.key === 'mistral_accessoires') {

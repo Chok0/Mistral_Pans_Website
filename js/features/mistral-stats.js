@@ -1,6 +1,6 @@
 /* ==========================================================================
    MISTRAL PANS - Statistiques Anonymes (RGPD Compliant)
-   Comptage agrÃ©gÃ© sans tracking individuel
+   Comptage agrégé sans tracking individuel
    ========================================================================== */
 
 (function(window) {
@@ -69,7 +69,7 @@
       
       const domain = url.hostname.toLowerCase();
       if (domain.includes('google') || domain.includes('bing') || domain.includes('duckduckgo')) return 'Recherche';
-      if (domain.includes('facebook') || domain.includes('instagram') || domain.includes('linkedin')) return 'RÃ©seaux sociaux';
+      if (domain.includes('facebook') || domain.includes('instagram') || domain.includes('linkedin')) return 'Réseaux sociaux';
       return 'Autre site';
     } catch {
       return 'Direct';
@@ -110,7 +110,7 @@
     const browser = getBrowser();
     const source = getTrafficSource();
 
-    // Initialiser le jour si nÃ©cessaire
+    // Initialiser le jour si nécessaire
     if (!stats.daily[today]) {
       stats.daily[today] = {
         totalViews: 0,
@@ -124,14 +124,14 @@
 
     const day = stats.daily[today];
 
-    // IncrÃ©menter les compteurs (agrÃ©gÃ©s, anonymes)
+    // Incrémenter les compteurs (agrégés, anonymes)
     day.totalViews++;
     day.pages[page] = (day.pages[page] || 0) + 1;
     day.hours[hour] = (day.hours[hour] || 0) + 1;
     day.devices[device] = (day.devices[device] || 0) + 1;
     day.browsers[browser] = (day.browsers[browser] || 0) + 1;
     
-    // Ne compter la source que pour les entrÃ©es (pas navigation interne)
+    // Ne compter la source que pour les entrées (pas navigation interne)
     if (source !== 'Interne') {
       day.sources[source] = (day.sources[source] || 0) + 1;
     }
@@ -184,7 +184,7 @@
   
   const Reports = {
     /**
-     * RÃ©sumÃ© sur une pÃ©riode
+     * Résumé sur une période
      */
     getSummary(days = 30) {
       const stats = getStats();
@@ -262,7 +262,7 @@
     },
 
     /**
-     * RÃ©partition par appareil
+     * Répartition par appareil
      */
     getDevices(days = 30) {
       const stats = getStats();
@@ -290,7 +290,7 @@
     },
 
     /**
-     * RÃ©partition par navigateur
+     * Répartition par navigateur
      */
     getBrowsers(days = 30) {
       const stats = getStats();
@@ -397,7 +397,7 @@
   const Admin = {
     clearAll() {
       localStorage.removeItem(CONFIG.STORAGE_KEY);
-      console.log('Statistiques effacÃ©es');
+      console.log('Statistiques effacées');
     },
 
     cleanup() {
@@ -455,7 +455,7 @@
   // ============================================================================
   
   function initAutoTracking() {
-    // Tracker les clics sur les CTA marquÃ©s
+    // Tracker les clics sur les CTA marqués
     document.addEventListener('click', function(e) {
       const cta = e.target.closest('[data-track-cta]');
       if (cta) {
@@ -473,7 +473,7 @@
     // Ne pas tracker la page admin
     if (window.location.pathname.includes('admin')) return;
 
-    // Nettoyer les anciennes donnÃ©es
+    // Nettoyer les anciennes données
     cleanup();
 
     // Tracker la page vue

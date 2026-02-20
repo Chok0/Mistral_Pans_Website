@@ -146,13 +146,13 @@
                 </div>
               </div>
               <div class="admin-list-item__actions">
-                <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="BlogAdmin.toggleStatus('${a.id}')">
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="toggle-status" data-ns="BlogAdmin" data-id="${a.id}">
                   ${a.status === 'published' ? 'Dépublier' : 'Publier'}
                 </button>
-                <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="BlogAdmin.edit('${a.id}')">
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit" data-ns="BlogAdmin" data-id="${a.id}">
                   Modifier
                 </button>
-                <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="BlogAdmin.delete('${a.id}')">
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="delete" data-ns="BlogAdmin" data-id="${a.id}">
                   Supprimer
                 </button>
               </div>
@@ -161,8 +161,8 @@
         </div>
       `,
       footer: `
-        <button class="admin-btn admin-btn--secondary" onclick="MistralAdmin.Modal.close('manage-blog-modal')">Fermer</button>
-        <button class="admin-btn admin-btn--primary" onclick="BlogAdmin.newArticle()">
+        <button class="admin-btn admin-btn--secondary" data-action="modal-close" data-param="manage-blog-modal">Fermer</button>
+        <button class="admin-btn admin-btn--primary" data-action="new-article" data-ns="BlogAdmin">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 20h9"></path>
             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
@@ -173,6 +173,33 @@
     });
 
     Modal.open(modal);
+
+    // Delegated event listeners for data-action buttons
+    modal.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+
+      switch (action) {
+        case 'toggle-status':
+          BlogAdmin.toggleStatus(id);
+          break;
+        case 'edit':
+          BlogAdmin.edit(id);
+          break;
+        case 'delete':
+          BlogAdmin.delete(id);
+          break;
+        case 'modal-close':
+          Modal.close(btn.dataset.param);
+          break;
+        case 'new-article':
+          BlogAdmin.newArticle();
+          break;
+      }
+    });
   }
 
   // ============================================================================
@@ -234,6 +261,11 @@
       if (e.detail && e.detail.key === 'mistral_blog_articles') {
         renderArticles();
       }
+    });
+
+    // Le sync initial dispatch mistral-sync-complete (pas mistral-data-change)
+    window.addEventListener('mistral-sync-complete', () => {
+      renderArticles();
     });
   }
 

@@ -1,6 +1,8 @@
 // Netlify Function : Envoi d'email via Brevo
 // Supporte plusieurs types d'emails : contact, facture, confirmation, rapport
 
+const { checkRateLimit, getClientIp } = require('./utils/rate-limit');
+
 /**
  * Échappe les caractères HTML pour prévenir les attaques XSS
  */
@@ -243,7 +245,7 @@ function buildOrderConfirmationEmail(data) {
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { background: #0D7377; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
           .header h1 { margin: 0; font-size: 24px; }
-          .success-badge { background: #4A7C59; color: white; padding: 10px 20px; border-radius: 20px; display: inline-block; margin-top: 10px; }
+          .success-badge { background: #3D6B4A; color: white; padding: 10px 20px; border-radius: 20px; display: inline-block; margin-top: 10px; }
           .content { background: #fff; border: 1px solid #e0e0e0; padding: 30px; }
           .order-box { background: #f8f8f8; padding: 20px; border-radius: 8px; margin: 20px 0; }
           .order-detail { padding: 10px 0; border-bottom: 1px solid #eee; }
@@ -285,7 +287,7 @@ function buildOrderConfirmationEmail(data) {
 
               <div class="order-detail">
                 <div class="label">Acompte versé</div>
-                <div class="value" style="color: #4A7C59;">${acompte}</div>
+                <div class="value" style="color: #3D6B4A;">${acompte}</div>
               </div>
             </div>
 
@@ -410,6 +412,206 @@ function buildRentalConfirmationEmail(data) {
 }
 
 /**
+ * Template : Réservation de location (avec contrat PDF et caution)
+ */
+function buildRentalReservationEmail(data) {
+  const { client, instrument, mode, loyer, caution, frais, swiklyUrl, pdfBase64 } = data;
+
+  const clientEmail = client.email?.trim().toLowerCase();
+  const clientName = sanitizeEmailHeader(`${client.prenom || ''} ${client.nom || ''}`);
+  const safePrenom = escapeHtml(client.prenom || 'cher client');
+  const safeGamme = escapeHtml(instrument?.gamme || 'Handpan');
+  const safeTaille = escapeHtml(instrument?.taille || '');
+  const safeTonalite = escapeHtml(instrument?.tonalite || '');
+  const safeMateriau = escapeHtml(instrument?.materiau || '');
+  const instrumentLabel = [safeGamme, safeTaille, safeTonalite].filter(Boolean).join(' — ');
+  const isLivraison = mode === 'livraison';
+  const modeLabel = isLivraison ? 'Livraison' : 'Retrait atelier';
+
+  // Ligne supplémentaire frais de livraison
+  const fraisRow = isLivraison && frais ? `
+              <div class="detail-row">
+                <span>Frais de dossier + expédition</span>
+                <strong>${formatPrice(frais)}</strong>
+              </div>` : '';
+
+  // Bloc caution atelier (chèque)
+  const cautionAtelierBlock = !isLivraison ? `
+            <div class="info-box" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+              <p style="margin: 0;">Merci de prévoir un chèque de caution de <strong>${formatPrice(caution)}</strong> à l'ordre de Mistral Pans lors du retrait de l'instrument.</p>
+            </div>` : '';
+
+  // Bloc Swikly CTA (livraison)
+  const swiklyBlock = isLivraison && swiklyUrl ? `
+            <div style="text-align: center; margin: 24px 0;">
+              <p>Pour valider votre caution en ligne, cliquez sur le bouton ci-dessous :</p>
+              <a href="${escapeHtml(swiklyUrl)}" class="cta-button" style="display: inline-block; background: #0D7377; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+                Déposer ma caution en ligne
+              </a>
+              <p style="font-size: 12px; color: #888; margin-top: 10px;">La caution de ${formatPrice(caution)} sera pré-autorisée sur votre carte bancaire via Swikly (non débitée).</p>
+            </div>` : '';
+
+  const emailData = {
+    to: [{ email: clientEmail, name: clientName }],
+    bcc: [{ email: 'contact@mistralpans.fr', name: 'Mistral Pans' }],
+    subject: 'Votre réservation de location — Mistral Pans',
+    htmlContent: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #0D7377; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .content { background: #fff; border: 1px solid #e0e0e0; padding: 30px; }
+          .rental-box { background: #f8f8f8; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+          .detail-row:last-child { border-bottom: none; }
+          .info-box { background: #e8f4f4; padding: 15px; border-radius: 8px; margin: 20px 0; }
+          .cta-button { display: inline-block; background: #0D7377; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .footer { padding: 20px; text-align: center; color: #888; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Mistral Pans</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Location d'instrument</p>
+          </div>
+          <div class="content">
+            <p>Bonjour ${safePrenom},</p>
+
+            <p>Votre demande de location a bien été enregistrée. Voici le récapitulatif et votre contrat de location en pièce jointe.</p>
+
+            <div class="rental-box">
+              <h3 style="margin: 0 0 15px 0; color: #0D7377;">Votre réservation</h3>
+
+              <div class="detail-row">
+                <span>Instrument</span>
+                <strong>${instrumentLabel}</strong>
+              </div>
+
+              <div class="detail-row">
+                <span>Loyer</span>
+                <strong>${formatPrice(loyer)}/mois</strong>
+              </div>
+
+              <div class="detail-row">
+                <span>Caution</span>
+                <strong>${formatPrice(caution)}</strong>
+              </div>
+
+              <div class="detail-row">
+                <span>Mode</span>
+                <strong>${escapeHtml(modeLabel)}</strong>
+              </div>
+${fraisRow}
+            </div>
+
+            <div class="info-box">
+              <h4 style="margin: 0 0 10px 0;">Pièces à nous fournir par retour d'email</h4>
+              <ul style="margin: 0; padding-left: 20px;">
+                <li>Copie pièce d'identité</li>
+                <li>Copie justificatif de domicile</li>
+              </ul>
+            </div>
+${cautionAtelierBlock}
+${swiklyBlock}
+
+            <p>À très bientôt,<br><strong>L'équipe Mistral Pans</strong></p>
+          </div>
+          <div class="footer">
+            <p>Mistral Pans — Artisan Handpan<br>
+            Île-de-France, France<br>
+            contact@mistralpans.fr</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  // Ajouter le contrat PDF en pièce jointe si fourni
+  if (pdfBase64) {
+    emailData.attachment = [{
+      content: pdfBase64,
+      name: `contrat-location-${new Date().toISOString().slice(0, 10)}.pdf`,
+      type: 'application/pdf'
+    }];
+  }
+
+  return emailData;
+}
+
+/**
+ * Template : Notification de disponibilité location (waitlist)
+ * Envoyé aux utilisateurs inscrits quand un instrument devient disponible
+ */
+function buildRentalAvailabilityEmail(data) {
+  const { email, instrument } = data;
+  const safeInstrument = escapeHtml(instrument || 'Handpan');
+
+  return {
+    to: [{ email: email.trim().toLowerCase(), name: '' }],
+    subject: 'Un handpan est disponible à la location — Mistral Pans',
+    htmlContent: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #0D7377; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .content { background: #fff; border: 1px solid #e0e0e0; padding: 30px; }
+          .instrument-box { background: #f0f9f4; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #3D6B4A; text-align: center; }
+          .instrument-name { font-size: 24px; font-weight: bold; color: #3D6B4A; margin: 10px 0; }
+          .cta-button { display: inline-block; background: #0D7377; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 600; font-size: 16px; }
+          .footer { padding: 20px; text-align: center; color: #888; font-size: 12px; border-top: 1px solid #eee; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Mistral Pans</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Location d'instrument</p>
+          </div>
+          <div class="content">
+            <p>Bonjour,</p>
+
+            <p>Un nouvel instrument est disponible à la location :</p>
+
+            <div class="instrument-box">
+              <div class="instrument-name">${safeInstrument}</div>
+            </div>
+
+            <p>Rendez-vous sur notre page location pour le réserver.</p>
+
+            <div style="text-align: center;">
+              <a href="https://mistralpans.fr/location.html" class="cta-button">
+                Voir les instruments disponibles
+              </a>
+            </div>
+
+            <p style="margin-top: 30px;">À très bientôt,<br><strong>L'équipe Mistral Pans</strong></p>
+          </div>
+          <div class="footer">
+            <p>Mistral Pans - Artisan Handpan<br>
+            Île-de-France, France<br>
+            contact@mistralpans.fr</p>
+            <p style="font-size: 11px; color: #aaa;">Vous recevez cet email car vous avez demandé à être notifié de la disponibilité d'un instrument à la location.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+}
+
+/**
  * Template : Confirmation de paiement
  */
 function buildPaymentConfirmationEmail(data) {
@@ -434,12 +636,12 @@ function buildPaymentConfirmationEmail(data) {
         <style>
           body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #4A7C59; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .header { background: #3D6B4A; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
           .header h1 { margin: 0; font-size: 24px; }
           .checkmark { font-size: 48px; margin-bottom: 10px; }
           .content { background: #fff; border: 1px solid #e0e0e0; padding: 30px; }
-          .payment-box { background: #f0f9f4; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #4A7C59; text-align: center; }
-          .amount { font-size: 32px; font-weight: bold; color: #4A7C59; margin: 10px 0; }
+          .payment-box { background: #f0f9f4; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #3D6B4A; text-align: center; }
+          .amount { font-size: 32px; font-weight: bold; color: #3D6B4A; margin: 10px 0; }
           .footer { padding: 20px; text-align: center; color: #888; font-size: 12px; }
         </style>
       </head>
@@ -496,7 +698,7 @@ function buildBalanceRequestEmail(data) {
       <head><meta charset="UTF-8"></head>
       <body style="font-family: Inter, system-ui, sans-serif; color: #2C2825; max-width: 600px; margin: 0 auto; padding: 20px;">
 
-        <div style="background: #4A7C59; color: white; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+        <div style="background: #3D6B4A; color: white; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
           <h1 style="margin: 0; font-size: 24px;">Votre instrument est prêt !</h1>
           <p style="margin: 8px 0 0; opacity: 0.9;">Commande ${sanitize(order.reference)}</p>
         </div>
@@ -506,9 +708,9 @@ function buildBalanceRequestEmail(data) {
 
           <p>Votre <strong>${sanitize(order.productName || 'handpan')}</strong> a terminé son accordage et est maintenant prêt à vous rejoindre !</p>
 
-          <div style="background: white; border: 2px solid #4A7C59; border-radius: 8px; padding: 20px; margin: 24px 0; text-align: center;">
+          <div style="background: white; border: 2px solid #3D6B4A; border-radius: 8px; padding: 20px; margin: 24px 0; text-align: center;">
             <p style="margin: 0 0 8px; font-size: 0.875rem; color: #6B7280;">Solde restant</p>
-            <p style="margin: 0; font-size: 1.75rem; font-weight: 700; color: #4A7C59;">${formatEuros(payment.remainingAmount)}</p>
+            <p style="margin: 0; font-size: 1.75rem; font-weight: 700; color: #3D6B4A;">${formatEuros(payment.remainingAmount)}</p>
           </div>
 
           <p>Pour finaliser votre commande et déclencher l'expédition, il vous reste à régler le solde de <strong>${formatEuros(payment.remainingAmount)}</strong>.</p>
@@ -646,7 +848,7 @@ function buildNewOrderNotificationEmail(data) {
             <tr><td style="padding: 6px 0; font-weight: 600;">Produit</td><td>${sanitize(order.productName)}</td></tr>
             ${order.gamme ? `<tr><td style="padding: 6px 0; font-weight: 600;">Gamme</td><td>${sanitize(order.gamme)}</td></tr>` : ''}
             ${order.taille ? `<tr><td style="padding: 6px 0; font-weight: 600;">Taille</td><td>${sanitize(order.taille)}</td></tr>` : ''}
-            <tr><td style="padding: 6px 0; font-weight: 600;">Source</td><td><strong style="color: ${isStock ? '#4A7C59' : '#0D7377'};">${sourceLabel}</strong></td></tr>
+            <tr><td style="padding: 6px 0; font-weight: 600;">Source</td><td><strong style="color: ${isStock ? '#3D6B4A' : '#0D7377'};">${sourceLabel}</strong></td></tr>
             ${order.instrumentId ? `<tr><td style="padding: 6px 0; font-weight: 600;">ID instrument</td><td style="font-family: monospace; font-size: 12px;">${sanitize(order.instrumentId)}</td></tr>` : ''}
           </table>
 
@@ -655,9 +857,9 @@ function buildNewOrderNotificationEmail(data) {
           <h2 style="color: #0D7377;">Paiement</h2>
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 6px 0; font-weight: 600;">Type</td><td>${paymentLabel}</td></tr>
-            <tr><td style="padding: 6px 0; font-weight: 600;">Montant payé</td><td style="font-size: 18px; font-weight: 700; color: #4A7C59;">${formatEuros(payment.amount)}</td></tr>
+            <tr><td style="padding: 6px 0; font-weight: 600;">Montant payé</td><td style="font-size: 18px; font-weight: 700; color: #3D6B4A;">${formatEuros(payment.amount)}</td></tr>
             ${!payment.isFullPayment ? `<tr><td style="padding: 6px 0; font-weight: 600;">Total commande</td><td>${formatEuros(payment.totalAmount)}</td></tr>
-            <tr><td style="padding: 6px 0; font-weight: 600;">Reste à payer</td><td style="color: #F59E0B; font-weight: 600;">${formatEuros(payment.totalAmount - payment.amount)}</td></tr>` : ''}
+            <tr><td style="padding: 6px 0; font-weight: 600;">Reste à payer</td><td style="color: #D97706; font-weight: 600;">${formatEuros(payment.totalAmount - payment.amount)}</td></tr>` : ''}
           </table>
 
         </div>
@@ -677,6 +879,138 @@ function buildNewOrderNotificationEmail(data) {
 }
 
 /**
+ * Template : Rapport comptable mensuel
+ */
+function buildMonthlyReportEmail(data) {
+  const {
+    emailDest, moisLabel, mois,
+    totalBICVentes, totalBICPrestations,
+    totalBIC, totalBNC, totalAvoir, totalCA,
+    nbFactures, factures, config, pdfBase64
+  } = data;
+
+  // Support granulaire (3 catégories) avec fallback legacy (2 catégories)
+  const bicVentes = totalBICVentes !== undefined ? totalBICVentes : (totalBIC || 0);
+  const bicPrestations = totalBICPrestations !== undefined ? totalBICPrestations : 0;
+
+  const safeMoisLabel = escapeHtml(moisLabel);
+  const safeNom = escapeHtml(config?.nom || 'Mistral Pans');
+  const safeSiret = escapeHtml(config?.siret || '');
+  const generatedDate = formatDate(new Date().toISOString());
+
+  // Ligne Avoir (conditionnelle)
+  const avoirRow = (totalAvoir && totalAvoir > 0) ? `
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">Avoirs</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; color: #DC2626;">${formatPrice(totalAvoir)}</td>
+              </tr>` : '';
+
+  // Table de détail des factures
+  let facturesBlock = '';
+  if (factures && factures.length > 0) {
+    const factureRows = factures.map(f => `
+                <tr>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 13px;">${escapeHtml(f.date || '')}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 13px;">${escapeHtml(f.numero || '')}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 13px;">${escapeHtml(f.client || '')}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 13px;">${escapeHtml(f.type || '')}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 13px;">${escapeHtml(f.classification || '')}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; text-align: right; font-weight: 600;">${formatPrice(f.montant || 0)}</td>
+                </tr>`).join('');
+
+    facturesBlock = `
+            <h3 style="color: #0D7377; margin-top: 30px;">Détail des factures (${nbFactures || factures.length})</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+              <thead>
+                <tr style="background: #f0f0f0;">
+                  <th style="padding: 8px; text-align: left; font-size: 12px; color: #666; border-bottom: 2px solid #ddd;">Date</th>
+                  <th style="padding: 8px; text-align: left; font-size: 12px; color: #666; border-bottom: 2px solid #ddd;">N°</th>
+                  <th style="padding: 8px; text-align: left; font-size: 12px; color: #666; border-bottom: 2px solid #ddd;">Client</th>
+                  <th style="padding: 8px; text-align: left; font-size: 12px; color: #666; border-bottom: 2px solid #ddd;">Type</th>
+                  <th style="padding: 8px; text-align: left; font-size: 12px; color: #666; border-bottom: 2px solid #ddd;">Classification</th>
+                  <th style="padding: 8px; text-align: right; font-size: 12px; color: #666; border-bottom: 2px solid #ddd;">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${factureRows}
+              </tbody>
+            </table>`;
+  }
+
+  const emailData = {
+    to: [{ email: emailDest, name: 'Mistral Pans' }],
+    subject: `Rapport comptable - ${safeMoisLabel}`,
+    htmlContent: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #0D7377; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .content { background: #fff; border: 1px solid #e0e0e0; padding: 30px; }
+          .footer { padding: 20px; text-align: center; color: #888; font-size: 12px; border-top: 1px solid #eee; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Rapport Comptable Mensuel</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">${safeMoisLabel}</p>
+          </div>
+          <div class="content">
+            <div style="background: #f8f8f8; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <p style="margin: 0; font-weight: bold;">${safeNom}</p>
+              ${safeSiret ? `<p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">SIRET : ${safeSiret}</p>` : ''}
+            </div>
+
+            <h3 style="color: #0D7377; margin-top: 0;">Synthèse du mois</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">BIC Ventes <span style="color:#888; font-size:12px;">(71% abattement)</span></td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">${formatPrice(bicVentes)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">BIC Prestations <span style="color:#888; font-size:12px;">(50% abattement)</span></td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">${formatPrice(bicPrestations)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">BNC <span style="color:#888; font-size:12px;">(34% abattement)</span></td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600;">${formatPrice(totalBNC || 0)}</td>
+              </tr>${avoirRow}
+              <tr style="background: #f0f9f4;">
+                <td style="padding: 12px 10px; font-weight: bold; font-size: 16px;">Total CA</td>
+                <td style="padding: 12px 10px; text-align: right; font-weight: bold; font-size: 16px; color: #3D6B4A;">${formatPrice(totalCA || 0)}</td>
+              </tr>
+            </table>
+
+            ${facturesBlock}
+          </div>
+          <div class="footer">
+            <p>Généré automatiquement depuis l'administration Mistral Pans</p>
+            <p style="margin: 5px 0 0 0;">${generatedDate}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  // Ajouter le PDF en pièce jointe si fourni
+  if (pdfBase64) {
+    emailData.attachment = [{
+      content: pdfBase64,
+      name: `rapport-comptable-${mois || 'mensuel'}.pdf`,
+      type: 'application/pdf'
+    }];
+  }
+
+  return emailData;
+}
+
+/**
  * Retourne l'origine CORS autorisée
  */
 function getAllowedOrigin(event) {
@@ -691,22 +1025,7 @@ function getAllowedOrigin(event) {
   return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
 }
 
-// Rate limiting (in-memory, best-effort for serverless)
-const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 5; // 5 emails per minute per IP
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now - entry.start > RATE_LIMIT_WINDOW) {
-    rateLimitMap.set(ip, { start: now, count: 1 });
-    return true;
-  }
-  entry.count++;
-  if (entry.count > RATE_LIMIT_MAX) return false;
-  return true;
-}
+// Rate limiting : voir utils/rate-limit.js (persistant via Supabase)
 
 exports.handler = async (event, context) => {
   const allowedOrigin = getAllowedOrigin(event);
@@ -762,11 +1081,10 @@ exports.handler = async (event, context) => {
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
     }
 
-    // Rate limiting par IP
-    const clientIp = event.headers['x-forwarded-for']?.split(',')[0]?.trim()
-      || event.headers['client-ip']
-      || 'unknown';
-    if (!checkRateLimit(clientIp)) {
+    // Rate limiting persistant (Supabase)
+    const clientIp = getClientIp(event);
+    const { allowed: rateLimitOk } = await checkRateLimit(clientIp, 'send-email', 5);
+    if (!rateLimitOk) {
       console.warn(`Rate limit dépassé pour ${clientIp}`);
       return {
         statusCode: 429,
@@ -834,6 +1152,35 @@ exports.handler = async (event, context) => {
         emailData = buildRentalConfirmationEmail(data);
         break;
 
+      case 'rental_reservation':
+        if (!data.client?.email || !data.instrument) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Données réservation location manquantes' })
+          };
+        }
+        if (!isValidEmail(data.client.email)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Email client invalide' })
+          };
+        }
+        emailData = buildRentalReservationEmail(data);
+        break;
+
+      case 'rental_availability':
+        if (!data.email || !isValidEmail(data.email)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Email invalide' })
+          };
+        }
+        emailData = buildRentalAvailabilityEmail(data);
+        break;
+
       case 'payment_confirmation':
         if (!data.client?.email || !data.payment) {
           return {
@@ -897,6 +1244,24 @@ exports.handler = async (event, context) => {
           };
         }
         emailData = buildShippingNotificationEmail(data);
+        break;
+
+      case 'monthly_report':
+        if (!data.emailDest || !isValidEmail(data.emailDest)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Email destinataire invalide' })
+          };
+        }
+        if (!data.moisLabel) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Libellé du mois manquant' })
+          };
+        }
+        emailData = buildMonthlyReportEmail(data);
         break;
 
       case 'contact':

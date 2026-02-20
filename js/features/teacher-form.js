@@ -1,35 +1,40 @@
 /* ==========================================================================
    MISTRAL PANS - Teacher Form Component
-   Composant de formulaire rÃ©utilisable pour la gestion des professeurs
+   Composant de formulaire réutilisable pour la gestion des professeurs
    ========================================================================== */
 
 (function(window) {
   'use strict';
 
-  // Notification légère (Toast si dispo, sinon notification DOM éphémère)
+  // Notification legere — delegue au systeme global ou admin
   function showNotice(message, type) {
+    if (window.MistralToast) {
+      MistralToast.show(message, type === 'error' ? 'error' : 'warning');
+      return;
+    }
     if (window.MistralAdmin && MistralAdmin.Toast) {
       MistralAdmin.Toast[type === 'error' ? 'error' : 'warning'](message);
       return;
     }
+    // Fallback inline
     const el = document.createElement('div');
     el.textContent = message;
     Object.assign(el.style, {
       position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
-      background: type === 'error' ? '#EF4444' : '#F59E0B', color: '#fff',
-      padding: '12px 24px', borderRadius: '8px', zIndex: '9999',
+      background: type === 'error' ? '#DC2626' : '#D97706', color: '#fff',
+      padding: '12px 24px', borderRadius: '8px', zIndex: '2000',
       fontSize: '0.9rem', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxWidth: '90vw'
     });
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), 4000);
+    setTimeout(function() { el.remove(); }, 4000);
   }
 
   /**
-   * GÃ©nÃ¨re le HTML du formulaire de professeur complet
+   * Génère le HTML du formulaire de professeur complet
    * @param {Object} options - Options de configuration
-   * @param {Object} options.teacher - DonnÃ©es du professeur (pour Ã©dition)
+   * @param {Object} options.teacher - Données du professeur (pour édition)
    * @param {string} options.formId - ID du formulaire
-   * @param {string} options.mode - 'add', 'edit', ou 'signup' (demande d'adhÃ©sion)
+   * @param {string} options.mode - 'add', 'edit', ou 'signup' (demande d'adhésion)
    * @param {boolean} options.showPhoto - Afficher le champ photo
    * @param {boolean} options.showHoneypot - Ajouter champ honeypot anti-spam
    * @returns {string} HTML du formulaire
@@ -46,13 +51,13 @@
     const isEdit = mode === 'edit' && teacher;
     const isSignup = mode === 'signup';
     
-    // Helper pour rÃ©cupÃ©rer les valeurs
+    // Helper pour récupérer les valeurs
     const val = (field, defaultVal = '') => {
       if (!teacher) return defaultVal;
       return teacher[field] || defaultVal;
     };
     
-    // Helper pour vÃ©rifier les checkboxes
+    // Helper pour vérifier les checkboxes
     const isChecked = (field, value) => {
       if (!teacher || !teacher[field]) return false;
       return Array.isArray(teacher[field]) 
@@ -85,10 +90,10 @@
               }
             </div>
             <div class="teacher-form__photo-actions">
-              <button type="button" class="btn btn--secondary btn--sm" onclick="TeacherForm.triggerPhotoUpload('${formId}')">
+              <button type="button" class="btn btn--secondary btn--sm teacher-form__photo-btn" data-form-id="${formId}">
                 ${teacher && teacher.photo ? 'Changer la photo' : 'Ajouter une photo'}
               </button>
-              <span class="teacher-form__photo-hint">RecommandÃ© : 300Ã—300px, format carrÃ©</span>
+              <span class="teacher-form__photo-hint">Recommandé : 300×300px, format carré</span>
             </div>
             <input type="file" id="${formId}-photo-input" name="photo" accept="image/*" style="display:none;">
             <input type="hidden" id="${formId}-photo-data" name="photoData" value="${teacher && teacher.photo ? escape(teacher.photo) : ''}">
@@ -102,7 +107,7 @@
           
           <div class="teacher-form__row">
             <div class="teacher-form__group">
-              <label class="teacher-form__label" for="${formId}-firstname">PrÃ©nom *</label>
+              <label class="teacher-form__label" for="${formId}-firstname">Prénom *</label>
               <input type="text" id="${formId}-firstname" name="firstname" 
                      class="teacher-form__input" required
                      value="${escape(val('firstname'))}">
@@ -123,7 +128,7 @@
                      value="${escape(val('email'))}">
             </div>
             <div class="teacher-form__group">
-              <label class="teacher-form__label" for="${formId}-phone">TÃ©lÃ©phone</label>
+              <label class="teacher-form__label" for="${formId}-phone">Téléphone</label>
               <input type="tel" id="${formId}-phone" name="phone" 
                      class="teacher-form__input" placeholder="06 12 34 56 78"
                      value="${escape(val('phone'))}">
@@ -151,26 +156,26 @@
 
           <div class="teacher-form__group">
             <label class="teacher-form__label" for="${formId}-bio">
-              ${isSignup ? 'PrÃ©sentez-vous *' : 'Biographie'}
+              ${isSignup ? 'Présentez-vous *' : 'Biographie'}
             </label>
             <textarea id="${formId}-bio" name="bio" 
                       class="teacher-form__textarea" rows="4"
-                      placeholder="Votre parcours, votre expÃ©rience avec le handpan, votre approche pÃ©dagogique..."
+                      placeholder="Votre parcours, votre expérience avec le handpan, votre approche pédagogique..."
                       ${isSignup ? 'required' : ''}>${escape(val('bio'))}</textarea>
           </div>
         </div>
 
-        <!-- ModalitÃ©s de cours -->
+        <!-- Modalités de cours -->
         <div class="teacher-form__section">
-          <p class="teacher-form__section-title">ModalitÃ©s de cours</p>
+          <p class="teacher-form__section-title">Modalités de cours</p>
 
           <div class="teacher-form__group">
-            <label class="teacher-form__label">Type de cours proposÃ©s ${isSignup ? '*' : ''}</label>
+            <label class="teacher-form__label">Type de cours proposés ${isSignup ? '*' : ''}</label>
             <div class="teacher-form__checkbox-group">
               <label class="teacher-form__checkbox-item">
                 <input type="checkbox" name="courseTypes" value="domicile"
                        ${isChecked('courseTypes', 'domicile') ? 'checked' : ''}>
-                <span>Ã€ domicile</span>
+                <span>À domicile</span>
               </label>
               <label class="teacher-form__checkbox-item">
                 <input type="checkbox" name="courseTypes" value="studio"
@@ -180,7 +185,7 @@
               <label class="teacher-form__checkbox-item">
                 <input type="checkbox" name="courseTypes" value="distance"
                        ${isChecked('courseTypes', 'distance') ? 'checked' : ''}>
-                <span>Ã€ distance</span>
+                <span>À distance</span>
               </label>
             </div>
           </div>
@@ -205,14 +210,14 @@
             <label class="teacher-form__checkbox-item teacher-form__checkbox-item--standalone">
               <input type="checkbox" name="instrumentAvailable" value="1"
                      ${(teacher && teacher.instrumentAvailable) ? 'checked' : ''}>
-              <span>Je peux mettre un instrument ÃƒÂ  disposition pour les cours</span>
+              <span>Je peux mettre un instrument à disposition pour les cours</span>
             </label>
           </div>
         </div>
 
-        <!-- PrÃ©sence en ligne -->
+        <!-- Présence en ligne -->
         <div class="teacher-form__section">
-          <p class="teacher-form__section-title">PrÃ©sence en ligne (optionnel)</p>
+          <p class="teacher-form__section-title">Présence en ligne (optionnel)</p>
 
           <div class="teacher-form__group">
             <label class="teacher-form__label" for="${formId}-website">Site web</label>
@@ -222,7 +227,7 @@
           </div>
 
           <div class="teacher-form__group">
-            <label class="teacher-form__label">RÃ©seaux sociaux</label>
+            <label class="teacher-form__label">Réseaux sociaux</label>
             
             <div class="teacher-form__social-row">
               <span class="teacher-form__social-icon">
@@ -253,7 +258,7 @@
                 </svg>
               </span>
               <input type="text" name="youtube" class="teacher-form__input" 
-                     placeholder="URL de chaÃ®ne"
+                     placeholder="URL de chaîne"
                      value="${escape(val('youtube'))}">
             </div>
 
@@ -282,9 +287,9 @@
   }
 
   /**
-   * Collecte les donnÃ©es du formulaire
+   * Collecte les données du formulaire
    * @param {string} formId - ID du formulaire
-   * @returns {Object} DonnÃ©es du formulaire
+   * @returns {Object} Données du formulaire
    */
   function collectFormData(formId) {
     const form = document.getElementById(formId);
@@ -292,7 +297,7 @@
 
     const formData = new FormData(form);
     
-    // RÃ©cupÃ©rer les checkboxes multiples
+    // Récupérer les checkboxes multiples
     const courseTypes = [];
     const courseFormats = [];
     
@@ -331,10 +336,10 @@
   }
 
   /**
-   * GÃ©ocode une adresse via l'API adresse.data.gouv.fr (plus fiable pour la France)
+   * Géocode une adresse via l'API adresse.data.gouv.fr (plus fiable pour la France)
    * @param {string} postalcode - Code postal
    * @param {string} city - Ville
-   * @returns {Promise<{lat: number, lng: number}>} CoordonnÃ©es
+   * @returns {Promise<{lat: number, lng: number}>} Coordonnées
    */
   let _geocodeController = null;
 
@@ -354,7 +359,7 @@
       );
       
       if (!response.ok) {
-        throw new Error('Erreur rÃ©seau API adresse');
+        throw new Error('Erreur réseau API adresse');
       }
       
       const data = await response.json();
@@ -391,8 +396,8 @@
         }
       }
       
-      // Fallback final: centre de l'ÃŽle-de-France
-      if (window.MISTRAL_DEBUG) console.warn('GÃ©ocodage Ã©chouÃ©, utilisation des coordonnÃ©es par dÃ©faut');
+      // Fallback final: centre de l'Île-de-France
+      if (window.MISTRAL_DEBUG) console.warn('Géocodage échoué, utilisation des coordonnées par défaut');
       return { lat: 48.8566, lng: 2.3522 };
       
     } catch (error) {
@@ -407,8 +412,8 @@
    * @param {string} base64 - Image en base64
    * @param {number} maxWidth - Largeur max
    * @param {number} maxHeight - Hauteur max
-   * @param {number} quality - QualitÃ© JPEG (0-1)
-   * @returns {Promise<string>} Image compressÃ©e en base64
+   * @param {number} quality - Qualité JPEG (0-1)
+   * @returns {Promise<string>} Image compressée en base64
    */
   function compressImage(base64, maxWidth = 600, maxHeight = 600, quality = 0.8) {
     return new Promise((resolve, reject) => {
@@ -423,7 +428,7 @@
           height = Math.round(height * ratio);
         }
         
-        // CrÃ©er le canvas
+        // Créer le canvas
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
@@ -431,7 +436,7 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Exporter en JPEG compressÃ©
+        // Exporter en JPEG compressé
         const compressed = canvas.toDataURL('image/jpeg', quality);
         resolve(compressed);
       };
@@ -441,7 +446,7 @@
   }
 
   /**
-   * DÃ©clenche l'upload de photo
+   * Déclenche l'upload de photo
    * @param {string} formId - ID du formulaire
    */
   function triggerPhotoUpload(formId) {
@@ -452,11 +457,23 @@
   }
 
   /**
-   * Initialise les Ã©vÃ©nements du formulaire
+   * Initialise les événements du formulaire
    * @param {string} formId - ID du formulaire
-   * @param {Function} onPhotoChange - Callback aprÃ¨s changement de photo
+   * @param {Function} onPhotoChange - Callback après changement de photo
    */
   function initFormEvents(formId, onPhotoChange = null) {
+    // Validation en temps reel (onblur)
+    const formEl = document.getElementById(formId);
+    if (formEl && window.MistralValidation) MistralValidation.attach(formEl);
+
+    // Bind photo upload button (CSP-safe, remplace onclick inline)
+    const photoBtn = formEl ? formEl.querySelector('.teacher-form__photo-btn') : null;
+    if (photoBtn) {
+      photoBtn.addEventListener('click', function() {
+        triggerPhotoUpload(photoBtn.dataset.formId || formId);
+      });
+    }
+
     const photoInput = document.getElementById(`${formId}-photo-input`);
     const photoPreview = document.getElementById(`${formId}-photo-preview`);
     const photoData = document.getElementById(`${formId}-photo-data`);
@@ -466,13 +483,13 @@
         const file = e.target.files[0];
         if (!file) return;
 
-        // VÃ©rifier le type
+        // Vérifier le type
         if (!file.type.startsWith('image/')) {
           showNotice('Veuillez sélectionner une image', 'warning');
           return;
         }
 
-        // VÃ©rifier la taille (max 5MB avant compression)
+        // Vérifier la taille (max 5MB avant compression)
         if (file.size > 5 * 1024 * 1024) {
           showNotice('L\'image est trop volumineuse (max 5Mo)', 'warning');
           return;
@@ -498,14 +515,14 @@
             reader.readAsDataURL(file);
           });
 
-          // Compresser l'image (600x600 max, qualitÃ© 80%)
+          // Compresser l'image (600x600 max, qualité 80%)
           const compressed = await compressImage(base64, 600, 600, 0.8);
           
-          // Mettre ÃƒÂ  jour le formulaire
+          // Mettre à jour le formulaire
           photoData.value = compressed;
           photoPreview.innerHTML = `<img src="${compressed}" alt="Photo de profil">`;
           
-          // Afficher la taille originale vs compressÃ©e
+          // Afficher la taille originale vs compressée
           const originalSize = (file.size / 1024).toFixed(0);
           const compressedSize = (compressed.length * 0.75 / 1024).toFixed(0); // Base64 ~33% plus grand
 
@@ -563,7 +580,7 @@
   }
 
   /**
-   * RÃ©initialise le formulaire
+   * Réinitialise le formulaire
    * @param {string} formId - ID du formulaire
    */
   function resetForm(formId) {
@@ -572,7 +589,7 @@
 
     form.reset();
 
-    // RÃ©initialiser la photo
+    // Réinitialiser la photo
     const photoPreview = document.getElementById(`${formId}-photo-preview`);
     const photoData = document.getElementById(`${formId}-photo-data`);
     

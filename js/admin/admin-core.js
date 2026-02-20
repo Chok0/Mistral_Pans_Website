@@ -26,148 +26,13 @@
   // UTILITAIRES
   // ============================================================================
 
-  /**
-   * Genere un ID unique
-   */
-  function generateId(prefix = 'id') {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  /**
-   * Formate une date en francais
-   */
-  function formatDate(dateString, options = {}) {
-    const date = new Date(dateString);
-    const defaultOptions = {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    };
-    return date.toLocaleDateString('fr-FR', { ...defaultOptions, ...options });
-  }
-
-  /**
-   * Formate un prix en euros
-   */
-  function formatPrice(price) {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0
-    }).format(price);
-  }
-
-  /**
-   * Echappe le HTML pour eviter les injections XSS
-   */
-  function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  /**
-   * Sanitize HTML - garde les balises sures, supprime les dangereuses
-   * Pour le contenu WYSIWYG (blog, descriptions)
-   */
-  function sanitizeHtml(html) {
-    if (!html) return '';
-
-    // Balises autorisees
-    const allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'a', 'ul', 'ol', 'li',
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'img', 'figure',
-      'figcaption', 'span', 'div', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
-
-    // Attributs autorises par balise
-    const allowedAttrs = {
-      'a': ['href', 'title', 'target', 'rel'],
-      'img': ['src', 'alt', 'title', 'width', 'height'],
-      '*': ['class', 'style']
-    };
-
-    // Creer un DOM temporaire
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    const body = doc.body;
-
-    // Supprimer les scripts et styles
-    body.querySelectorAll('script, style, iframe, object, embed, form, input, textarea, button').forEach(el => el.remove());
-
-    // Supprimer les handlers d'evenements
-    body.querySelectorAll('*').forEach(el => {
-      const tagName = el.tagName.toLowerCase();
-
-      // Supprimer si balise non autorisee
-      if (!allowedTags.includes(tagName)) {
-        // Garder le contenu texte mais supprimer l'element
-        el.replaceWith(...el.childNodes);
-        return;
-      }
-
-      // Nettoyer les attributs
-      Array.from(el.attributes).forEach(attr => {
-        const attrName = attr.name.toLowerCase();
-
-        // Supprimer tous les handlers on*
-        if (attrName.startsWith('on')) {
-          el.removeAttribute(attr.name);
-          return;
-        }
-
-        // Verifier si attribut autorise
-        const tagAllowed = allowedAttrs[tagName] || [];
-        const globalAllowed = allowedAttrs['*'] || [];
-        if (!tagAllowed.includes(attrName) && !globalAllowed.includes(attrName)) {
-          el.removeAttribute(attr.name);
-          return;
-        }
-
-        // Nettoyer les URLs javascript: et data:
-        if (attrName === 'href' || attrName === 'src') {
-          let value;
-          try { value = decodeURIComponent(attr.value); } catch (e) { value = attr.value; }
-          const normalized = value.replace(/[\s\x00-\x1f]/g, '').toLowerCase();
-          if (/^(javascript|data|vbscript|blob):/.test(normalized)) {
-            el.removeAttribute(attr.name);
-          }
-        }
-
-        // Nettoyer les styles dangereux
-        if (attrName === 'style') {
-          const cleanStyle = attr.value
-            .replace(/expression\s*\(/gi, '')
-            .replace(/javascript\s*:/gi, '')
-            .replace(/behavior\s*:/gi, '')
-            .replace(/-moz-binding\s*:/gi, '')
-            .replace(/url\s*\(/gi, '')
-            .replace(/@import/gi, '');
-          el.setAttribute('style', cleanStyle);
-        }
-      });
-
-      // Forcer rel="noopener" sur les liens externes
-      if (tagName === 'a' && el.getAttribute('target') === '_blank') {
-        el.setAttribute('rel', 'noopener noreferrer');
-      }
-    });
-
-    return body.innerHTML;
-  }
-
-  /**
-   * Debounce une fonction
-   */
-  function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  }
+  // --- Delegations vers MistralUtils (js/core/utils.js) ---
+  const generateId   = MistralUtils.generateId;
+  const formatDate   = MistralUtils.formatDate;
+  const formatPrice  = MistralUtils.formatPrice;
+  const escapeHtml   = MistralUtils.escapeHtml;
+  const sanitizeHtml = MistralUtils.sanitizeHtml;
+  const debounce     = MistralUtils.debounce;
 
   // ============================================================================
   // AUTHENTIFICATION (delegue a MistralAuth / Supabase)
@@ -318,11 +183,22 @@
 
       if (filtered.length === items.length) return false;
 
-      this.set(key, filtered);
+      // Mettre a jour la memoire locale SANS upsert Supabase
+      // (un upsert ne supprime pas les lignes absentes, il faut un DELETE explicite)
+      if (window.MistralSync && MistralSync.hasKey(key)) {
+        MistralSync.setDataLocal(key, filtered);
+        window.dispatchEvent(new CustomEvent('storageUpdate', { detail: { key, value: filtered } }));
+      } else {
+        this.set(key, filtered);
+      }
 
-      // Supprimer aussi dans Supabase
+      // Supprimer dans Supabase via DELETE explicite
       if (window.MistralSync && MistralSync.deleteFromSupabase) {
-        MistralSync.deleteFromSupabase(key, id).catch(err => {
+        MistralSync.deleteFromSupabase(key, id).then(success => {
+          if (!success) {
+            console.error(`[Storage] Echec suppression Supabase ${key}/${id}`);
+          }
+        }).catch(err => {
           console.error(`[Storage] Erreur suppression Supabase ${key}/${id}:`, err);
         });
       }
@@ -357,129 +233,6 @@
 
       this.set(key, reordered);
       return reordered;
-    }
-  };
-
-  // ============================================================================
-  // COMPOSANT FAB (FLOATING ACTION BUTTON)
-  // Affiche automatiquement sur toutes les pages sauf admin.html
-  // 2 actions : lien panneau admin + deconnexion
-  // ============================================================================
-
-  function isAdminPage() {
-    return window.location.pathname.endsWith('admin.html') ||
-           window.location.pathname.endsWith('admin');
-  }
-
-  const FAB = {
-    element: null,
-    isOpen: false,
-
-    /**
-     * Cree et injecte le FAB admin (panneau admin + deconnexion)
-     * Ne s'affiche pas sur la page admin.html
-     */
-    create() {
-      if (!Auth.isLoggedIn()) return null;
-      if (this.element) return this.element;
-      if (isAdminPage()) return null;
-
-      this.element = document.createElement('div');
-      this.element.className = 'admin-fab-container admin-fab--bottom-right';
-      this.element.innerHTML = `
-        <button class="admin-fab__trigger" aria-label="Menu administration" aria-expanded="false">
-          <svg class="admin-fab__icon admin-fab__icon--gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-          <svg class="admin-fab__icon admin-fab__icon--close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-        <div class="admin-fab__menu" role="menu">
-          <a href="admin.html" class="admin-fab__action" role="menuitem">
-            <span class="admin-fab__action-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-              </svg>
-            </span>
-            <span>Panneau admin</span>
-          </a>
-          <button class="admin-fab__action" data-action="logout" role="menuitem">
-            <span class="admin-fab__action-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <polyline points="16 17 21 12 16 7"/>
-                <line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
-            </span>
-            <span>Déconnexion</span>
-          </button>
-        </div>
-      `;
-
-      document.body.appendChild(this.element);
-
-      // AbortController pour cleanup des listeners globaux
-      this._abortController = new AbortController();
-      const signal = this._abortController.signal;
-
-      const trigger = this.element.querySelector('.admin-fab__trigger');
-      trigger.addEventListener('click', () => this.toggle());
-
-      // Fermer au clic externe
-      document.addEventListener('click', (e) => {
-        if (this.isOpen && this.element && !this.element.contains(e.target)) {
-          this.close();
-        }
-      }, { signal });
-
-      // Fermer avec Escape
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && this.isOpen) {
-          this.close();
-        }
-      }, { signal });
-
-      // Deconnexion
-      this.element.querySelector('[data-action="logout"]').addEventListener('click', () => {
-        this.close();
-        Auth.logout();
-      });
-
-      return this.element;
-    },
-
-    open() {
-      if (!this.element) return;
-      this.isOpen = true;
-      this.element.classList.add('open');
-      this.element.querySelector('.admin-fab__trigger').setAttribute('aria-expanded', 'true');
-    },
-
-    close() {
-      if (!this.element) return;
-      this.isOpen = false;
-      this.element.classList.remove('open');
-      this.element.querySelector('.admin-fab__trigger').setAttribute('aria-expanded', 'false');
-    },
-
-    toggle() {
-      this.isOpen ? this.close() : this.open();
-    },
-
-    destroy() {
-      if (this._abortController) {
-        this._abortController.abort();
-        this._abortController = null;
-      }
-      if (this.element) {
-        this.element.remove();
-        this.element = null;
-        this.isOpen = false;
-      }
     }
   };
 
@@ -577,11 +330,15 @@
         modal._onOpen(modal);
       }
 
-      // Focus le premier element focusable
-      setTimeout(() => {
-        const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        if (focusable) focusable.focus();
-      }, 100);
+      // Focus trap + premier element focusable (WCAG 2.4.3)
+      if (window.MistralFocusTrap) {
+        MistralFocusTrap.activate(modal);
+      } else {
+        setTimeout(() => {
+          const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+          if (focusable) focusable.focus();
+        }, 100);
+      }
     },
 
     /**
@@ -610,6 +367,9 @@
         modal._abortController.abort();
         modal._abortController = null;
       }
+
+      // Desactiver le piege de focus
+      if (window.MistralFocusTrap) MistralFocusTrap.deactivate();
 
       if (modal._onClose) {
         modal._onClose(modal);
@@ -1061,21 +821,7 @@
   // ============================================================================
 
   function init() {
-    // Injecter le FAB si deja connecte
-    FAB.create();
-
-    // Ecouter les changements d'auth pour creer/detruire le FAB
-    window.addEventListener('mistral-auth-change', (e) => {
-      if (e.detail.event === 'login') {
-        FAB.create();
-      } else if (e.detail.event === 'logout') {
-        FAB.destroy();
-      }
-    });
-
-    window.addEventListener('adminLogout', () => {
-      FAB.destroy();
-    });
+    // Rien a initialiser automatiquement — l'admin accede directement a admin.html
   }
 
   // Auto-init au chargement
@@ -1105,7 +851,6 @@
     Storage,
 
     // UI Components
-    FAB,
     Modal,
     Toast,
     Confirm,

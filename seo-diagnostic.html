@@ -8,13 +8,18 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
+  <!-- Preconnect: faster DNS + TLS for critical external origins -->
+  <link rel="preconnect" href="https://qnkyzhccudtaduqduoxn.supabase.co">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta name="robots" content="noindex, nofollow">
   <title>Diagnostic SEO - Mistral Pans</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3.5.3">
 
   <style>
     .seo-page-wrapper {
       min-height: 100vh;
+      min-height: 100dvh;
       background: var(--color-bg);
       padding-top: var(--header-height);
     }
@@ -335,7 +340,7 @@
       </div>
 
       <div class="seo-run">
-        <button id="btn-run-diagnostic" onclick="runSEODiagnostic()">Lancer le diagnostic</button>
+        <button id="btn-run-diagnostic">Lancer le diagnostic</button>
       </div>
 
       <div id="seo-progress"></div>
@@ -352,8 +357,9 @@
   <div id="site-footer"></div>
   <div id="contact-modal-container"></div>
 
-  <script src="js/core/cookie-consent.js"></script>
-  <script src="js/core/main.js"></script>
-  <script src="js/features/seo-diagnostic.js"></script>
+  <script src="js/core/cookie-consent.js?v=3.5.3"></script>
+  <script src="js/core/utils.js?v=3.5.3"></script>
+  <script src="js/core/main.js?v=3.5.3"></script>
+  <script src="js/features/seo-diagnostic.js?v=3.5.3"></script>
 </body>
 </html>

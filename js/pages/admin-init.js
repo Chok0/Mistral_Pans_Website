@@ -13,8 +13,12 @@
   async function updateView() {
     // Verifier la session Supabase (async, source de verite)
     let loggedIn = false;
-    if (typeof MistralAuth !== 'undefined') {
-      loggedIn = await MistralAuth.isLoggedIn();
+    try {
+      if (typeof MistralAuth !== 'undefined') {
+        loggedIn = await MistralAuth.isLoggedIn();
+      }
+    } catch (err) {
+      console.error('[Admin] Erreur verification auth:', err);
     }
     if (loggedIn) {
       loginView.style.display = 'none';
@@ -49,15 +53,21 @@
     btn.textContent = 'Connexion...';
     btn.disabled = true;
 
-    const result = await MistralAuth.login(email, password);
+    try {
+      const result = await MistralAuth.login(email, password);
 
-    if (result.success) {
-      loginError.classList.remove('show');
-      updateView();
-    } else {
-      loginError.textContent = result.error || 'Identifiants incorrects';
+      if (result.success) {
+        loginError.classList.remove('show');
+        updateView();
+      } else {
+        loginError.textContent = result.error || 'Identifiants incorrects';
+        loginError.classList.add('show');
+        document.getElementById('password').value = '';
+      }
+    } catch (err) {
+      console.error('[Admin] Erreur login:', err);
+      loginError.textContent = 'Erreur de connexion. Réessayez.';
       loginError.classList.add('show');
-      document.getElementById('password').value = '';
     }
 
     btn.textContent = 'Connexion';
@@ -65,11 +75,17 @@
   });
 
   document.getElementById('btn-logout').addEventListener('click', async function() {
-    if (typeof MistralAuth !== 'undefined') {
-      // MistralAuth.logout() redirige vers index.html
-      await MistralAuth.logout();
-    } else {
-      Auth.logout();
+    try {
+      if (typeof MistralAuth !== 'undefined') {
+        // MistralAuth.logout() redirige vers index.html
+        await MistralAuth.logout();
+      } else {
+        Auth.logout();
+        updateView();
+      }
+    } catch (err) {
+      console.error('[Admin] Erreur logout:', err);
+      // Forcer le retour à la vue login malgré l'erreur
       updateView();
     }
   });

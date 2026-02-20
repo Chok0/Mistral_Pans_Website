@@ -1,6 +1,8 @@
 // Netlify Function : Créer un paiement Payplug
 // Gère les acomptes, soldes, paiements complets et paiements en plusieurs fois (Oney)
 
+const { checkRateLimit, getClientIp } = require('./utils/rate-limit');
+
 /**
  * Valide le format d'une adresse email
  */
@@ -43,6 +45,202 @@ function cleanObject(obj) {
     }
   }
   return cleaned;
+}
+
+/**
+ * Récupère la configuration de tarification depuis Supabase (namespace=configurateur ou gestion).
+ * Retourne les paramètres de pricing ou les defaults.
+ */
+async function getPricingConfig() {
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+  const defaults = {
+    prixParNote: 115,
+    bonusOctave2: 50,
+    bonusBottoms: 25,
+    malusDifficulteWarning: 5,
+    malusDifficulteDifficile: 10
+  };
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return defaults;
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/configuration?namespace=eq.gestion&key=eq.mistral_gestion_config&select=value`,
+      {
+        method: 'GET',
+        headers: {
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.ok) {
+      const rows = await response.json();
+      if (rows.length > 0 && rows[0].value) {
+        let config = rows[0].value;
+        if (typeof config === 'string') {
+          try { config = JSON.parse(config); } catch { /* keep as-is */ }
+        }
+        return {
+          prixParNote: config.prixParNote ?? defaults.prixParNote,
+          bonusOctave2: config.bonusOctave2 ?? defaults.bonusOctave2,
+          bonusBottoms: config.bonusBottoms ?? defaults.bonusBottoms,
+          malusDifficulteWarning: config.malusDifficulteWarning ?? defaults.malusDifficulteWarning,
+          malusDifficulteDifficile: config.malusDifficulteDifficile ?? defaults.malusDifficulteDifficile
+        };
+      }
+    }
+  } catch (error) {
+    console.warn('getPricingConfig: fallback to defaults', error.message);
+  }
+
+  return defaults;
+}
+
+/**
+ * Récupère le malus prix d'une taille depuis Supabase.
+ * @returns {number} Malus en EUR (0 si non trouvé)
+ */
+async function getSizeMalusFromDb(sizeCode) {
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !sizeCode) return 0;
+
+  // Defaults hardcoded (fallback)
+  const defaultMalus = { '45': 100, '50': 100, '53': 0 };
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/tailles?code=eq.${encodeURIComponent(sizeCode)}&select=prix_malus`,
+      {
+        method: 'GET',
+        headers: {
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.ok) {
+      const rows = await response.json();
+      if (rows.length > 0) return rows[0].prix_malus || 0;
+    }
+  } catch (error) {
+    console.warn('getSizeMalusFromDb: fallback', error.message);
+  }
+
+  return defaultMalus[sizeCode] || 0;
+}
+
+/**
+ * Recalcule le prix minimum d'une configuration custom côté serveur.
+ * Utilise la même formule que le client (boutique.js calculatePrice).
+ * Ne vérifie pas la faisabilité (on utilise 0% malus par défaut = prix plancher).
+ *
+ * @param {Object} item - Item du panier (type='custom')
+ * @param {number} item.prix - Prix déclaré par le client
+ * @param {Object} item.details - { notes (nombre), taille }
+ * @param {Array} item.options - [{ type, prix }]
+ * @returns {{ valid: boolean, reason?: string, expectedMin?: number }}
+ */
+async function validateCustomPrice(item) {
+  const noteCount = item.details?.notes || item.details?.nombre_notes;
+  const sizeCode = item.details?.taille;
+
+  // Si pas de nombre de notes, on ne peut pas recalculer → accepter avec warning
+  if (!noteCount || noteCount < 9 || noteCount > 17) {
+    console.warn('validateCustomPrice: nombre de notes invalide ou absent', noteCount);
+    // Borne minimale absolue : 9 notes × 115€ = 1035€ arrondi à 1030€
+    const absoluteMin = Math.floor((9 * 115) / 5) * 5;
+    if (item.prix < absoluteMin) {
+      return {
+        valid: false,
+        reason: `Prix custom ${item.prix}€ inférieur au minimum absolu (${absoluteMin}€ pour 9 notes)`,
+        expectedMin: absoluteMin
+      };
+    }
+    return { valid: true };
+  }
+
+  const pricing = await getPricingConfig();
+  const sizeMalus = await getSizeMalusFromDb(sizeCode);
+
+  // Prix plancher : nombre de notes × prix par note + malus taille
+  // On n'ajoute PAS les bonus octave2/bottoms/difficulté (prix plancher = le minimum possible)
+  const minPrice = Math.floor((noteCount * pricing.prixParNote + sizeMalus) / 5) * 5;
+
+  // Tolérance de 10€ pour les arrondis
+  if (item.prix < minPrice - 10) {
+    return {
+      valid: false,
+      reason: `Prix custom ${item.prix}€ inférieur au plancher calculé (${minPrice}€ pour ${noteCount} notes, taille ${sizeCode || '?'})`,
+      expectedMin: minPrice
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Valide le prix d'un accessoire contre la base de données.
+ * Empêche la manipulation de prix des housses et autres accessoires.
+ *
+ * @param {string} accessoireId - ID Supabase de l'accessoire
+ * @param {number} claimedPrice - Prix déclaré par le client
+ * @returns {{ valid: boolean, reason?: string }}
+ */
+async function validateAccessoirePrice(accessoireId, claimedPrice) {
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    return { valid: false, reason: 'Validation accessoire indisponible' };
+  }
+
+  if (!accessoireId) return { valid: true }; // Pas d'ID = pas de validation
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/accessoires?id=eq.${encodeURIComponent(accessoireId)}&select=prix,nom,statut`,
+      {
+        method: 'GET',
+        headers: {
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) return { valid: false, reason: 'Impossible de vérifier le prix accessoire' };
+
+    const rows = await response.json();
+    if (!rows || rows.length === 0) {
+      return { valid: false, reason: `Accessoire ${accessoireId} non trouvé` };
+    }
+
+    const dbAccessoire = rows[0];
+    const dbPrice = dbAccessoire.prix || 0;
+
+    // Tolérance de 1€ pour les arrondis
+    if (claimedPrice < dbPrice - 1) {
+      return {
+        valid: false,
+        reason: `Prix accessoire "${dbAccessoire.nom}" : ${claimedPrice}€ déclaré vs ${dbPrice}€ en base`
+      };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    console.error('validateAccessoirePrice:', error);
+    return { valid: false, reason: 'Erreur validation accessoire' };
+  }
 }
 
 /**
@@ -115,29 +313,6 @@ async function validateStockPrice(amountCents, instrumentId, paymentType) {
   }
 }
 
-// ============================================================================
-// RATE LIMITING (in-memory, best-effort pour serverless)
-// ============================================================================
-const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 5; // 5 paiements par minute par IP
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(ip, { windowStart: now, count: 1 });
-    return true;
-  }
-
-  entry.count++;
-  if (entry.count > RATE_LIMIT_MAX) {
-    return false;
-  }
-  return true;
-}
-
 /**
  * Retourne l'origine CORS autorisée
  */
@@ -184,12 +359,10 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Origin': allowedOrigin
   };
 
-  // Rate limiting
-  const clientIp = event.headers['x-forwarded-for']?.split(',')[0]?.trim()
-    || event.headers['client-ip']
-    || 'unknown';
-
-  if (!checkRateLimit(clientIp)) {
+  // Rate limiting persistant (Supabase)
+  const clientIp = getClientIp(event);
+  const { allowed: rateLimitOk } = await checkRateLimit(clientIp, 'payplug', 5);
+  if (!rateLimitOk) {
     console.warn(`Rate limit dépassé pour ${clientIp}`);
     return {
       statusCode: 429,
@@ -227,15 +400,16 @@ exports.handler = async (event, context) => {
 
     const isOney = installments && [3, 4].includes(installments);
 
-    // Validation prix côté serveur pour instruments en stock
+    // ── Validation prix côté serveur ──
     if (metadata?.cartMode && metadata?.items) {
-      // Mode panier multi-items : valider chaque instrument en stock
+      // Mode panier multi-items : valider chaque item
       for (const item of metadata.items) {
+        // 1. Instruments en stock : vérifier prix DB
         if (item.type === 'instrument' && item.sourceId) {
           const itemPriceCents = (item.total || item.prix) * 100;
           const priceCheck = await validateStockPrice(itemPriceCents, item.sourceId, paymentType);
           if (!priceCheck.valid) {
-            console.error('Prix invalide (cart item):', priceCheck.reason, item.sourceId);
+            console.error('Prix invalide (cart instrument):', priceCheck.reason, item.sourceId);
             return {
               statusCode: 400,
               headers,
@@ -243,8 +417,52 @@ exports.handler = async (event, context) => {
             };
           }
         }
+
+        // 2. Configurations custom : recalculer prix plancher
+        if (item.type === 'custom') {
+          const customCheck = await validateCustomPrice(item);
+          if (!customCheck.valid) {
+            console.error('Prix invalide (cart custom):', customCheck.reason);
+            return {
+              statusCode: 400,
+              headers,
+              body: JSON.stringify({ error: 'Prix invalide pour la configuration sur mesure' })
+            };
+          }
+        }
+
+        // 3. Accessoires : vérifier prix DB
+        if (item.type === 'accessoire' && item.sourceId) {
+          const accCheck = await validateAccessoirePrice(item.sourceId, item.prix);
+          if (!accCheck.valid) {
+            console.error('Prix invalide (cart accessoire):', accCheck.reason);
+            return {
+              statusCode: 400,
+              headers,
+              body: JSON.stringify({ error: 'Prix invalide pour l\'accessoire ' + (item.nom || item.sourceId) })
+            };
+          }
+        }
+
+        // 4. Options (housse) sur un item : vérifier prix DB
+        if (item.options && Array.isArray(item.options)) {
+          for (const opt of item.options) {
+            if (opt.type === 'housse' && opt.id) {
+              const optCheck = await validateAccessoirePrice(opt.id, opt.prix);
+              if (!optCheck.valid) {
+                console.error('Prix invalide (option housse):', optCheck.reason);
+                return {
+                  statusCode: 400,
+                  headers,
+                  body: JSON.stringify({ error: 'Prix invalide pour l\'option ' + (opt.nom || opt.id) })
+                };
+              }
+            }
+          }
+        }
       }
     } else if (metadata?.source === 'stock' && metadata?.instrumentId) {
+      // Mode legacy single stock instrument
       const priceCheck = await validateStockPrice(amount, metadata.instrumentId, paymentType);
       if (!priceCheck.valid) {
         console.error('Prix invalide:', priceCheck.reason);
@@ -252,6 +470,38 @@ exports.handler = async (event, context) => {
           statusCode: 400,
           headers,
           body: JSON.stringify({ error: 'Montant invalide pour cet instrument' })
+        };
+      }
+    } else if (metadata?.source === 'custom') {
+      // Mode legacy single custom configuration
+      const totalEur = amount / 100;
+      const customItem = {
+        prix: totalEur - (metadata?.houssePrix || 0) - (metadata?.shippingCost || 0),
+        details: {
+          notes: metadata?.notes || null,
+          taille: metadata?.taille || null
+        }
+      };
+      const customCheck = await validateCustomPrice(customItem);
+      if (!customCheck.valid) {
+        console.error('Prix invalide (legacy custom):', customCheck.reason);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Prix invalide pour la configuration sur mesure' })
+        };
+      }
+    }
+
+    // Valider les accessoires legacy (housse en mode single)
+    if (metadata?.housseId && metadata?.houssePrix !== undefined) {
+      const housseCheck = await validateAccessoirePrice(metadata.housseId, metadata.houssePrix);
+      if (!housseCheck.valid) {
+        console.error('Prix invalide (legacy housse):', housseCheck.reason);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Prix invalide pour la housse' })
         };
       }
     }
@@ -350,8 +600,9 @@ exports.handler = async (event, context) => {
           prix: item.prix,
           quantite: item.quantite || 1,
           total: item.total,
-          gamme: item.gamme || null,
-          taille: item.taille || null,
+          gamme: item.details?.gamme || item.gamme || null,
+          taille: item.details?.taille || item.taille || null,
+          notes: item.details?.notes || null,
           options: item.options || []
         }))),
         product_name: sanitize(metadata?.productName, 100) || null,
@@ -368,6 +619,7 @@ exports.handler = async (event, context) => {
         product_name: sanitize(metadata?.productName, 100) || null,
         gamme: sanitize(metadata?.gamme, 50) || null,
         taille: sanitize(metadata?.taille, 20) || null,
+        notes: metadata?.notes || null,
         total_price_cents: metadata?.totalPrice ? metadata.totalPrice * 100 : amount,
         housse_id: metadata?.housseId || null,
         housse_nom: sanitize(metadata?.housseNom, 50) || null,

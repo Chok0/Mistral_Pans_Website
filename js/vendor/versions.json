@@ -1,7 +1,11 @@
 {
   "description": "Versions des librairies self-hosted",
-  "last_updated": "2026-02-09",
+  "last_updated": "2026-02-16",
   "libraries": {
+    "dompurify": {
+      "version": "3.3.1",
+      "npm_package": "dompurify"
+    },
     "supabase-js": {
       "version": "2.95.3",
       "npm_package": "@supabase/supabase-js"

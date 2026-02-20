@@ -8,6 +8,10 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
+  <!-- Preconnect: faster DNS + TLS for critical external origins -->
+  <link rel="preconnect" href="https://qnkyzhccudtaduqduoxn.supabase.co">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta name="description" content="Conditions Générales de Vente de Mistral Pans - Fabricant artisanal de handpans en Île-de-France.">
   <link rel="canonical" href="https://mistralpans.fr/cgv.html">
 
@@ -30,7 +34,7 @@
   <!-- Fonts -->
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3.5.3">
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230D7377'/></svg>">
@@ -39,7 +43,7 @@
     .legal-content {
       max-width: 800px;
       margin: 0 auto;
-      padding: var(--space-2xl) var(--space-lg);
+      padding: calc(var(--header-height) + var(--space-2xl)) var(--space-lg) var(--space-2xl);
     }
     .legal-content h1 {
       margin-bottom: var(--space-xl);
@@ -111,10 +115,10 @@
     <div class="highlight">
       <strong>Tarification des instruments sur mesure :</strong>
       <ul>
-        <li>Prix de base par note : 115 EUR</li>
-        <li>Supplément note octave 2 : +50 EUR par note</li>
-        <li>Supplément bottoms : +25 EUR (forfait)</li>
-        <li>Malus selon difficulté de fabrication : jusqu'à +10%</li>
+        <li>Prix de base par note : <span id="cgv-prix-note">115</span> EUR</li>
+        <li>Supplément note octave 2 : +<span id="cgv-bonus-octave2">50</span> EUR par note</li>
+        <li>Supplément bottoms : +<span id="cgv-bonus-bottoms">25</span> EUR (forfait)</li>
+        <li>Malus selon difficulté de fabrication : jusqu'à +<span id="cgv-malus-max">10</span>%</li>
       </ul>
     </div>
 
@@ -134,7 +138,7 @@
 
     <h3>4.2 Acompte</h3>
     <p>
-      Un acompte de <strong>300 EUR</strong> est demandé à la commande. Cet acompte est non remboursable sauf en cas d'impossibilité de fabrication avérée.
+      Un acompte de <strong><span id="cgv-acompte">300</span> EUR</strong> est demandé à la commande. Cet acompte est non remboursable sauf en cas d'impossibilité de fabrication avérée.
     </p>
 
     <h3>4.3 Délais de fabrication</h3>
@@ -183,8 +187,8 @@
 
     <h3>8.1 Conditions de location</h3>
     <ul>
-      <li><strong>Loyer mensuel :</strong> 60 EUR/mois</li>
-      <li><strong>Caution :</strong> 1 150 EUR (gérée via Swikly)</li>
+      <li><strong>Loyer mensuel :</strong> <span id="cgv-loyer">60</span> EUR/mois</li>
+      <li><strong>Caution :</strong> <span id="cgv-caution">1 150</span> EUR (gérée via Swikly)</li>
       <li><strong>Durée minimale :</strong> 1 mois</li>
     </ul>
 
@@ -241,7 +245,9 @@
   <div id="contact-modal-container"></div>
 
   <!-- Scripts -->
-  <script src="js/core/cookie-consent.js"></script>
-  <script src="js/core/main.js"></script>
+  <script src="js/core/cookie-consent.js?v=3.5.3"></script>
+  <script src="js/core/utils.js?v=3.5.3"></script>
+  <script src="js/core/main.js?v=3.5.3"></script>
+  <script src="js/pages/cgv.js?v=3.5.3" defer></script>
 </body>
 </html>

@@ -13,6 +13,11 @@
 python -m http.server 8000
 
 # Alternative: VS Code Live Server extension or npx serve .
+
+# Run unit tests (requires npm install first)
+npm test              # Single run
+npm run test:watch    # Watch mode
+npm run test:coverage # With coverage report
 ```
 
 ---
@@ -43,23 +48,30 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 ├── css/
 │   ├── style.css            # Global design system
 │   ├── boutique.css         # Configurator + stock styles
-│   ├── admin.css            # Admin styles (FAB, modals, dashboard, gestion)
+│   ├── admin.css            # Admin styles (modals, dashboard, gestion)
 │   └── teacher-form.css     # Teacher signup form
 ├── js/
 │   ├── core/                # Bootstrap, navigation, configuration
 │   │   ├── main.js          # Partial loading, navigation, Supabase init
+│   │   ├── utils.js         # Shared helpers (escapeHtml, formatPrice, formatDate, debounce, loadScript…)
 │   │   ├── config.js        # Supabase keys (gitignored)
 │   │   ├── config.example.js # Config template
 │   │   └── cookie-consent.js # RGPD cookie consent banner
 │   │
 │   ├── admin/               # Administration system
-│   │   ├── admin-core.js    # Auth, FAB, CRUD, sanitization
+│   │   ├── admin-core.js    # Auth, CRUD, sanitization
 │   │   ├── admin-ui-core.js # Navigation, dashboard, todos
 │   │   ├── admin-ui-gestion.js  # Clients, instruments, locations
 │   │   ├── admin-ui-boutique.js # Shop stock, accessories
 │   │   ├── admin-ui-content.js  # Teachers, gallery, blog
 │   │   ├── admin-ui-config.js   # Config, export/import
-│   │   ├── admin-ui-modals.js   # All CRUD modals
+│   │   ├── admin-ui-modals.js   # Modal core (showModal, closeModal, state)
+│   │   ├── admin-ui-modals-clients.js     # Client CRUD modals
+│   │   ├── admin-ui-modals-instruments.js # Instrument CRUD + uploads
+│   │   ├── admin-ui-modals-locations.js   # Location CRUD modals
+│   │   ├── admin-ui-modals-commandes.js   # Commande CRUD + email automation
+│   │   ├── admin-ui-modals-factures.js    # Facture CRUD + PDF/email
+│   │   ├── admin-ui-modals-teachers.js    # Teacher CRUD modals
 │   │   ├── admin-ui-compta.js   # Accounting, URSSAF
 │   │   ├── gestion.js       # Business logic (clients, instruments, etc.)
 │   │   ├── gestion-pdf.js   # Invoice PDF generation
@@ -79,7 +91,7 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 │   │
 │   ├── data/                # Static data files
 │   │   ├── scales-data.js   # Musical scales + music theory
-│   │   ├── gammes-data.js   # Configurator gammes (12 gammes)
+│   │   ├── gammes-data.js   # Configurator gammes (MistralSync/Supabase, 12 default)
 │   │   ├── tailles-data.js  # Sizes and dimensions
 │   │   └── materiaux-data.js # Materials and properties
 │   │
@@ -100,12 +112,20 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 │   └── audio/               # FLAC audio samples (56 notes)
 ├── netlify/functions/
 │   ├── send-email.js        # Brevo SMTP email function
+│   ├── teacher-signup.js    # Teacher signup (rate-limit fail-closed, honeypot, validation)
 │   ├── payplug-create-payment.js  # Payment creation
 │   ├── payplug-webhook.js   # Payment webhooks
 │   ├── swikly-create-deposit.js   # Deposit creation
 │   ├── swikly-webhook.js    # Deposit webhooks
 │   └── order-status.js      # Order tracking endpoint
+├── tests/
+│   ├── setup.js             # Test setup (loads IIFE modules into jsdom)
+│   ├── utils.test.js        # Unit tests for js/core/utils.js
+│   ├── feasibility.test.js  # Unit tests for feasibility-module.js
+│   └── scales-data.test.js  # Unit tests for scales-data.js
 ├── netlify.toml              # Netlify config (headers, redirects, CSP)
+├── vitest.config.js          # Vitest configuration (jsdom environment)
+├── package.json              # Dev dependencies (vitest, jsdom)
 ├── CLAUDE.md                # This file (AI assistant guide)
 └── README.md                # Full project documentation (French)
 ```
@@ -128,13 +148,15 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 | `article.html` | Article template | Dynamic content loading |
 | `suivi.html` | Order tracking | Reference + email lookup |
 | `admin.html` | Admin dashboard | Groups: Gestion (Commandes, Instruments, Clients, Locations, Factures), Contenu (Vitrine, Galerie, Blog, Professeurs), Outils (Comptabilité, Config) |
+| `credits.html` | Open source credits | Shellopan audio, vendor libraries, fonts, map services |
 
 ### Core JavaScript Files
 
 | File | Location | Key Exports/Functions |
 |------|----------|----------------------|
+| `utils.js` | `js/core/` | `MistralUtils.*` — shared helpers (escapeHtml, formatPrice, formatDate, sanitizeHtml, debounce, generateId, hasValue, loadScript, loadStylesheet…) |
 | `main.js` | `js/core/` | `loadPartials()`, `setActivePage()`, dynamic Supabase init |
-| `admin-core.js` | `js/admin/` | `Auth.isLoggedIn()`, `FAB.create()`, CRUD helpers |
+| `admin-core.js` | `js/admin/` | `Auth.isLoggedIn()`, CRUD helpers (delegates to MistralUtils) |
 | `handpan-player.js` | `js/features/` | `HandpanPlayer` class, Web Audio API |
 | `feasibility-module.js` | `js/features/` | `checkFeasibility()`, surface calculations |
 | `supabase-sync.js` | `js/services/` | `MistralSync.getData()`, `MistralSync.setData()`, in-memory store |
@@ -151,8 +173,9 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 ### External Libraries (self-hosted in js/vendor/)
 - **Supabase JS SDK 2.x** - Database/Auth
 - **Leaflet 1.9.4** - Maps
-- **Chart.js 4.x** - Admin charts
-- **Quill.js 1.3.7** - WYSIWYG editor (blog)
+- **DOMPurify 3.3.1** - XSS sanitizer (article.html, admin.html), fallback custom DOMParser
+- **Chart.js 4.x** - Admin charts (lazy-loaded on dashboard)
+- **Quill.js 1.3.7** - WYSIWYG editor (lazy-loaded on blog section)
 
 Versions tracked in `js/vendor/versions.json`. Update via `./scripts/update-vendor.sh`.
 
@@ -180,13 +203,29 @@ Versions tracked in `js/vendor/versions.json`. Update via `./scripts/update-vend
 --color-bg: #FDFBF7;          /* Warm cream background */
 --color-bg-dark: #1A1815;     /* Near black */
 --color-text: #2C2825;        /* Dark brown text */
---color-success: #4A7C59;     /* Sage green */
---color-warning: #F59E0B;     /* Amber */
---color-error: #EF4444;       /* Red */
+--color-success: #3D6B4A;     /* Sage green (WCAG AA 5.2:1) */
+--color-warning: #D97706;     /* Amber (WCAG AA 4.6:1) */
+--color-error: #DC2626;       /* Red (WCAG AA 5.0:1) */
 
 /* Boutique overrides */
 --color-bg: #FAFAFA;          /* Light gray */
 --color-bg-warm: #F5F5F5;     /* Stock section */
+
+/* Focus Indicators (Accessibility) */
+--focus-ring: 2px solid var(--color-accent);
+--focus-ring-offset: 2px;
+--focus-shadow: 0 0 0 4px var(--color-accent-20);
+
+/* Z-index Scale */
+--z-base: 1;        /* Hero overlay, player-info, badges */
+--z-content: 2;     /* Hero content */
+--z-sticky: 100;    /* Header, boutique tabs, admin header */
+--z-dropdown: 200;  /* Searchable dropdown, autocomplete */
+--z-player-overlay: 499;  /* Handpan overlay backdrop */
+--z-player-enlarged: 500; /* Handpan enlarged */
+--z-modal: 1000;    /* Contact modal, admin modals, lightbox */
+--z-toast: 2000;    /* Toasts, notifications, cookie banner */
+--z-skip: 9999;     /* Accessibility skip link */
 ```
 
 ### Responsive Breakpoints
@@ -254,8 +293,7 @@ if (window.MistralAdmin && MistralAdmin.Auth.isLoggedIn()) {
   // Show admin UI
 }
 
-// FAB auto-injects on all pages except admin.html when logged in.
-// Only 2 actions: admin panel link + logout. No page-specific FAB code needed.
+// Admin panel is accessed directly via admin.html URL (no FAB on user pages).
 ```
 
 ---
@@ -276,13 +314,14 @@ if (window.MistralAdmin && MistralAdmin.Auth.isLoggedIn()) {
 | `articles` | Blog posts | slug, title, content (HTML), status, tags |
 | `accessoires` | Accessories | nom, categorie, prix, stock, statut, visible_configurateur, tailles_compatibles |
 | `tailles` | Sizes | code, label, description, prix_malus, feasibility (JSON), ordre, disponible, visible_configurateur |
+| `gammes` | Scales | code, nom, categorie, mode, baseRoot, baseOctave, baseNotes (JSONB), custom_layouts (JSONB), ordre, disponible, visible_configurateur |
 | `configuration` | Settings (key-value) | key, value (JSON), namespace (gestion/compta/email_automations/configurateur) |
 
 ### Row-Level Security (granulaire)
 
 - **Admin-only:** `clients`, `locations`, `commandes`, `factures`, `configuration` (protege IBAN/BIC)
 - **Public read (filtre config):** `configuration` (namespace='configurateur' — lots de gammes actifs)
-- **Public read (tout):** `galerie`, `tailles`
+- **Public read (tout):** `galerie`, `tailles`, `gammes`
 - **Public read (filtre):** `instruments` (statut IN en_ligne/disponible), `articles` (status=published), `accessoires` (statut=en_ligne), `professeurs` (statut=active)
 - **Public insert:** `professeurs` (statut=pending uniquement)
 - **Authenticated:** Full CRUD access sur toutes les tables
@@ -422,6 +461,7 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 | `mistral_blog_articles` | `articles` | Array | Blog articles |
 | `mistral_accessoires` | `accessoires` | Array | Shop accessories (cases, oils, etc.) |
 | `mistral_tailles` | `tailles` | Array | Size configurations (45/50/53cm) with feasibility data |
+| `mistral_gammes_data` | `gammes` | Array | Scale configurations (patterns, baseNotes, metadata) |
 | `mistral_gestion_config` | `configuration` (namespace='gestion') | Object | Admin business config (rates, invoice counter) |
 | `mistral_compta_config` | `configuration` (namespace='compta') | Object | Accounting settings (email dest, report prefs) |
 | `mistral_email_automations` | `configuration` (namespace='email_automations') | Object | Email automation rules |
@@ -439,7 +479,8 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 | Module | Purpose |
 |--------|---------|
 | `MistralMateriaux` | Material specifications (hardcoded defaults) |
-| `MistralGammes` | Scale configurations (hardcoded defaults, active batch codes loaded from Supabase namespace=configurateur) |
+
+> **Note:** `MistralGammes` was migrated from in-memory to MistralSync/Supabase (table `gammes`). See `mistral_gammes_data` in the sync table above. Published lots are loaded from Supabase namespace=configurateur key `published_lots`, fallback legacy `active_gammes`. Custom patterns (`custom_layouts`) override hardcoded `SCALES_DATA` patterns.
 
 ### Admin Authentication
 - Authentication is handled via **Supabase Auth** (email + password)
@@ -465,6 +506,34 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 
 ---
 
+## Testing
+
+### Framework
+- **Vitest 3.x** with **jsdom** environment
+- Tests in `tests/` directory
+- Setup loads IIFE/const modules into jsdom `window` via `tests/setup.js`
+
+### Running Tests
+```bash
+npm install        # First time only
+npm test           # Single run (vitest run)
+npm run test:watch # Watch mode
+```
+
+### Adding Tests for a New Module
+1. Add `loadModule('js/path/to/module.js')` in `tests/setup.js`
+2. Create `tests/module-name.test.js`
+3. Access the module via `window.ModuleName` (both IIFE and const patterns supported)
+
+### Current Coverage (147 tests)
+| Module | Tests | Focus |
+|--------|-------|-------|
+| `utils.js` | 96 | Formatting, escaping, sanitization, validation, debounce, generateId |
+| `feasibility-module.js` | 23 | Surface calculations, threshold transitions, forbidden notes |
+| `scales-data.js` | 28 | Constants, notation conversion, music theory, configurator support |
+
+---
+
 ## Troubleshooting
 
 ### Partials not loading
@@ -472,9 +541,9 @@ If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security set
 - Check browser console for fetch errors
 - Verify `partials/` directory exists
 
-### Admin FAB not showing
-- Check `MistralAdmin.Auth.isLoggedIn()` returns true
-- Verify `js/admin/admin-core.js` is loaded
+### Admin panel access
+- Navigate directly to `admin.html` (no FAB on user pages)
+- Check `MistralAdmin.Auth.isLoggedIn()` returns true after login
 - Verify Supabase auth session is active (no localStorage session)
 
 ### Supabase sync issues

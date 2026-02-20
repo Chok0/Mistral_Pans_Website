@@ -49,8 +49,8 @@
         </div>
         <h3 class="map-consent-title">Carte interactive</h3>
         <p class="map-consent-text">
-          Cette carte utilise des données cartographiques externes (OpenStreetMap via CARTO). 
-          En l'activant, votre adresse IP sera transmise à  ces services tiers.
+          Cette carte utilise des données cartographiques externes (OpenStreetMap via CARTO).
+          En l'activant, votre adresse IP sera transmise à ces services tiers.
         </p>
         <div class="map-consent-actions">
           <button class="btn btn--primary" id="btn-accept-map">
@@ -75,20 +75,21 @@
           position: absolute;
           inset: 0;
           background: linear-gradient(135deg, rgba(250,250,250,0.97) 0%, rgba(245,245,245,0.97) 100%);
+          -webkit-backdrop-filter: blur(8px);
           backdrop-filter: blur(8px);
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 1000;
+          z-index: 1000; /* --z-modal */
           border-radius: inherit;
         }
-        
+
         .map-consent-content {
           text-align: center;
           max-width: 400px;
           padding: 2rem;
         }
-        
+
         .map-consent-icon {
           width: 80px;
           height: 80px;
@@ -100,7 +101,7 @@
           justify-content: center;
           color: white;
         }
-        
+
         .map-consent-title {
           font-family: var(--font-display, Georgia, serif);
           font-size: 1.5rem;
@@ -108,27 +109,27 @@
           margin-bottom: 0.75rem;
           color: var(--color-text, #2C2825);
         }
-        
+
         .map-consent-text {
           font-size: 0.9375rem;
           color: var(--color-text-light, #6B6560);
           line-height: 1.6;
           margin-bottom: 1.5rem;
         }
-        
+
         .map-consent-actions {
           display: flex;
           gap: 0.75rem;
           justify-content: center;
           flex-wrap: wrap;
         }
-        
+
         .map-consent-note {
           font-size: 0.8125rem;
           color: var(--color-text-muted, #9A958F);
           margin-top: 1rem;
         }
-        
+
         .map-placeholder {
           position: absolute;
           inset: 0;
@@ -147,7 +148,7 @@
     const mapContainer = document.getElementById('teachers-map');
     if (!mapContainer) return;
 
-    // Vérifier si le consentement existe déjà 
+    // Vérifier si le consentement existe déjà
     if (Consent.hasConsent('leaflet')) {
       initLeafletMap();
       return;
@@ -285,29 +286,52 @@
     const cardsHtml = teachers.map(t => {
       const firstName = t.name ? t.name.split(' ')[0] : 'ce professeur';
       const phoneClean = t.phone ? t.phone.replace(/\s/g, '') : '';
-      
+
       return `
-        <div class="teacher-card" data-id="${t.id}" data-lat="${t.lat || ''}" data-lng="${t.lng || ''}" onclick="openTeacherProfile('${t.id}')" style="cursor:pointer;">
+        <div class="teacher-card" data-id="${t.id}" data-lat="${t.lat || ''}" data-lng="${t.lng || ''}" data-action="open-teacher-profile" style="cursor:pointer;">
           <h4 class="teacher-card__name">${utils.escapeHtml(t.name)}</h4>
-          <p class="teacher-card__location">ðŸ" ${utils.escapeHtml(t.location || t.city || '')}</p>
+          <p class="teacher-card__location">📍 ${utils.escapeHtml(t.location || t.city || '')}</p>
           ${t.bio ? `<p style="font-size: 0.875rem; color: var(--color-text-light); margin-bottom: var(--space-md);">${utils.escapeHtml(t.bio).substring(0, 100)}${t.bio.length > 100 ? '...' : ''}</p>` : ''}
           <div class="teacher-card__actions">
-            <a href="mailto:${t.email}" class="teacher-card__btn teacher-card__btn--email" onclick="event.stopPropagation();">
+            <a href="mailto:${t.email}" class="teacher-card__btn teacher-card__btn--email" data-action="stop-propagation">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
               Écrire à ${utils.escapeHtml(firstName)}
             </a>
-            ${phoneClean ? `
-              <a href="tel:${phoneClean}" class="teacher-card__btn teacher-card__btn--phone" onclick="event.stopPropagation();">
+            ${phoneClean ? (('ontouchstart' in window || navigator.maxTouchPoints > 0)
+              ? `<a href="tel:${phoneClean}" class="teacher-card__btn teacher-card__btn--phone" data-action="stop-propagation">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.09.6.21 1.19.39 1.77a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.58.18 1.17.3 1.77.39A2 2 0 0 1 22 16.92z"/></svg>
                 Appeler
-              </a>
-            ` : ''}
+              </a>`
+              : `<span class="teacher-card__btn teacher-card__btn--phone" data-action="stop-propagation" style="cursor:default;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.09.6.21 1.19.39 1.77a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.58.18 1.17.3 1.77.39A2 2 0 0 1 22 16.92z"/></svg>
+                ${utils.escapeHtml(t.phone)}
+              </span>`)
+            : ''}
           </div>
         </div>
       `;
     }).join('');
 
     container.innerHTML = cardsHtml + ctaHtml;
+
+    // Delegated event listeners for data-action attributes
+    container.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+
+      const action = actionEl.dataset.action;
+
+      if (action === 'stop-propagation') {
+        e.stopPropagation();
+        return; // Let the default link behavior proceed
+      }
+
+      if (action === 'open-teacher-profile') {
+        const card = actionEl.closest('.teacher-card');
+        const id = card ? card.dataset.id : null;
+        if (id) openTeacherProfile(id);
+      }
+    });
   }
 
   // ============================================================================
@@ -347,16 +371,16 @@
               </div>
               <div class="admin-list-item__content">
                 <div class="admin-list-item__title" style="color: var(--color-text, #333); font-weight: 500;">${utils.escapeHtml(p.firstname)} ${utils.escapeHtml(p.lastname)}</div>
-                <div class="admin-list-item__subtitle" style="color: var(--color-text-muted, #666);">${utils.escapeHtml(p.location || p.city)} "¢ ${utils.escapeHtml(p.email)}</div>
+                <div class="admin-list-item__subtitle" style="color: var(--color-text-muted, #666);">${utils.escapeHtml(p.location || p.city)} • ${utils.escapeHtml(p.email)}</div>
                 <div style="font-size:0.75rem;color:var(--color-text-light, #888);margin-top:0.25rem;">
                   Demande le ${utils.formatDate(p.submittedAt)}
                 </div>
               </div>
               <div class="admin-list-item__actions">
-                <button class="admin-btn admin-btn--primary admin-btn--sm" onclick="ApprendreAdmin.approve('${p.id}')">
+                <button class="admin-btn admin-btn--primary admin-btn--sm" data-action="approve" data-ns="ApprendreAdmin" data-id="${p.id}">
                   Approuver
                 </button>
-                <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="ApprendreAdmin.reject('${p.id}')">
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="reject" data-ns="ApprendreAdmin" data-id="${p.id}">
                   Refuser
                 </button>
               </div>
@@ -380,6 +404,24 @@
         Modal.close(modalId);
       });
     }
+
+    // Delegated event listeners for data-action buttons
+    modal.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+
+      switch (action) {
+        case 'approve':
+          ApprendreAdmin.approve(id);
+          break;
+        case 'reject':
+          ApprendreAdmin.reject(id);
+          break;
+      }
+    });
   }
 
   function openTeachersListModal() {
@@ -415,13 +457,13 @@
               </div>
               <div class="admin-list-item__content">
                 <div class="admin-list-item__title" style="color: var(--color-text, #333); font-weight: 500;">${utils.escapeHtml(t.name)}</div>
-                <div class="admin-list-item__subtitle" style="color: var(--color-text-muted, #666);">${utils.escapeHtml(t.location)} "¢ ${utils.escapeHtml(t.email)}</div>
+                <div class="admin-list-item__subtitle" style="color: var(--color-text-muted, #666);">${utils.escapeHtml(t.location)} • ${utils.escapeHtml(t.email)}</div>
               </div>
               <div class="admin-list-item__actions">
-                <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="ApprendreAdmin.edit('${t.id}')">
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit" data-ns="ApprendreAdmin" data-id="${t.id}">
                   Modifier
                 </button>
-                <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="ApprendreAdmin.delete('${t.id}')">
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="delete" data-ns="ApprendreAdmin" data-id="${t.id}">
                   Supprimer
                 </button>
               </div>
@@ -445,6 +487,24 @@
         Modal.close(modalId);
       });
     }
+
+    // Delegated event listeners for data-action buttons
+    modal.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+
+      switch (action) {
+        case 'edit':
+          ApprendreAdmin.edit(id);
+          break;
+        case 'delete':
+          ApprendreAdmin.delete(id);
+          break;
+      }
+    });
   }
 
   // ============================================================================
@@ -456,20 +516,20 @@
       const teacher = Teachers.approve(id);
       if (teacher) {
         Toast.success(`${teacher.name} a été ajouté(e)`);
-        
-        // Mettre à  jour la modale si ouverte
+
+        // Mettre à jour la modale si ouverte
         const pendingList = document.getElementById('pending-list');
         if (pendingList) {
           const item = pendingList.querySelector(`[data-id="${id}"]`);
           if (item) item.remove();
-          
+
           // Fermer si vide
           if (pendingList.children.length === 0) {
             Modal.close('pending-modal');
           }
         }
 
-        // Mettre à  jour l'affichage
+        // Mettre à jour l'affichage
         renderTeacherCards();
         updateMapMarkers();
         updateFABBadge();
@@ -574,19 +634,8 @@
 
       try {
         const formData = new FormData(form);
-        
-        // Récupérer la photo si présente
-        let photoData = null;
-        const photoFile = photoInput?.files[0];
-        if (photoFile) {
-          photoData = await readFileAsBase64(photoFile);
-          // Compresser si nécessaire
-          if (photoData) {
-            photoData = await compressImage(photoData, 600, 600, 0.8);
-          }
-        }
 
-        // Collecter les types de cours
+        // Collecter les types de cours (synchrone, rapide)
         const courseTypes = [];
         form.querySelectorAll('input[name="course_type[]"]:checked').forEach(cb => {
           courseTypes.push(cb.value);
@@ -600,20 +649,29 @@
         // Collecter code postal et ville
         const postalcode = formData.get('postalcode')?.trim() || '';
         const city = formData.get('city')?.trim() || '';
-        const location = city + (postalcode ? ` (${postalcode})` : '');
 
-        // Géocoder l'adresse
-        const coords = await geocodeAddress(postalcode, city);
+        // Lancer photo + geocodage EN PARALLELE pour reduire la latence
+        const photoFile = photoInput?.files[0];
+        const photoPromise = photoFile
+          ? readFileAsBase64(photoFile).then(b64 => b64 ? compressImage(b64, 600, 600, 0.8) : null)
+          : Promise.resolve(null);
 
-        // Créer la demande
-        const request = {
+        // Geocodage avec timeout 3s (fallback Paris si trop lent)
+        const geocodeWithTimeout = Promise.race([
+          geocodeAddress(postalcode, city),
+          new Promise(resolve => setTimeout(() => resolve({ lat: 48.8566, lng: 2.3522 }), 3000))
+        ]);
+
+        const [photoData, coords] = await Promise.all([photoPromise, geocodeWithTimeout]);
+
+        // Créer le payload pour la Netlify Function
+        const payload = {
           firstname: formData.get('firstname')?.trim() || '',
           lastname: formData.get('lastname')?.trim() || '',
           email: formData.get('email')?.trim() || '',
           phone: formData.get('phone')?.trim() || '',
           postalcode: postalcode,
           city: city,
-          location: location,
           lat: coords.lat,
           lng: coords.lng,
           bio: formData.get('bio')?.trim() || '',
@@ -621,16 +679,35 @@
           courseTypes: courseTypes,
           courseFormats: courseFormats,
           instrumentAvailable: formData.get('instrument_available') === '1',
-          website: formData.get('website')?.trim() || null,
+          website: formData.get('site_url')?.trim() || null,
           instagram: formData.get('instagram')?.trim() || null,
           facebook: formData.get('facebook')?.trim() || null,
           youtube: formData.get('youtube')?.trim() || null,
           tiktok: formData.get('tiktok')?.trim() || null,
-          submittedAt: new Date().toISOString()
+          // Honeypot : champ invisible "website" (si rempli = bot)
+          honeypot: formData.get('website') || ''
         };
 
-        // Ajouter aux demandes en attente
-        Teachers.addPending(request);
+        // Envoyer via Netlify Function (rate-limited, serveur-side validation)
+        const response = await fetch('/.netlify/functions/teacher-signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          // Gerer les erreurs specifiques du serveur
+          if (response.status === 429) {
+            Toast.error('Trop de demandes. Réessayez dans une heure.');
+          } else if (response.status === 409) {
+            Toast.error('Une demande avec cet email existe déjà.');
+          } else {
+            Toast.error(result.error || 'Une erreur est survenue.');
+          }
+          return;
+        }
 
         // Réinitialiser le formulaire
         form.reset();
@@ -648,11 +725,16 @@
         if (modal) {
           modal.classList.remove('open');
           document.body.style.overflow = '';
+          if (window.MistralFocusTrap) MistralFocusTrap.deactivate();
         }
 
-        // Mettre à jour le badge FAB si admin connecté
+        // Si admin connecté : rafraîchir le cache MistralSync pour voir la nouvelle demande
         if (Auth.isLoggedIn()) {
-          updateFABBadge();
+          if (window.MistralSync && MistralSync.refresh) {
+            MistralSync.refresh().then(() => updateFABBadge());
+          } else {
+            updateFABBadge();
+          }
         }
 
         Toast.success('Demande envoyée ! Vous recevrez une réponse sous 48h.');
@@ -667,6 +749,214 @@
         }
       }
     });
+  }
+
+  // ============================================================================
+  // WIZARD MULTI-ÉTAPES (mobile)
+  // ============================================================================
+
+  /**
+   * Initialise le wizard multi-étapes pour le formulaire enseignant.
+   * Sur mobile (≤768px), le formulaire affiche une étape à la fois.
+   * Sur desktop, toutes les étapes sont visibles (pas de wizard).
+   */
+  function initWizard() {
+    const form = document.getElementById('teacher-form');
+    if (!form) return;
+
+    const stepper = document.getElementById('wizard-stepper');
+    if (!stepper) return;
+
+    const steps = form.querySelectorAll('.wizard-step');
+    const dots = stepper.querySelectorAll('.wizard-step-dot');
+    const bars = stepper.querySelectorAll('.wizard-step-bar');
+    if (steps.length === 0) return;
+
+    let currentStep = 1;
+
+    /**
+     * Naviguer vers une étape donnée
+     * @param {number} targetStep - numéro de l'étape (1-based)
+     * @param {boolean} [skipValidation=false] - ignorer la validation (retour en arrière)
+     */
+    function goToStep(targetStep, skipValidation) {
+      if (targetStep < 1 || targetStep > steps.length) return;
+
+      // En allant vers l'avant, valider l'étape actuelle
+      if (!skipValidation && targetStep > currentStep) {
+        if (!validateStep(currentStep)) return;
+      }
+
+      // Masquer l'étape courante
+      steps.forEach(function (step) {
+        step.classList.remove('wizard-step--active');
+      });
+
+      // Afficher la nouvelle étape
+      const targetEl = form.querySelector('[data-wizard-step="' + targetStep + '"]');
+      if (targetEl) {
+        targetEl.classList.add('wizard-step--active');
+      }
+
+      // Mettre à jour le stepper
+      dots.forEach(function (dot, i) {
+        var stepNum = i + 1;
+        dot.classList.remove('wizard-step-dot--active', 'wizard-step-dot--done');
+        dot.removeAttribute('aria-current');
+
+        if (stepNum === targetStep) {
+          dot.classList.add('wizard-step-dot--active');
+          dot.setAttribute('aria-current', 'step');
+        } else if (stepNum < targetStep) {
+          dot.classList.add('wizard-step-dot--done');
+        }
+      });
+
+      // Mettre à jour les barres entre les dots
+      bars.forEach(function (bar, i) {
+        bar.classList.toggle('wizard-step-bar--done', (i + 1) < targetStep);
+      });
+
+      currentStep = targetStep;
+
+      // Scroll en haut du modal body
+      var modalBody = form.closest('.modal__body');
+      if (modalBody) {
+        modalBody.scrollTop = 0;
+      }
+    }
+
+    /**
+     * Valider les champs requis d'une étape
+     * @param {number} stepNum
+     * @returns {boolean}
+     */
+    function validateStep(stepNum) {
+      var stepEl = form.querySelector('[data-wizard-step="' + stepNum + '"]');
+      if (!stepEl) return true;
+
+      // Vérifier les champs required
+      var requiredFields = stepEl.querySelectorAll('input[required], textarea[required], select[required]');
+      var firstInvalid = null;
+
+      for (var i = 0; i < requiredFields.length; i++) {
+        var field = requiredFields[i];
+        if (!field.value || !field.value.trim()) {
+          field.classList.add('form-input--error');
+          if (!firstInvalid) firstInvalid = field;
+        } else {
+          field.classList.remove('form-input--error');
+        }
+      }
+
+      // Vérifier email format
+      var emailField = stepEl.querySelector('input[type="email"]');
+      if (emailField && emailField.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailField.value)) {
+        emailField.classList.add('form-input--error');
+        if (!firstInvalid) firstInvalid = emailField;
+      }
+
+      // Vérifier code postal format
+      var postalField = stepEl.querySelector('input[name="postalcode"]');
+      if (postalField && postalField.value && !/^[0-9]{5}$/.test(postalField.value)) {
+        postalField.classList.add('form-input--error');
+        if (!firstInvalid) firstInvalid = postalField;
+      }
+
+      // Étape 2 : au moins un type de cours et un format
+      if (stepNum === 2) {
+        var courseTypes = stepEl.querySelectorAll('input[name="course_type[]"]:checked');
+        var courseFormats = stepEl.querySelectorAll('input[name="course_format[]"]:checked');
+
+        if (courseTypes.length === 0) {
+          if (typeof Toast !== 'undefined') {
+            Toast.error('Sélectionnez au moins un type de cours');
+          }
+          return false;
+        }
+
+        if (courseFormats.length === 0) {
+          if (typeof Toast !== 'undefined') {
+            Toast.error('Sélectionnez au moins un format de cours');
+          }
+          return false;
+        }
+      }
+
+      if (firstInvalid) {
+        firstInvalid.focus();
+        if (typeof Toast !== 'undefined') {
+          Toast.error('Veuillez remplir tous les champs obligatoires');
+        }
+        return false;
+      }
+
+      return true;
+    }
+
+    // Event: boutons Suivant / Retour
+    form.addEventListener('click', function (e) {
+      var nextBtn = e.target.closest('.wizard-btn-next');
+      if (nextBtn) {
+        var nextStep = parseInt(nextBtn.getAttribute('data-next'), 10);
+        if (nextStep) goToStep(nextStep);
+        return;
+      }
+
+      var prevBtn = e.target.closest('.wizard-btn-prev');
+      if (prevBtn) {
+        var prevStep = parseInt(prevBtn.getAttribute('data-prev'), 10);
+        if (prevStep) goToStep(prevStep, true);
+      }
+    });
+
+    // Event: clic sur un dot du stepper
+    stepper.addEventListener('click', function (e) {
+      var dot = e.target.closest('.wizard-step-dot');
+      if (!dot) return;
+      var targetStep = parseInt(dot.getAttribute('data-step'), 10);
+      if (!targetStep || targetStep === currentStep) return;
+
+      // Autoriser retour en arrière sans validation
+      if (targetStep < currentStep) {
+        goToStep(targetStep, true);
+      } else {
+        // Valider chaque étape intermédiaire avant d'avancer
+        var canAdvance = true;
+        for (var s = currentStep; s < targetStep; s++) {
+          if (!validateStep(s)) {
+            canAdvance = false;
+            break;
+          }
+        }
+        if (canAdvance) goToStep(targetStep);
+      }
+    });
+
+    // Retirer la classe d'erreur quand l'utilisateur corrige
+    form.addEventListener('input', function (e) {
+      if (e.target.classList.contains('form-input--error')) {
+        e.target.classList.remove('form-input--error');
+      }
+    });
+
+    // Reset wizard quand le modal se ferme
+    var signupModal = document.getElementById('teacher-signup');
+    if (signupModal) {
+      var observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+          if (mutation.attributeName === 'class' && !signupModal.classList.contains('open')) {
+            // Reset au step 1
+            goToStep(1, true);
+            // Retirer les erreurs
+            form.querySelectorAll('.form-input--error').forEach(function (el) {
+              el.classList.remove('form-input--error');
+            });
+          }
+        });
+      });
+      observer.observe(signupModal, { attributes: true, attributeFilter: ['class'] });
+    }
   }
 
   // Helper: Lire un fichier en base64
@@ -685,20 +975,20 @@
       const img = new Image();
       img.onload = () => {
         let { width, height } = img;
-        
+
         if (width > maxWidth || height > maxHeight) {
           const ratio = Math.min(maxWidth / width, maxHeight / height);
           width = Math.round(width * ratio);
           height = Math.round(height * ratio);
         }
-        
+
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
-        
+
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        
+
         resolve(canvas.toDataURL('image/jpeg', quality));
       };
       img.onerror = () => reject(new Error('Erreur chargement image'));
@@ -719,13 +1009,13 @@
           }
         }
       );
-      
+
       if (!response.ok) {
         throw new Error('Erreur réseau API adresse');
       }
-      
+
       const data = await response.json();
-      
+
       if (data && data.features && data.features.length > 0) {
         const coords = data.features[0].geometry.coordinates;
         const label = data.features[0].properties.label;
@@ -734,7 +1024,7 @@
           lng: coords[0]
         };
       }
-      
+
       // Fallback: essayer Nominatim avec une query simple
       const nominatimQuery = encodeURIComponent(`${postalcode}, ${city}, France`);
       const nominatimResponse = await fetch(
@@ -745,7 +1035,7 @@
           }
         }
       );
-      
+
       if (nominatimResponse.ok) {
         const nominatimData = await nominatimResponse.json();
         if (nominatimData && nominatimData.length > 0) {
@@ -755,11 +1045,11 @@
           };
         }
       }
-      
+
       // Fallback final: centre de l'Île-de-France
       if (window.MISTRAL_DEBUG) console.warn('Géocodage échoué, utilisation des coordonnées par défaut');
       return { lat: 48.8566, lng: 2.3522 };
-      
+
     } catch (error) {
       console.error('Erreur géocodage:', error);
       return { lat: 48.8566, lng: 2.3522 };
@@ -779,7 +1069,7 @@
     if (!modal || !content) return;
 
     // Photo
-    const photoHtml = teacher.photo 
+    const photoHtml = teacher.photo
       ? `<img src="${teacher.photo}" alt="${utils.escapeHtml(teacher.name)}">`
       : `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -795,29 +1085,34 @@
     if (teacher.courseFormats?.includes('groupe')) tags.push('Cours collectifs');
     if (teacher.instrumentAvailable) tags.push('Instrument fourni');
 
-    const tagsHtml = tags.map(t => 
+    const tagsHtml = tags.map(t =>
       `<span class="tag ${t === 'Instrument fourni' ? 'tag--accent' : ''}">${t}</span>`
     ).join('');
 
     // Réseaux sociaux
     const socials = [];
-    if (teacher.website) socials.push(`<a href="${teacher.website}" target="_blank" rel="noopener">ðŸŒ Site web</a>`);
-    if (teacher.instagram) socials.push(`<a href="https://instagram.com/${teacher.instagram.replace('@', '')}" target="_blank" rel="noopener">ðŸ"· Instagram</a>`);
-    if (teacher.facebook) socials.push(`<a href="${teacher.facebook.startsWith('http') ? teacher.facebook : 'https://facebook.com/' + teacher.facebook}" target="_blank" rel="noopener">ðŸ"˜ Facebook</a>`);
-    if (teacher.youtube) socials.push(`<a href="${teacher.youtube.startsWith('http') ? teacher.youtube : 'https://youtube.com/' + teacher.youtube}" target="_blank" rel="noopener">ðŸ"º YouTube</a>`);
-    if (teacher.tiktok) socials.push(`<a href="https://tiktok.com/${teacher.tiktok.replace('@', '')}" target="_blank" rel="noopener">ðŸŽµ TikTok</a>`);
+    if (teacher.website) socials.push(`<a href="${teacher.website}" target="_blank" rel="noopener">🌐 Site web</a>`);
+    if (teacher.instagram) socials.push(`<a href="https://instagram.com/${teacher.instagram.replace('@', '')}" target="_blank" rel="noopener">📷 Instagram</a>`);
+    if (teacher.facebook) socials.push(`<a href="${teacher.facebook.startsWith('http') ? teacher.facebook : 'https://facebook.com/' + teacher.facebook}" target="_blank" rel="noopener">📘 Facebook</a>`);
+    if (teacher.youtube) socials.push(`<a href="${teacher.youtube.startsWith('http') ? teacher.youtube : 'https://youtube.com/' + teacher.youtube}" target="_blank" rel="noopener">📺 YouTube</a>`);
+    if (teacher.tiktok) socials.push(`<a href="https://tiktok.com/${teacher.tiktok.replace('@', '')}" target="_blank" rel="noopener">🎵 TikTok</a>`);
 
-    const socialsHtml = socials.length > 0 
-      ? `<div class="teacher-profile__socials" style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem;">${socials.join('')}</div>` 
+    const socialsHtml = socials.length > 0
+      ? `<div class="teacher-profile__socials" style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem;">${socials.join('')}</div>`
       : '';
 
     // Boutons contact
     const firstName = teacher.name.split(' ')[0];
     let contactHtml = `<div class="teacher-profile__actions" style="display:flex;gap:0.75rem;margin-top:1.5rem;flex-wrap:wrap;">`;
-    contactHtml += `<a href="mailto:${teacher.email}" class="btn btn--primary">ðŸ"§ Écrire à ${firstName}</a>`;
+    contactHtml += `<a href="mailto:${utils.escapeHtml(teacher.email)}" class="btn btn--primary" target="_blank" rel="noopener">📧 Écrire à ${utils.escapeHtml(firstName)}</a>`;
     if (teacher.phone) {
       const phoneClean = teacher.phone.replace(/\s/g, '');
-      contactHtml += `<a href="tel:${phoneClean}" class="btn btn--secondary">ðŸ"ž Appeler ${firstName}</a>`;
+      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      if (isMobile) {
+        contactHtml += `<a href="tel:${phoneClean}" class="btn btn--secondary">📞 Appeler ${utils.escapeHtml(firstName)}</a>`;
+      } else {
+        contactHtml += `<span class="btn btn--secondary" style="cursor:default;">📞 ${utils.escapeHtml(teacher.phone)}</span>`;
+      }
     }
     contactHtml += `</div>`;
 
@@ -828,7 +1123,7 @@
         </div>
         <div style="flex:1;">
           <h3 style="font-family:var(--font-display);font-size:1.5rem;margin-bottom:0.25rem;">${utils.escapeHtml(teacher.name)}</h3>
-          <p style="color:var(--color-text-light);margin-bottom:1rem;">ðŸ" ${utils.escapeHtml(teacher.location)}</p>
+          <p style="color:var(--color-text-light);margin-bottom:1rem;">📍 ${utils.escapeHtml(teacher.location)}</p>
           <p style="line-height:1.6;">${utils.escapeHtml(teacher.bio)}</p>
           <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:1rem;">${tagsHtml}</div>
           ${socialsHtml}
@@ -839,6 +1134,7 @@
 
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
+    if (window.MistralFocusTrap) MistralFocusTrap.activate(modal);
   }
 
   // Exposer pour les onclick dans le HTML
@@ -857,6 +1153,9 @@
 
     // Initialiser le formulaire de demande d'adhésion
     initSignupForm();
+
+    // Initialiser le wizard multi-étapes (mobile)
+    initWizard();
 
     // Fermeture des modals
     initModalCloseHandlers();
@@ -882,6 +1181,7 @@
         if (e.target === profileModal || e.target.closest('.modal__close')) {
           profileModal.classList.remove('open');
           document.body.style.overflow = '';
+          if (window.MistralFocusTrap) MistralFocusTrap.deactivate();
         }
       });
     }
@@ -893,9 +1193,28 @@
         if (e.target === signupModal || e.target.closest('.modal__close')) {
           signupModal.classList.remove('open');
           document.body.style.overflow = '';
+          if (window.MistralFocusTrap) MistralFocusTrap.deactivate();
         }
       });
     }
+
+    // Fermer les modales via Echap
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const pm = document.getElementById('teacher-profile-modal');
+      if (pm && pm.classList.contains('open')) {
+        pm.classList.remove('open');
+        document.body.style.overflow = '';
+        if (window.MistralFocusTrap) MistralFocusTrap.deactivate();
+        return;
+      }
+      const sm = document.getElementById('teacher-signup');
+      if (sm && sm.classList.contains('open')) {
+        sm.classList.remove('open');
+        document.body.style.overflow = '';
+        if (window.MistralFocusTrap) MistralFocusTrap.deactivate();
+      }
+    });
 
     // Ouvrir le modal d'inscription (event delegation pour les liens dynamiques)
     document.addEventListener('click', (e) => {
@@ -906,6 +1225,7 @@
         if (modal) {
           modal.classList.add('open');
           document.body.style.overflow = 'hidden';
+          if (window.MistralFocusTrap) MistralFocusTrap.activate(modal);
         }
       }
     });

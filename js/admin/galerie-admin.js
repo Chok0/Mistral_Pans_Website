@@ -1,13 +1,13 @@
 /* ==========================================================================
    MISTRAL PANS - Galerie Admin Integration
-   SystÃ¨me de galerie avec fiches instruments et lightbox plein Ã©cran
+   Système de galerie avec fiches instruments et lightbox plein écran
    ========================================================================== */
 
 (function() {
   'use strict';
 
   if (typeof MistralAdmin === 'undefined') {
-    console.error('MistralAdmin non chargÃ©');
+    console.error('MistralAdmin non chargé');
     return;
   }
 
@@ -27,14 +27,14 @@
       container.innerHTML = `
         <div class="gallery-empty" style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;">
           <p style="font-family: var(--font-display); font-size: 1.25rem; margin-bottom: 0.5rem;">Galerie en construction</p>
-          <p style="color: var(--color-text-muted);">De nouvelles crÃ©ations arrivent bientÃ´t</p>
+          <p style="color: var(--color-text-muted);">De nouvelles créations arrivent bientôt</p>
         </div>
       `;
       return;
     }
 
     container.innerHTML = instruments.map(instr => `
-      <div class="gallery-item" data-id="${instr.id}" onclick="GaleriePublic.openLightbox('${instr.id}')">
+      <div class="gallery-item" data-id="${instr.id}" data-action="open-lightbox" data-ns="GaleriePublic">
         <img src="${instr.cover || instr.thumbnail || instr.src || ''}" alt="${utils.escapeHtml(instr.title || '')}" loading="lazy">
         ${instr.media && instr.media.some(m => m.type === 'video') ? `
           <div class="gallery-item__video-badge">
@@ -51,6 +51,14 @@
         ` : ''}
       </div>
     `).join('');
+
+    // Delegated event listener for gallery grid
+    container.addEventListener('click', (e) => {
+      const item = e.target.closest('[data-action="open-lightbox"]');
+      if (!item) return;
+      const id = item.dataset.id;
+      if (id) GaleriePublic.openLightbox(id);
+    });
   }
 
   // ============================================================================
@@ -75,7 +83,7 @@
       </button>
       
       <div class="instrument-lightbox__media">
-        <button class="instrument-lightbox__nav instrument-lightbox__nav--prev" aria-label="PrÃ©cÃ©dent">
+        <button class="instrument-lightbox__nav instrument-lightbox__nav--prev" aria-label="Précédent">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
@@ -135,7 +143,7 @@
     const instrument = instruments.find(i => i.id === instrumentId);
     
     if (!instrument) {
-      console.error('Instrument non trouvÃ©:', instrumentId);
+      console.error('Instrument non trouvé:', instrumentId);
       return;
     }
 
@@ -147,14 +155,14 @@
       lightbox = createLightbox();
     }
 
-    // Mettre Ã  jour les infos
+    // Mettre à jour les infos
     lightbox.querySelector('.instrument-lightbox__title').textContent = instrument.title || '';
     lightbox.querySelector('.instrument-lightbox__subtitle').textContent = instrument.subtitle || '';
 
-    // GÃ©nÃ©rer les mÃ©dias (cover + media[])
+    // Générer les médias (cover + media[])
     const allMedia = buildMediaList(instrument);
     
-    // CrÃ©er les dots de navigation
+    // Créer les dots de navigation
     const dotsContainer = lightbox.querySelector('.instrument-lightbox__dots');
     if (allMedia.length > 1) {
       dotsContainer.innerHTML = allMedia.map((_, i) => `
@@ -173,25 +181,28 @@
       dotsContainer.style.display = 'none';
     }
 
-    // Afficher/masquer les flÃ¨ches
+    // Afficher/masquer les flèches
     const prevBtn = lightbox.querySelector('.instrument-lightbox__nav--prev');
     const nextBtn = lightbox.querySelector('.instrument-lightbox__nav--next');
     prevBtn.style.display = allMedia.length > 1 ? 'flex' : 'none';
     nextBtn.style.display = allMedia.length > 1 ? 'flex' : 'none';
 
-    // Afficher le premier mÃ©dia
+    // Afficher le premier média
     updateLightboxMedia();
 
     // Ouvrir
     lightbox.classList.add('open');
     document.body.style.overflow = 'hidden';
+
+    // Focus trap (WCAG 2.4.3)
+    if (window.MistralFocusTrap) MistralFocusTrap.activate(lightbox);
   }
 
   function closeLightbox() {
     const lightbox = document.getElementById('instrument-lightbox');
     if (!lightbox) return;
 
-    // ArrÃªter la vidÃ©o si en cours
+    // Arrêter la vidéo si en cours
     const video = lightbox.querySelector('.instrument-lightbox__video');
     if (video) {
       video.pause();
@@ -200,6 +211,10 @@
 
     lightbox.classList.remove('open');
     document.body.style.overflow = '';
+
+    // Desactiver le piege de focus
+    if (window.MistralFocusTrap) MistralFocusTrap.deactivate();
+
     currentInstrument = null;
     currentMediaIndex = 0;
   }
@@ -212,7 +227,7 @@
       list.push({ type: 'image', src: instrument.cover });
     }
     
-    // Puis les mÃ©dias additionnels
+    // Puis les médias additionnels
     if (instrument.media && Array.isArray(instrument.media)) {
       instrument.media.forEach(m => {
         list.push(m);
@@ -258,7 +273,7 @@
       imgEl.style.display = 'block';
     }
 
-    // Mettre Ã  jour les dots
+    // Mettre à jour les dots
     lightbox.querySelectorAll('.instrument-lightbox__dot').forEach((dot, i) => {
       dot.classList.toggle('active', i === currentMediaIndex);
     });
@@ -290,23 +305,23 @@
   }
 
   function openContactFromLightbox() {
-    // Ouvrir la modale de contact avec sujet prÃ©-rempli
+    // Ouvrir la modale de contact avec sujet pré-rempli
     const instrumentTitle = currentInstrument ? currentInstrument.title : '';
     
     // Chercher la modale contact
     const contactModal = document.getElementById('contact-modal');
     if (contactModal) {
       contactModal.classList.add('active');
-      contactModal.style.zIndex = '10001'; // Au-dessus de la lightbox
+      contactModal.style.zIndex = '1000'; // --z-modal (au-dessus de la lightbox)
       
-      // PrÃ©-remplir le message
+      // Pré-remplir le message
       const messageField = contactModal.querySelector('textarea[name="message"]');
       if (messageField && instrumentTitle) {
         messageField.value = `Je souhaite avoir des informations sur l'instrument "${instrumentTitle}".
 
 `;
         messageField.focus();
-        // Placer le curseur Ã  la fin
+        // Placer le curseur à la fin
         messageField.setSelectionRange(messageField.value.length, messageField.value.length);
       }
     } else if (typeof openContactModal === 'function') {
@@ -327,7 +342,7 @@
       .instrument-lightbox {
         position: fixed;
         inset: 0;
-        z-index: 10000;
+        z-index: 1000; /* --z-modal */
         background: rgba(0, 0, 0, 0.95);
         display: none;
         flex-direction: column;
@@ -368,22 +383,25 @@
       .instrument-lightbox__content {
         max-width: 90vw;
         max-height: calc(100vh - 180px);
+        max-height: calc(100dvh - 180px);
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: default;
       }
-      
+
       .instrument-lightbox__image {
         max-width: 100%;
         max-height: calc(100vh - 180px);
+        max-height: calc(100dvh - 180px);
         object-fit: contain;
         cursor: default;
       }
-      
+
       .instrument-lightbox__video {
         max-width: 100%;
         max-height: calc(100vh - 180px);
+        max-height: calc(100dvh - 180px);
         background: black;
         cursor: default;
       }
@@ -477,7 +495,7 @@
         flex-shrink: 0;
       }
       
-      /* Badge vidÃ©o sur la grille */
+      /* Badge vidéo sur la grille */
       .gallery-item {
         position: relative;
         cursor: pointer;
@@ -538,7 +556,7 @@
   let mediaUploads = [];
 
   function createAddInstrumentModal() {
-    // DÃ©truire l'ancienne modale si elle existe
+    // Détruire l'ancienne modale si elle existe
     const existing = document.getElementById('add-instrument-modal');
     if (existing) {
       Modal.destroy(existing);
@@ -557,7 +575,7 @@
             </div>
             <div class="admin-form__group">
               <label class="admin-form__label">Sous-titre</label>
-              <input type="text" class="admin-form__input" name="subtitle" placeholder="9 notes â€¢ 432 Hz â€¢ Finition dorÃ©e">
+              <input type="text" class="admin-form__input" name="subtitle" placeholder="9 notes • 432 Hz • Finition dorée">
             </div>
           </div>
           
@@ -567,7 +585,7 @@
           </div>
           
           <div class="admin-form__group">
-            <label class="admin-form__label">Gamme associÃ©e</label>
+            <label class="admin-form__label">Gamme associée</label>
             <select class="admin-form__select" name="gamme">
               <option value="">-- Aucune --</option>
               <option value="kurd">Kurd</option>
@@ -589,10 +607,10 @@
           </div>
           
           <div class="admin-form__group">
-            <label class="admin-form__label">MÃ©dias additionnels (images ou vidÃ©o)</label>
+            <label class="admin-form__label">Médias additionnels (images ou vidéo)</label>
             <div id="media-uploads-list"></div>
             <button type="button" class="admin-btn admin-btn--secondary admin-btn--sm" id="btn-add-media" style="margin-top:0.75rem;">
-              + Ajouter un mÃ©dia
+              + Ajouter un média
             </button>
           </div>
           
@@ -619,7 +637,7 @@
       coverWrapper.appendChild(coverUpload);
     }
 
-    // Bouton ajouter mÃ©dia
+    // Bouton ajouter média
     mediaUploads = [];
     modal.querySelector('#btn-add-media').addEventListener('click', () => {
       addMediaUploadField(modal);
@@ -648,7 +666,7 @@
     wrapper.style.cssText = 'margin-bottom:1rem;padding:1rem;background:var(--admin-bg);border-radius:var(--admin-radius-md);position:relative;';
     
     wrapper.innerHTML = `
-      <button type="button" class="media-upload-remove" style="position:absolute;top:0.5rem;right:0.5rem;background:none;border:none;color:var(--admin-text-muted);cursor:pointer;font-size:1.25rem;">Ã—</button>
+      <button type="button" class="media-upload-remove" style="position:absolute;top:0.5rem;right:0.5rem;background:none;border:none;color:var(--admin-text-muted);cursor:pointer;font-size:1.25rem;">×</button>
       <div class="media-upload-wrapper"></div>
     `;
     
@@ -661,7 +679,7 @@
       wrapper.remove();
     });
     
-    // CrÃ©er l'upload
+    // Créer l'upload
     if (typeof MistralUpload !== 'undefined') {
       const uploadInput = MistralUpload.createUploadInput({
         id: `media-upload-${index}`,
@@ -701,7 +719,7 @@
       // Upload cover
       const coverResult = await coverUpload.upload();
       
-      // Upload mÃ©dias additionnels
+      // Upload médias additionnels
       const mediaList = [];
       for (const mediaItem of mediaUploads) {
         if (mediaItem.input.getFile()) {
@@ -714,7 +732,7 @@
         }
       }
       
-      // CrÃ©er l'instrument
+      // Créer l'instrument
       const instrumentData = {
         title: title,
         subtitle: formData.get('subtitle')?.trim() || '',
@@ -729,7 +747,7 @@
       
       Gallery.add(instrumentData);
       
-      Toast.success('Instrument ajoutÃ©');
+      Toast.success('Instrument ajouté');
       Modal.close(modal);
       renderGallery();
       resetUploadFields();
@@ -757,7 +775,7 @@
 
     const modal = Modal.create({
       id: 'manage-gallery-modal',
-      title: 'GÃ©rer la galerie',
+      title: 'Gérer la galerie',
       size: 'large',
       content: instruments.length === 0 ? `
         <div class="admin-empty">
@@ -769,12 +787,12 @@
           ${instruments.map(instr => `
             <div class="admin-gallery-item" data-id="${instr.id}" style="position:relative;aspect-ratio:1;background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:var(--admin-radius-md);overflow:hidden;">
               <img src="${instr.cover || instr.thumbnail || instr.src || ''}" alt="" style="width:100%;height:100%;object-fit:cover;">
-              ${instr.media && instr.media.some(m => m.type === 'video') ? '<div style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:white;font-size:0.625rem;padding:2px 6px;border-radius:4px;">ðŸŽ¬</div>' : ''}
+              ${instr.media && instr.media.some(m => m.type === 'video') ? '<div style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:white;font-size:0.625rem;padding:2px 6px;border-radius:4px;">🎬</div>' : ''}
               <div style="position:absolute;bottom:0;left:0;right:0;padding:0.5rem;background:linear-gradient(transparent,rgba(0,0,0,0.8));color:white;font-size:0.75rem;">
                 ${utils.escapeHtml(instr.title || 'Sans titre')}
               </div>
-              <div style="position:absolute;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;gap:0.5rem;opacity:0;transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">
-                <button class="admin-btn admin-btn--icon admin-btn--sm admin-btn--secondary" onclick="GalerieAdmin.delete('${instr.id}')" title="Supprimer">
+              <div class="gallery-item-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;gap:0.5rem;opacity:0;transition:opacity 0.2s;">
+                <button class="admin-btn admin-btn--icon admin-btn--sm admin-btn--secondary" data-action="delete" data-ns="GalerieAdmin" data-id="${instr.id}" title="Supprimer">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6"></polyline>
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -786,14 +804,35 @@
         </div>
       `,
       footer: `
-        <button class="admin-btn admin-btn--secondary" onclick="MistralAdmin.Modal.close('manage-gallery-modal')">Fermer</button>
-        <button class="admin-btn admin-btn--primary" onclick="GalerieAdmin.openAddModal()">
+        <button class="admin-btn admin-btn--secondary" data-action="modal-close" data-param="manage-gallery-modal">Fermer</button>
+        <button class="admin-btn admin-btn--primary" data-action="open-add-modal" data-ns="GalerieAdmin">
           Ajouter un instrument
         </button>
       `
     });
 
     Modal.open(modal);
+
+    // Delegated event listeners for data-action buttons
+    modal.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+
+      switch (action) {
+        case 'delete':
+          GalerieAdmin.delete(id);
+          break;
+        case 'modal-close':
+          Modal.close(btn.dataset.param);
+          break;
+        case 'open-add-modal':
+          GalerieAdmin.openAddModal();
+          break;
+      }
+    });
   }
 
   // ============================================================================
@@ -811,10 +850,10 @@
       const confirmed = await Confirm.delete('cet instrument');
       if (confirmed) {
         Gallery.delete(id);
-        Toast.success('Instrument supprimÃ©');
+        Toast.success('Instrument supprimé');
         renderGallery();
         
-        // Mettre Ã  jour la modale si ouverte
+        // Mettre à jour la modale si ouverte
         Modal.close('manage-gallery-modal');
         openManageModal();
       }

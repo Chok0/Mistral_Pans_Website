@@ -41,10 +41,12 @@
     
     // Valeurs par défaut
     DEFAULTS: {
-      loyerMensuel: 50,
+      loyerMensuel: 60,
       montantCaution: 1150,
       fraisDossierTransport: 100,
-      fraisTransportRetour: 40,
+      fraisTransportRetour: 50,
+      fraisExpeditionColissimo: 50,
+      tauxAcompte: 30,
       dureeEngagementMois: 3,
       // Tarification configurateur
       prixParNote: 115,
@@ -119,38 +121,17 @@
     });
   }
 
-  /**
-   * Génère un ID court avec préfixe
-   */
-  function generateId(prefix = 'id') {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
+  // --- Delegations vers MistralUtils (js/core/utils.js) ---
+  const generateId    = MistralUtils.generateId;
+  const formatDate    = MistralUtils.formatDate;
+  const formatDateShort = MistralUtils.formatDateShort;
+  const formatPriceRaw  = MistralUtils.formatPriceRaw;
+  const parsePrice    = MistralUtils.parsePrice;
+  const isValidEmail  = MistralUtils.isValidEmail;
+  const isValidDate   = MistralUtils.isValidDate;
 
   /**
-   * Formate une date en français
-   */
-  function formatDate(dateString, options = {}) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const defaultOptions = { 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
-    };
-    return date.toLocaleDateString('fr-FR', { ...defaultOptions, ...options });
-  }
-
-  /**
-   * Formate une date courte (JJ/MM/AAAA)
-   */
-  function formatDateShort(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR');
-  }
-
-  /**
-   * Formate un prix en euros
+   * Formate un prix en euros avec 2 decimales (contexte gestion/factures)
    */
   function formatPrice(price) {
     if (price === null || price === undefined) return '0,00 €';
@@ -161,40 +142,29 @@
     }).format(price);
   }
 
-  /**
-   * Formate un prix sans symbole euro
-   */
-  function formatPriceRaw(price) {
-    if (price === null || price === undefined) return '0,00';
-    return new Intl.NumberFormat('fr-FR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(price);
-  }
-
-  /**
-   * Parse un prix (string) en nombre
-   */
-  function parsePrice(str) {
-    if (typeof str === 'number') return str;
-    if (!str) return 0;
-    return parseFloat(str.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0;
-  }
-
   // ============================================================================
   // VALIDATION
   // ============================================================================
 
-  function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-
-  function isValidDate(str) {
-    return /^\d{4}-\d{2}-\d{2}/.test(str) && !isNaN(new Date(str).getTime());
+  /**
+   * Verifie la longueur maximale de plusieurs champs texte.
+   * Itere sur un dictionnaire { champLabel: [valeur, maxLength] }
+   * et leve une erreur si un champ depasse la limite.
+   *
+   * @param {Object.<string, [string, number]>} fields - Map label → [valeur, maxLength]
+   * @throws {Error} si un champ depasse sa longueur maximale
+   */
+  function validateStringLengths(fields) {
+    for (const [label, [value, max]] of Object.entries(fields)) {
+      if (value && typeof value === 'string' && value.length > max) {
+        throw new Error(label + ' : ' + max + ' caracteres maximum (actuellement ' + value.length + ')');
+      }
+    }
   }
 
   /**
-   * Valide les donnees d'un client (champs requis + formats)
+   * Valide les donnees d'un client (champs requis + formats + longueurs)
+   * @param {Object} data - Donnees du formulaire client
    * @throws {Error} si validation echoue
    */
   function validateClient(data) {
@@ -204,10 +174,19 @@
     if (data.email && data.email.trim() && !isValidEmail(data.email.trim())) {
       throw new Error('Format email invalide');
     }
+    validateStringLengths({
+      'Prenom': [data.prenom, 50],
+      'Nom': [data.nom, 50],
+      'Email': [data.email, 255],
+      'Telephone': [data.telephone, 20],
+      'Adresse': [data.adresse, 500],
+      'Notes': [data.notes, 1000]
+    });
   }
 
   /**
-   * Valide les donnees d'un instrument
+   * Valide les donnees d'un instrument (champs requis + formats + longueurs)
+   * @param {Object} data - Donnees du formulaire instrument
    * @throws {Error} si validation echoue
    */
   function validateInstrument(data) {
@@ -218,10 +197,20 @@
       const prix = parsePrice(data.prix_vente);
       if (prix < 0) throw new Error('Le prix de vente ne peut pas etre negatif');
     }
+    validateStringLengths({
+      'Numero': [data.numero, 20],
+      'Nom': [data.nom, 100],
+      'Layout': [data.layout, 200],
+      'Description': [data.description, 1000],
+      'Video URL': [data.video_url, 500],
+      'Handpaner': [data.handpaner, 500],
+      'Commentaires': [data.commentaires, 1000]
+    });
   }
 
   /**
-   * Valide les donnees d'une location
+   * Valide les donnees d'une location (champs requis + formats + longueurs)
+   * @param {Object} data - Donnees du formulaire location
    * @throws {Error} si validation echoue
    */
   function validateLocation(data) {
@@ -231,10 +220,14 @@
       const loyer = parsePrice(data.loyer_mensuel);
       if (loyer < 0) throw new Error('Le loyer ne peut pas etre negatif');
     }
+    validateStringLengths({
+      'Notes': [data.notes, 500]
+    });
   }
 
   /**
-   * Valide les donnees d'une commande
+   * Valide les donnees d'une commande (champs requis + formats + longueurs)
+   * @param {Object} data - Donnees du formulaire commande
    * @throws {Error} si validation echoue
    */
   function validateCommande(data) {
@@ -243,10 +236,17 @@
       const montant = parsePrice(data.montant_total);
       if (montant < 0) throw new Error('Le montant ne peut pas etre negatif');
     }
+    validateStringLengths({
+      'Description': [data.description, 1000],
+      'N° suivi': [data.tracking, 50],
+      'Livraison': [data.delivery_estimate, 100],
+      'Notes': [data.notes, 500]
+    });
   }
 
   /**
-   * Valide les donnees d'une facture
+   * Valide les donnees d'une facture (champs requis + formats + longueurs)
+   * @param {Object} data - Donnees du formulaire facture
    * @throws {Error} si validation echoue
    */
   function validateFacture(data) {
@@ -254,21 +254,16 @@
     if (!data.lignes || !Array.isArray(data.lignes) || data.lignes.length === 0) {
       throw new Error('Au moins une ligne de facture est requise');
     }
-    const validTypes = ['vente', 'acompte', 'solde', 'location', 'prestation', 'avoir'];
+    const validTypes = ['vente', 'acompte', 'solde', 'location', 'prestation', 'reaccordage', 'avoir'];
     if (data.type && !validTypes.includes(data.type)) {
       throw new Error('Type de facture invalide: ' + data.type);
     }
+    validateStringLengths({
+      'Notes': [data.notes, 500]
+    });
   }
 
-  /**
-   * Échappe le HTML pour éviter les injections XSS
-   */
-  function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
+  const escapeHtml = MistralUtils.escapeHtml;
 
   /**
    * Deep clone un objet
@@ -393,6 +388,55 @@
     } catch (e) {
       console.error('Erreur écriture config:', e);
       return false;
+    }
+  }
+
+  // ============================================================================
+  // NOTIFICATION WAITLIST LOCATION
+  // ============================================================================
+
+  /**
+   * Envoie un email de notification a tous les inscrits de la waitlist location
+   * quand un instrument devient disponible a la location.
+   * Vide la waitlist apres envoi.
+   *
+   * @param {Object} instrument - Instrument qui vient de devenir disponible
+   */
+  async function notifyWaitlistAvailable(instrument) {
+    try {
+      var waitlist = window.MistralSync ? MistralSync.getData('mistral_location_waitlist') : null;
+      if (!waitlist || !waitlist.emails || waitlist.emails.length === 0) return;
+
+      var emails = waitlist.emails;
+      var instrumentName = instrument.gamme || instrument.nom || 'Handpan';
+
+      console.log('[Gestion] Envoi notifications disponibilité location à', emails.length, 'personne(s)');
+
+      // Envoyer une notification email a chaque inscrit
+      for (var i = 0; i < emails.length; i++) {
+        try {
+          await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              emailType: 'rental_availability',
+              email: emails[i],
+              instrument: instrumentName
+            })
+          });
+        } catch (e) {
+          console.warn('[Gestion] Erreur envoi notification à', emails[i], ':', e.message);
+        }
+      }
+
+      // Vider la waitlist apres envoi
+      if (window.MistralSync) {
+        MistralSync.setData('mistral_location_waitlist', { emails: [] });
+      }
+
+      console.log('[Gestion] Notifications de disponibilité envoyées à', emails.length, 'personne(s)');
+    } catch (e) {
+      console.warn('[Gestion] Erreur notifications waitlist:', e.message);
     }
   }
 
@@ -656,18 +700,25 @@
       const instrument = {
         id: generateUUID(),
         reference: data.reference.trim(),
+        numero: data.numero || '',
         nom: data.nom || '',
+        tonalite: data.tonalite || '',
         gamme: data.gamme || '',
+        nombre_notes: parseInt(data.nombre_notes) || 9,
         notes: data.notes || '',
+        notes_layout: data.notes_layout || '',
         taille: data.taille || null,
         accordage: data.accordage || 440,
         materiau: data.materiau || 'Acier nitruré',
         statut: data.statut || 'disponible',
         disponible_location: data.disponible_location || false,
         prix_vente: parsePrice(data.prix_vente) || 0,
+        promo_percent: parseInt(data.promo_percent) || null,
         prix_location_mensuel: parsePrice(data.prix_location_mensuel) || CONFIG.DEFAULTS.loyerMensuel,
         montant_caution: parsePrice(data.montant_caution) || CONFIG.DEFAULTS.montantCaution,
         description: data.description || '',
+        images: data.images || [],
+        video_url: data.video_url || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -683,7 +734,10 @@
       const instruments = this.list();
       const index = instruments.findIndex(i => i.id === id);
       if (index === -1) return null;
-      
+
+      // Capturer l'état précédent pour détecter les changements de disponibilité location
+      const previousDispoLocation = instruments[index].disponible_location;
+
       instruments[index] = {
         ...instruments[index],
         ...data,
@@ -691,6 +745,12 @@
         updated_at: new Date().toISOString()
       };
       setData('instruments', instruments);
+
+      // Notifier la waitlist si l'instrument vient de devenir disponible à la location
+      if (data.disponible_location === true && !previousDispoLocation) {
+        notifyWaitlistAvailable(instruments[index]);
+      }
+
       return instruments[index];
     },
 
@@ -1142,6 +1202,9 @@
         mode_paiement: data.mode_paiement || null,
         pdf_url: null,
         notes: data.notes || '',
+        facture_origine_id: data.facture_origine_id || null,
+        classification_origine: data.classification_origine || null,
+        instrument_ids: data.instrument_ids || [],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };

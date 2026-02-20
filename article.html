@@ -8,18 +8,33 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
-  <meta name="description" content="Article du blog Mistral Pans">
+  <!-- Preconnect: faster DNS + TLS for critical external origins -->
+  <link rel="preconnect" href="https://qnkyzhccudtaduqduoxn.supabase.co">
+  <link rel="preload" href="js/core/config.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/vendor/supabase.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/services/supabase-client.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/services/supabase-sync.js?v=3.5.3" as="script">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <meta name="description" content="Blog Mistral Pans — Conseils, guides et actualités sur le handpan. Apprenez à choisir, entretenir et jouer de votre instrument.">
   <link rel="canonical" href="https://mistralpans.fr/article.html">
-  <meta property="og:title" content="Blog - Mistral Pans">
-  <meta property="og:description" content="Article du blog Mistral Pans - Handpans artisanaux en Ile-de-France">
+  <meta property="og:title" content="Blog Handpan — Mistral Pans | Conseils et actualités">
+  <meta property="og:description" content="Conseils, guides et actualités sur le handpan — Blog Mistral Pans, artisan en Île-de-France.">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Mistral Pans">
+  <meta property="og:url" content="https://mistralpans.fr/article.html">
+  <meta property="og:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
+  <meta property="og:locale" content="fr_FR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Blog Handpan — Mistral Pans">
+  <meta name="twitter:description" content="Conseils, guides et actualités sur le handpan — Blog Mistral Pans.">
+  <meta name="twitter:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
 
-  <title>Article — Mistral Pans</title>
+  <title>Blog Handpan — Mistral Pans | Conseils et actualités</title>
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/style.css?v=3.5.3">
+  <link rel="stylesheet" href="css/admin.css?v=3.5.3">
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230D7377'/></svg>">
@@ -51,7 +66,7 @@
 
     .article-hero__content {
       position: relative;
-      z-index: 1;
+      z-index: var(--z-base);
       width: 100%;
       padding: var(--space-2xl) var(--space-lg);
       color: white;
@@ -193,10 +208,12 @@
   <div id="contact-modal-container"></div>
 
 <!-- Scripts -->
-<script src="js/core/cookie-consent.js"></script>
-<script src="js/core/main.js"></script>
-<script src="js/pages/article.js" defer></script>
-<script src="js/admin/admin-core.js" defer></script>
-<script src="js/features/mistral-stats.js" defer></script>
+<script src="js/core/cookie-consent.js?v=3.5.3"></script>
+<script src="js/core/utils.js?v=3.5.3"></script>
+<script src="js/core/main.js?v=3.5.3"></script>
+<script src="js/vendor/purify.min.js?v=3.5.3" defer></script>
+<script src="js/pages/article.js?v=3.5.3" defer></script>
+<script src="js/admin/admin-core.js?v=3.5.3" defer></script>
+<script src="js/features/mistral-stats.js?v=3.5.3" defer></script>
 </body>
 </html>

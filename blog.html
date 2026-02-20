@@ -8,6 +8,14 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
+  <!-- Preconnect: faster DNS + TLS for critical external origins -->
+  <link rel="preconnect" href="https://qnkyzhccudtaduqduoxn.supabase.co">
+  <link rel="preload" href="js/core/config.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/vendor/supabase.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/services/supabase-client.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/services/supabase-sync.js?v=3.5.3" as="script">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta name="description" content="Blog Mistral Pans - Conseils, guides et actualités sur le handpan. Apprenez à choisir, entretenir et jouer de votre instrument.">
   <link rel="canonical" href="https://mistralpans.fr/blog.html">
 
@@ -28,13 +36,23 @@
   <title>Blog — Mistral Pans | Conseils et actualités handpan</title>
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3.5.3">
 
   <!-- Admin Styles -->
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/admin.css?v=3.5.3">
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230D7377'/></svg>">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Blog — Mistral Pans",
+    "description": "Conseils, guides et actualités sur le handpan.",
+    "url": "https://mistralpans.fr/blog.html",
+    "publisher": { "@type": "Organization", "name": "Mistral Pans", "url": "https://mistralpans.fr" }
+  }
+  </script>
 </head>
 <body data-page="blog">
 
@@ -63,12 +81,13 @@
   <div id="contact-modal-container"></div>
 
 <!-- Scripts -->
-<script src="js/core/cookie-consent.js"></script>
-<script src="js/core/main.js"></script>
+<script src="js/core/cookie-consent.js?v=3.5.3"></script>
+<script src="js/core/utils.js?v=3.5.3"></script>
+<script src="js/core/main.js?v=3.5.3"></script>
 
 <!-- Admin Scripts -->
-<script src="js/admin/admin-core.js" defer></script>
-<script src="js/admin/blog-admin.js" defer></script>
-<script src="js/features/mistral-stats.js" defer></script>
+<script src="js/admin/admin-core.js?v=3.5.3" defer></script>
+<script src="js/admin/blog-admin.js?v=3.5.3" defer></script>
+<script src="js/features/mistral-stats.js?v=3.5.3" defer></script>
 </body>
 </html>

@@ -1,11 +1,8 @@
 /* Boutique page overrides (background + variables + layout) */
 body[data-page="boutique"] {
-  background-color: #F5F5F5;
+  background-color: var(--color-bg-warm);
   --color-bg: #FAFAFA;
   --color-bg-warm: #F5F5F5;
-  --color-accent: #0D7377;
-  --color-accent-hover: #095456;
-  --color-accent-light: #14919B;
   --color-border: #E5E7EB;
   --color-border-dark: #D1D5DB;
   --nav-band-height: 56px;
@@ -30,6 +27,7 @@ body[data-page="boutique"] {
   display: grid;
   grid-template-columns: 1fr 400px;
   min-height: calc(100vh - var(--header-height) - var(--nav-band-height));
+  min-height: calc(100dvh - var(--header-height) - var(--nav-band-height));
   padding-top: var(--header-height);
 }
 
@@ -52,6 +50,7 @@ body[data-page="boutique"] {
   position: sticky;
   top: var(--header-height);
   height: calc(100vh - var(--header-height) - var(--nav-band-height));
+  height: calc(100dvh - var(--header-height) - var(--nav-band-height));
   overflow: hidden;
 }
 
@@ -59,7 +58,14 @@ body[data-page="boutique"] {
   .config-player {
     position: relative;
     height: auto;
-    min-height: 600px;
+    min-height: 500px;
+  }
+}
+
+@media (max-width: 768px) {
+  .config-player {
+    min-height: auto;
+    padding: 0.5rem 1rem 0;
   }
 }
 
@@ -78,7 +84,7 @@ body[data-page="boutique"] {
   margin-bottom: 0.5rem;
   flex-shrink: 0;
   position: relative;
-  z-index: 1;
+  z-index: var(--z-base);
 }
 
 .player-info__name {
@@ -105,11 +111,11 @@ body[data-page="boutique"] {
 /* Notation toggle (American / French) - flag icons */
 .notation-toggle {
   display: inline-flex;
-  border: 1px solid var(--color-border, #E5E7EB);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
   overflow: hidden;
   margin-top: 0.5rem;
-  background: white;
+  background: var(--color-white);
 }
 
 .notation-toggle__opt {
@@ -125,11 +131,11 @@ body[data-page="boutique"] {
 }
 
 .notation-toggle__opt:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--color-overlay-light);
 }
 
 .notation-toggle__opt.active {
-  background: var(--color-accent, #0D7377);
+  background: var(--color-accent);
 }
 
 .notation-flag {
@@ -162,10 +168,11 @@ body[data-page="boutique"] {
 }
 
 .player-visual svg {
-  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.12));
+  filter: drop-shadow(var(--shadow-lg));
   overflow: visible;
   max-width: 100%;
   max-height: calc(100vh - 240px);
+  max-height: calc(100dvh - 240px);
   height: auto;
   width: auto;
 }
@@ -181,37 +188,37 @@ body[data-page="boutique"] {
 }
 
 .note-group.active .note-circle {
-  fill: white !important;
+  fill: var(--color-white) !important;
   filter: brightness(1.1);
 }
 
 .note-group.active .note-label {
-  fill: #2C1810 !important;  /* Dark brown on white background */
+  fill: var(--color-note-label) !important;
 }
 
 /* Note type colors - Silver/Steel handpan */
 .note-ding {
-  fill: #D0D0D0;  /* Bright silver for central ding */
+  fill: var(--color-note-ding);
 }
 
 .note-tonal {
-  fill: #A0A0A0;  /* Steel gray for tonal notes */
+  fill: var(--color-note-tonal);
 }
 
 .note-mutant {
-  fill: #909090;  /* Darker steel for mutant notes */
+  fill: var(--color-note-mutant);
 }
 
 .note-bottom {
-  fill: #707070;  /* Dark steel for bottom notes */
-  stroke: #505050;
+  fill: var(--color-note-bottom);
+  stroke: var(--color-note-bottom-stroke);
   stroke-dasharray: 3 2;
 }
 
 /* Wave ripple animation on note click */
 .wave-ring {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.6);
+  stroke: var(--color-white-70);
   stroke-width: 2;
   pointer-events: none;
 }
@@ -224,13 +231,14 @@ body[data-page="boutique"] {
 /* Mobile: larger instrument and touch targets */
 @media (max-width: 768px) {
   .player-visual svg {
-    max-height: none;
-    width: 95vw;
-    max-width: 95vw;
+    max-height: 55vh;
+    max-height: 55dvh;
+    width: 90vw;
+    max-width: 90vw;
   }
 
   .player-visual {
-    padding-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
   }
 
   .note-group .note-circle {
@@ -238,9 +246,9 @@ body[data-page="boutique"] {
     stroke-width: 2px;
   }
 
-  /* Increase visual feedback area */
+  /* Desactiver le scroll natif sur les notes pour un jeu tactile reactif */
   .note-group {
-    touch-action: manipulation;
+    touch-action: none;
   }
 }
 
@@ -275,16 +283,16 @@ body[data-page="boutique"] {
 }
 
 .legend-dot--tonal {
-  background: #A0A0A0;  /* Match note-tonal */
+  background: var(--color-note-tonal);
 }
 
 .legend-dot--mutant {
-  background: #909090;  /* Match note-mutant */
+  background: var(--color-note-mutant);
 }
 
 .legend-dot--bottom {
-  background: #707070;  /* Match note-bottom */
-  border: 1px dashed #505050;
+  background: var(--color-note-bottom);
+  border: 1px dashed var(--color-note-bottom-stroke);
 }
 
 /* Controls */
@@ -308,7 +316,7 @@ body[data-page="boutique"] {
   cursor: pointer;
   transition: all 0.2s ease;
   background: var(--color-text);
-  color: white;
+  color: var(--color-white);
 }
 
 .btn-play:hover {
@@ -330,6 +338,7 @@ body[data-page="boutique"] {
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--header-height) - var(--nav-band-height));
+  height: calc(100dvh - var(--header-height) - var(--nav-band-height));
   overflow: hidden;
 }
 
@@ -390,6 +399,46 @@ body[data-page="boutique"] {
   letter-spacing: 0;
 }
 
+/* Lot navigator (configurateur multi-lots) */
+.lot-navigator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.lot-nav-btn {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  color: var(--color-text);
+}
+
+.lot-nav-btn:hover {
+  border-color: var(--color-text);
+}
+
+.lot-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.lot-nav-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 100px;
+  text-align: center;
+  color: var(--color-text);
+}
+
 /* Chips */
 .option-chips {
   display: flex;
@@ -428,8 +477,8 @@ body[data-page="boutique"] {
 }
 
 .counter-btn {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-white);
@@ -556,7 +605,7 @@ body[data-page="boutique"] {
 
 .radio-card.active {
   border-color: var(--color-accent);
-  background: linear-gradient(180deg, rgba(13, 115, 119, 0.05) 0%, transparent 100%);
+  background: linear-gradient(180deg, var(--color-accent-5) 0%, transparent 100%);
 }
 
 .radio-card__value {
@@ -609,7 +658,7 @@ body[data-page="boutique"] {
 
 .accessoire-card.active {
   border-color: var(--color-accent);
-  background: linear-gradient(180deg, rgba(13, 115, 119, 0.05) 0%, transparent 100%);
+  background: linear-gradient(180deg, var(--color-accent-5) 0%, transparent 100%);
 }
 
 .accessoire-card--none {
@@ -680,6 +729,10 @@ body[data-page="boutique"] {
   color: var(--color-text-muted);
 }
 
+.price-line--malus {
+  color: var(--color-warning);
+}
+
 .price-total {
   display: flex;
   justify-content: space-between;
@@ -718,14 +771,14 @@ body[data-page="boutique"] {
 /* Order button - teal primary color */
 #btn-order {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-white);
   border: none;
 }
 
 #btn-order:hover {
   background: var(--color-accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(13, 115, 119, 0.3);
+  box-shadow: 0 4px 12px var(--color-accent-30);
 }
 
 /* Flash dot animation */
@@ -787,7 +840,7 @@ body[data-page="boutique"] {
   padding: 0.375rem 0.75rem;
   border-radius: var(--radius-full);
   background: var(--color-success);
-  color: white;
+  color: var(--color-white);
   font-weight: 500;
 }
 
@@ -819,7 +872,7 @@ body[data-page="boutique"] {
 
 .flash-card__image {
   aspect-ratio: 4/3;
-  background: linear-gradient(135deg, #E8E4DC 0%, #D4CFC5 100%);
+  background: linear-gradient(135deg, var(--color-border) 0%, var(--color-border-dark) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -831,7 +884,7 @@ body[data-page="boutique"] {
   top: 1rem;
   left: 1rem;
   background: var(--color-success);
-  color: white;
+  color: var(--color-white);
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.375rem 0.75rem;
@@ -843,13 +896,13 @@ body[data-page="boutique"] {
   top: 1rem;
   right: 1rem;
   background: var(--color-accent);
-  color: white;
+  color: var(--color-white);
   font-size: 0.8125rem;
   font-weight: 600;
   padding: 0.375rem 0.75rem;
   border-radius: 6px;
   white-space: nowrap;
-  z-index: 1;
+  z-index: var(--z-base);
 }
 
 .flash-card__content {
@@ -902,7 +955,7 @@ body[data-page="boutique"] {
   font-size: 0.875rem;
   font-weight: 500;
   background: var(--color-text);
-  color: white;
+  color: var(--color-white);
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -917,38 +970,6 @@ body[data-page="boutique"] {
 /* --------------------------------------------------------------------------
    Admin Styles
    -------------------------------------------------------------------------- */
-.admin-fab {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  width: 56px;
-  height: 56px;
-  background: var(--color-accent);
-  color: var(--color-bg-dark);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0 4px 20px rgba(13, 115, 119, 0.4);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  transition: all 0.2s ease;
-}
-
-.admin-fab:hover {
-  transform: scale(1.1);
-  box-shadow: 0 6px 24px rgba(13, 115, 119, 0.5);
-}
-
-.admin-fab.visible {
-  display: flex;
-}
-
-.admin-fab svg {
-  width: 24px;
-  height: 24px;
-}
 
 /* Admin Modal */
 .admin-modal {
@@ -957,11 +978,11 @@ body[data-page="boutique"] {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--color-overlay-dark);
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: var(--z-modal);
   padding: 1rem;
 }
 
@@ -1084,7 +1105,7 @@ body[data-page="boutique"] {
 
 .admin-annonce-item__delete:hover {
   background: var(--color-error);
-  color: white;
+  color: var(--color-white);
 }
 
 .admin-empty {
@@ -1128,7 +1149,8 @@ body[data-page="boutique"] {
 }
 
 .admin-form__input:focus {
-  outline: none;
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
   border-color: var(--color-accent);
 }
 
@@ -1139,7 +1161,7 @@ body[data-page="boutique"] {
   font-size: 0.9375rem;
   font-weight: 500;
   background: var(--color-accent);
-  color: white;
+  color: var(--color-white);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -1175,19 +1197,19 @@ body[data-page="boutique"] {
    Boutique Footer (inline styles override)
    -------------------------------------------------------------------------- */
 .boutique-footer {
-  background: #1A1D21;
-  color: white;
+  background: var(--color-bg-dark);
+  color: var(--color-white);
   padding: 3rem 0 1.5rem;
 }
 
 .boutique-footer a {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-white-70);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .boutique-footer a:hover {
-  color: white;
+  color: var(--color-white);
 }
 
 /* ==========================================================================
@@ -1203,7 +1225,7 @@ body[data-page="boutique"] {
   top: var(--header-height, 64px);
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: var(--z-sticky);
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
 }
@@ -1255,7 +1277,7 @@ body[data-page="boutique"] {
   align-items: center;
   gap: 0.25rem;
   background: var(--color-success);
-  color: white;
+  color: var(--color-white);
   font-size: 0.7rem;
   font-weight: 600;
   padding: 0.15rem 0.4rem;
@@ -1265,7 +1287,7 @@ body[data-page="boutique"] {
 .boutique-tab__badge-dot {
   width: 5px;
   height: 5px;
-  background: white;
+  background: var(--color-white);
   border-radius: 50%;
   animation: pulse 2s infinite;
 }
@@ -1274,20 +1296,21 @@ body[data-page="boutique"] {
 .boutique-wrapper {
   display: flex;
   flex-direction: column;
-  background: #F5F5F5;
+  background: var(--color-bg-warm);
 }
 
 /* ===== PANELS ===== */
 .boutique-panel {
   min-height: calc(100vh - var(--header-height, 64px));
+  min-height: calc(100dvh - var(--header-height, 64px));
 }
 
 .boutique-panel--config {
-  background: #F5F5F5;
+  background: var(--color-bg-warm);
 }
 
 .boutique-panel--stock {
-  background: #F5F5F5;
+  background: var(--color-bg-warm);
   margin-top: 0;
   padding-top: 0;
 }
@@ -1295,7 +1318,7 @@ body[data-page="boutique"] {
 .boutique-panel--stock .flash-section {
   padding-top: 2rem;
   margin-top: 0;
-  background: #F5F5F5;
+  background: var(--color-bg-warm);
   scroll-margin-top: calc(var(--header-height, 72px) + var(--nav-band-height, 56px));
 }
 
@@ -1306,12 +1329,12 @@ body[data-page="boutique"] {
   bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100;
+  z-index: var(--z-sticky);
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--color-white-95);
   border-radius: 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .boutique-dot {
@@ -1322,13 +1345,15 @@ body[data-page="boutique"] {
   background: var(--color-border);
   cursor: pointer;
   transition: all 0.2s ease;
-  padding: 0;
+  padding: 18px;
+  background-clip: content-box;
 }
 
 .boutique-dot.active {
   background: var(--color-accent);
   width: 24px;
   border-radius: 4px;
+  background-clip: content-box;
 }
 
 /* ===== NAVIGATION BAND (Desktop only) ===== */
@@ -1336,9 +1361,9 @@ body[data-page="boutique"] {
   display: none;
   position: sticky;
   top: var(--header-height, 64px);
-  z-index: 99;
+  z-index: var(--z-sticky);
   background: var(--color-accent);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .boutique-nav-band__btn {
@@ -1351,7 +1376,7 @@ body[data-page="boutique"] {
   font-family: var(--font-body);
   font-size: 1rem;
   font-weight: 500;
-  color: white;
+  color: var(--color-white);
   background: none;
   border: none;
   cursor: pointer;
@@ -1359,7 +1384,7 @@ body[data-page="boutique"] {
 }
 
 .boutique-nav-band__btn:hover {
-  background: rgba(255,255,255,0.1);
+  background: var(--color-white-10);
 }
 
 .nav-band__arrow {
@@ -1378,7 +1403,7 @@ body[data-page="boutique"] {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: rgba(255,255,255,0.2);
+  background: var(--color-white-20);
   padding: 0.2rem 0.6rem;
   border-radius: 12px;
   font-size: 0.85rem;
@@ -1388,7 +1413,7 @@ body[data-page="boutique"] {
 .nav-band__badge-dot {
   width: 6px;
   height: 6px;
-  background: #4ade80;
+  background: var(--color-success);
   border-radius: 50%;
   animation: pulse 2s infinite;
 }
@@ -1467,14 +1492,13 @@ body[data-page="boutique"] {
     scroll-snap-align: start;
     scroll-snap-stop: always;
     min-height: calc(100vh - var(--header-height, 64px) - 48px);
+    min-height: calc(100dvh - var(--header-height, 64px) - 48px);
     padding-top: 48px; /* Tab bar height */
     overflow-y: auto;
   }
   
-  /* Show dots */
-  .boutique-dots {
-    display: flex;
-  }
+  /* Dots supprimés — redondant avec les tabs fixés */
+  /* .boutique-dots { display: flex; } */
   
   /* Adjust configurator for mobile panel */
   .boutique-panel--config .configurator {
@@ -1507,7 +1531,7 @@ body[data-page="boutique"] {
   text-align: center;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--color-accent, #0d7377);
+  color: var(--color-accent);
   max-height: 0;
   overflow: hidden;
   padding: 0 0.75rem;
@@ -1517,6 +1541,27 @@ body[data-page="boutique"] {
 .flash-card:hover::after {
   max-height: 2rem;
   padding: 0.25rem 0.75rem 0.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Focus-visible — Configurateur (keyboard accessibility)
+   -------------------------------------------------------------------------- */
+.notation-toggle__opt:focus-visible,
+.lot-nav-btn:focus-visible,
+.chip:focus-visible,
+.counter-btn:focus-visible,
+.options-toggle:focus-visible,
+.radio-card:focus-visible,
+.accessoire-card:focus-visible,
+.btn-play:focus-visible,
+.flash-card__btn:focus-visible,
+.boutique-nav-band__btn:focus-visible,
+.boutique-tab:focus-visible,
+.boutique-dot:focus-visible,
+.admin-modal__close:focus-visible {
+  outline: 2px solid var(--color-accent, #0D7377);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(13, 115, 119, 0.2);
 }
 
 .flash-card__image {

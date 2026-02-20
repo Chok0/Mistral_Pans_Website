@@ -42,26 +42,12 @@
     return document.querySelectorAll(selector);
   }
 
-  function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  function formatPrice(value) {
-    if (typeof MistralGestion !== 'undefined' && MistralGestion.utils) {
-      return MistralGestion.utils.formatPrice(value);
-    }
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(value || 0);
-  }
-
+  // --- Delegations vers MistralUtils (js/core/utils.js) ---
+  const escapeHtml  = MistralUtils.escapeHtml;
+  const formatPrice = MistralUtils.formatPrice;
   function formatDate(dateStr) {
     if (!dateStr) return '-';
-    if (typeof MistralGestion !== 'undefined' && MistralGestion.utils) {
-      return MistralGestion.utils.formatDateShort(dateStr);
-    }
-    return new Date(dateStr).toLocaleDateString('fr-FR');
+    return MistralUtils.formatDateShort(dateStr);
   }
 
   function isValidEmail(email) {
@@ -195,6 +181,10 @@
       // Badges navigation
       updateBadge('badge-locations', locationsEnCours);
       updateBadge('badge-commandes', commandesEnCours);
+
+      // Publier le délai de fabrication estimé (visible côté public)
+      // Formule : max(4, commandesEnCours * 1 + 2) semaines
+      updateDelaiFabrication(commandesEnCours);
     }
 
     // Demandes de professeurs en attente
@@ -225,6 +215,38 @@
   }
 
   // ============================================================================
+  // DÉLAI DE FABRICATION (publié vers namespace=configurateur)
+  // ============================================================================
+
+  /**
+   * Calcule et publie le délai de fabrication estimé dans la config publique.
+   * Formule : max(4, commandesEnCours * 1 + 2) semaines.
+   * Minimum garanti : 4 semaines (1 mois).
+   *
+   * @param {number} commandesEnCours - Nombre de commandes en cours (ni livrées, ni annulées)
+   */
+  async function updateDelaiFabrication(commandesEnCours) {
+    if (!window.MistralDB) { console.warn('[Dashboard] MistralDB non disponible — délai fabrication non publié'); return; }
+    const client = MistralDB.getClient();
+    if (!client) { console.warn('[Dashboard] Supabase client non initialisé — délai fabrication non publié'); return; }
+
+    const delaiSemaines = Math.max(4, commandesEnCours + 2);
+
+    try {
+      await client
+        .from('configuration')
+        .upsert({
+          key: 'delai_fabrication',
+          value: JSON.stringify(delaiSemaines),
+          namespace: 'configurateur',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key,namespace' });
+    } catch (err) {
+      console.error('[updateDelaiFabrication] Erreur:', err);
+    }
+  }
+
+  // ============================================================================
   // TO-DO LIST
   // ============================================================================
 
@@ -244,9 +266,9 @@
 
     container.innerHTML = todos.map((todo, index) => `
       <li class="todo-item${todo.done ? ' done' : ''}">
-        <input type="checkbox" ${todo.done ? 'checked' : ''} onchange="AdminUI.toggleTodo(${index})">
+        <input type="checkbox" ${todo.done ? 'checked' : ''} data-action="toggle-todo" data-param="${index}" data-on="change">
         <span class="todo-text">${escapeHtml(todo.text)}</span>
-        <button class="todo-delete" onclick="AdminUI.deleteTodo(${index})" title="Supprimer">
+        <button class="todo-delete" data-action="delete-todo" data-param="${index}" title="Supprimer">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -315,6 +337,7 @@
         break;
       case 'professeurs':
         if (window.AdminUI.renderProfesseurs) window.AdminUI.renderProfesseurs();
+        if (window.AdminUI.initAddTeacherForm) window.AdminUI.initAddTeacherForm();
         break;
       case 'galerie':
         if (window.AdminUI.renderGalerie) window.AdminUI.renderGalerie();
@@ -377,6 +400,158 @@
   // Note: Pas d'auto-init - admin.html gère le flow de login et appelle AdminUI.init()
 
   // ============================================================================
+  // SEARCHABLE SELECTS (Clients, Instruments dans modals)
+  // ============================================================================
+
+  /**
+   * Initialise un searchable select générique.
+   * @param {string} searchId  - ID de l'input de recherche
+   * @param {string} dropdownId - ID du conteneur dropdown
+   * @param {string} hiddenId  - ID de l'input hidden (valeur sélectionnée)
+   * @param {Function} getItems - Retourne un tableau d'items [{id, label, subtitle}]
+   */
+  function setupSearchableSelect(searchId, dropdownId, hiddenId, getItems) {
+    const searchInput = $(`#${searchId}`);
+    const dropdown = $(`#${dropdownId}`);
+    const hidden = hiddenId ? $(`#${hiddenId}`) : null;
+
+    if (!searchInput || !dropdown) return;
+
+    // Éviter double-init
+    if (searchInput._searchableInit) return;
+    searchInput._searchableInit = true;
+
+    function renderDropdown(query) {
+      const items = getItems(query);
+      if (!items.length) {
+        dropdown.innerHTML = '<div class="searchable-dropdown__empty" style="padding:0.625rem 0.875rem;color:var(--admin-text-muted);">Aucun résultat</div>';
+      } else {
+        dropdown.innerHTML = items.map(i => `
+          <div class="searchable-dropdown__item" data-id="${i.id}">
+            <div class="searchable-dropdown__item-label">${escapeHtml(i.label)}</div>
+            ${i.subtitle ? `<div class="searchable-dropdown__item-subtitle">${escapeHtml(i.subtitle)}</div>` : ''}
+          </div>
+        `).join('');
+      }
+      dropdown.classList.add('show');
+    }
+
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim().toLowerCase();
+      if (q.length >= 1) {
+        renderDropdown(q);
+      } else {
+        dropdown.classList.remove('show');
+      }
+    });
+
+    searchInput.addEventListener('focus', () => {
+      // N'ouvrir le dropdown au focus que si l'input contient deja du texte
+      const q = searchInput.value.trim().toLowerCase();
+      if (q.length >= 1) {
+        renderDropdown(q);
+      }
+    });
+
+    dropdown.addEventListener('click', (e) => {
+      const item = e.target.closest('.searchable-dropdown__item');
+      if (!item) return;
+      const id = item.dataset.id;
+      const label = item.querySelector('.searchable-dropdown__item-label')?.textContent || '';
+      searchInput.value = label;
+      if (hidden) hidden.value = id;
+      dropdown.classList.remove('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest(`#${searchId}`) && !e.target.closest(`#${dropdownId}`)) {
+        dropdown.classList.remove('show');
+      }
+    });
+  }
+
+  function getClientItems(query) {
+    if (typeof MistralGestion === 'undefined') return [];
+    return MistralGestion.Clients.list()
+      .filter(c => {
+        if (!query) return true;
+        const s = `${c.prenom || ''} ${c.nom || ''} ${c.email || ''} ${c.telephone || ''}`.toLowerCase();
+        return s.includes(query);
+      })
+      .slice(0, 20)
+      .map(c => ({
+        id: c.id,
+        label: `${c.prenom || ''} ${c.nom || ''}`.trim(),
+        subtitle: [c.email, c.telephone].filter(Boolean).join(' · ')
+      }));
+  }
+
+  function getInstrumentItems(query) {
+    if (typeof MistralGestion === 'undefined') return [];
+    return MistralGestion.Instruments.list()
+      .filter(i => {
+        if (!query) return true;
+        const s = `${i.nom || ''} ${i.reference || ''} ${i.tonalite || ''} ${i.gamme || ''}`.toLowerCase();
+        return s.includes(query);
+      })
+      .slice(0, 20)
+      .map(i => ({
+        id: i.id,
+        label: i.nom || i.reference || 'Sans nom',
+        subtitle: [i.tonalite, i.gamme, i.nombre_notes ? i.nombre_notes + ' notes' : null, formatPrice(i.prix_vente || 0)].filter(Boolean).join(' · ')
+      }));
+  }
+
+  function initSearchableSelects() {
+    // Client selects dans les modals
+    setupSearchableSelect('commande-client-search', 'commande-client-dropdown', 'commande-client-id', getClientItems);
+    setupSearchableSelect('location-client-search', 'location-client-dropdown', 'location-client-id', getClientItems);
+    setupSearchableSelect('facture-client-search', 'facture-client-dropdown', 'facture-client-id', getClientItems);
+
+    // Instrument selects dans les modals
+    setupSearchableSelect('location-instrument-search', 'location-instrument-dropdown', 'location-instrument-id', getInstrumentItems);
+    setupSearchableSelect('facture-instrument-search', 'facture-instrument-dropdown', null, (query) => {
+      // Pour factures, on insère une ligne au clic (pas de hidden ID)
+      return getInstrumentItems(query);
+    });
+
+    // Handler spécial pour facture-instrument : ajouter une ligne au lieu de sélectionner
+    const factureInstDropdown = $(`#facture-instrument-dropdown`);
+    const factureInstSearch = $(`#facture-instrument-search`);
+    if (factureInstDropdown && factureInstSearch) {
+      // Remplacer le handler par défaut pour insérer une ligne facture
+      factureInstDropdown.addEventListener('click', (e) => {
+        const item = e.target.closest('.searchable-dropdown__item');
+        if (!item) return;
+        e.stopPropagation(); // Empêcher le handler générique de remettre le label
+        const id = item.dataset.id;
+        if (typeof MistralGestion !== 'undefined') {
+          const inst = MistralGestion.Instruments.get(id);
+          if (inst && window.AdminUI.addFactureLigneFromInstrument) {
+            window.AdminUI.addFactureLigneFromInstrument(inst.id);
+          } else if (inst && window.AdminUI.addFactureLigne) {
+            // Fallback: ajouter une ligne libre puis remplir
+            window.AdminUI.addFactureLigne();
+            const lignes = document.querySelectorAll('#facture-lignes .facture-ligne');
+            const lastLigne = lignes[lignes.length - 1];
+            if (lastLigne) {
+              const descInput = lastLigne.querySelector('[name="ligne-desc"]');
+              const puInput = lastLigne.querySelector('[name="ligne-pu"]');
+              if (descInput) descInput.value = `${inst.nom || inst.reference || 'Instrument'} - ${inst.tonalite || ''} ${inst.gamme || ''}`.trim();
+              if (puInput) {
+                puInput.value = inst.prix_vente || 0;
+                puInput.dispatchEvent(new Event('input'));
+              }
+            }
+          }
+        }
+        factureInstSearch.value = '';
+        factureInstDropdown.classList.remove('show');
+      }, true); // Capture phase pour s'exécuter avant le handler générique
+    }
+  }
+
+  // ============================================================================
   // EXPORT - BASE ADMINUI
   // ============================================================================
 
@@ -391,6 +566,9 @@
     // Dashboard
     refreshDashboard,
     updateBadge,
+
+    // Searchable selects
+    initSearchableSelects,
 
     // To-Do
     addTodo,

@@ -8,6 +8,14 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
+  <!-- Preconnect: faster DNS + TLS for critical external origins -->
+  <link rel="preconnect" href="https://qnkyzhccudtaduqduoxn.supabase.co">
+  <link rel="preload" href="js/core/config.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/vendor/supabase.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/services/supabase-client.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/services/supabase-sync.js?v=3.5.3" as="script">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta name="description" content="Configurez votre handpan Mistral Pans. Choisissez la gamme, la tonalité, le nombre de notes et les options.">
   <link rel="canonical" href="https://mistralpans.fr/boutique.html">
 
@@ -62,11 +70,11 @@
   
   
   <!-- Styles -->
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/boutique.css">
+  <link rel="stylesheet" href="css/style.css?v=3.5.3">
+  <link rel="stylesheet" href="css/boutique.css?v=3.5.3">
   
   <!-- Admin Styles -->
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/admin.css?v=3.5.3">
 
 </head>
 <body id="top" data-page="boutique">
@@ -103,7 +111,7 @@
     <!-- LEFT: Player Visual -->
     <section class="config-player">
       <div class="player-container">
-        <div class="player-info">
+        <div class="player-info" aria-live="polite" aria-atomic="true">
           <h1 class="player-info__name" id="display-name">D Kurd</h1>
           <p class="player-info__notes" id="display-notes">D3 • A3 • Bb3 • C4 • D4 • E4 • F4 • G4 • A4</p>
           <p class="player-info__mood" id="display-mood">9 notes</p>
@@ -156,6 +164,15 @@
         <!-- Gamme -->
         <div class="option-group">
           <label class="option-label">Gamme</label>
+          <div class="lot-navigator" id="lot-navigator" style="display: none;">
+            <button class="lot-nav-btn" id="lot-prev" aria-label="Lot précédent">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="lot-nav-label" id="lot-label"></span>
+            <button class="lot-nav-btn" id="lot-next" aria-label="Lot suivant">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
           <div class="option-chips" id="chips-scale">
             <!-- Populated dynamically from MistralGammes -->
           </div>
@@ -259,10 +276,14 @@
 
       <!-- FOOTER: Price & CTA -->
       <div class="config-footer">
-        <div class="price-display">
-          <div class="price-breakdown" id="price-breakdown" style="display: none;">
-            <span class="price-line">Instrument: <span id="price-instrument">1 080 €</span></span>
-            <span class="price-line" id="price-housse-line" style="display: none;">Housse: <span id="price-housse">0 €</span></span>
+        <div class="price-display" aria-live="polite" aria-atomic="true">
+          <div class="price-breakdown" id="price-breakdown">
+            <span class="price-line" id="price-base-line"><span id="price-base-label">9 notes × 115 €</span> <span id="price-base">1 035 €</span></span>
+            <span class="price-line" id="price-octave2-line" style="display:none;"><span id="price-octave2-label">Notes octave 2</span> <span id="price-octave2">0 €</span></span>
+            <span class="price-line" id="price-bottoms-line" style="display:none;"><span>Bottom notes</span> <span id="price-bottoms">0 €</span></span>
+            <span class="price-line" id="price-size-line" style="display:none;"><span id="price-size-label">Taille 50 cm</span> <span id="price-size">0 €</span></span>
+            <span class="price-line price-line--malus" id="price-difficulty-line" style="display:none;"><span id="price-difficulty-label">Difficulté</span> <span id="price-difficulty">0 €</span></span>
+            <span class="price-line" id="price-housse-line" style="display:none;"><span>Housse</span> <span id="price-housse">0 €</span></span>
           </div>
           <div class="price-total">
             <span class="price-label">Prix total</span>
@@ -270,10 +291,10 @@
           </div>
         </div>
 
-        <button class="btn btn-primary" id="btn-add-cart" onclick="addConfigToCart()" style="width:100%;margin-bottom:0.5rem;">
+        <button class="btn btn-primary" id="btn-add-cart" style="width:100%;margin-bottom:0.5rem;">
           Ajouter au panier
         </button>
-        <button class="btn btn-primary" id="btn-order" onclick="orderDirectly()" style="background:var(--color-accent);color:white;border:none;width:100%;cursor:pointer;">
+        <button class="btn btn-primary" id="btn-order" style="background:var(--color-accent);color:white;border:none;width:100%;cursor:pointer;">
           Commander directement
         </button>
 
@@ -345,33 +366,34 @@
   <div id="contact-modal-container"></div>
 
   <!-- Scales data (unified source) -->
-  <script src="js/data/scales-data.js" defer></script>
+  <script src="js/data/scales-data.js?v=3.5.3" defer></script>
 
   <!-- Gammes data (centralized) -->
-  <script src="js/data/gammes-data.js" defer></script>
+  <script src="js/data/gammes-data.js?v=3.5.3" defer></script>
 
   <!-- Tailles data (centralized) -->
-  <script src="js/data/tailles-data.js" defer></script>
+  <script src="js/data/tailles-data.js?v=3.5.3" defer></script>
 
   <!-- Matériaux data (unified source) -->
-  <script src="js/data/materiaux-data.js" defer></script>
+  <script src="js/data/materiaux-data.js?v=3.5.3" defer></script>
 
   <!-- Module de faisabilité -->
-  <script src="js/features/feasibility-module.js" defer></script>
+  <script src="js/features/feasibility-module.js?v=3.5.3" defer></script>
 
   <!-- Configurateur -->
-  <script src="js/pages/boutique.js" defer></script>
+  <script src="js/pages/boutique.js?v=3.5.3" defer></script>
 
   <!-- Scripts -->
 
-  <script src="js/features/cart.js"></script>
-  <script src="js/core/cookie-consent.js"></script>
-  <script src="js/core/main.js"></script>
-  <script src="js/features/handpan-player.js" defer></script>
+  <script src="js/features/cart.js?v=3.5.3"></script>
+  <script src="js/core/cookie-consent.js?v=3.5.3"></script>
+  <script src="js/core/utils.js?v=3.5.3"></script>
+  <script src="js/core/main.js?v=3.5.3"></script>
+  <script src="js/features/handpan-player.js?v=3.5.3" defer></script>
 
   <!-- Admin Scripts -->
-  <script src="js/admin/admin-core.js" defer></script>
-  <script src="js/admin/boutique-admin.js" defer></script>
-  <script src="js/features/mistral-stats.js" defer></script>
+  <script src="js/admin/admin-core.js?v=3.5.3" defer></script>
+  <script src="js/admin/boutique-admin.js?v=3.5.3" defer></script>
+  <script src="js/features/mistral-stats.js?v=3.5.3" defer></script>
 </body>
 </html>

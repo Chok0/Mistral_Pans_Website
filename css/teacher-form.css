@@ -125,7 +125,8 @@ body.admin-theme .teacher-form {
 
 .teacher-form__input:focus,
 .teacher-form__textarea:focus {
-  outline: none;
+  outline: 2px solid var(--tf-accent);
+  outline-offset: -1px;
   border-color: var(--tf-accent);
   box-shadow: 0 0 0 3px rgba(13, 115, 119, 0.15);
 }
@@ -196,6 +197,11 @@ body.admin-theme .teacher-form {
 
 .teacher-form__photo-btn:hover {
   background: var(--tf-border);
+}
+
+.teacher-form__photo-btn:focus-visible {
+  outline: 2px solid var(--tf-accent);
+  outline-offset: 2px;
 }
 
 .teacher-form__photo-hint {

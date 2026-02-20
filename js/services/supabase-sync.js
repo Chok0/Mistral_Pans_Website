@@ -41,23 +41,28 @@
       { local: 'mistral_blog_articles', remote: 'articles', idField: 'id' },
       { local: 'mistral_accessoires', remote: 'accessoires', idField: 'id' },
       { local: 'mistral_tailles', remote: 'tailles', idField: 'id' },
+      { local: 'mistral_gammes_data', remote: 'gammes', idField: 'id' },
       { local: 'mistral_gestion_config', remote: 'configuration', idField: 'id', isKeyValue: true },
       { local: 'mistral_compta_config', remote: 'configuration', idField: 'id', isKeyValue: true, configNamespace: 'compta' },
-      { local: 'mistral_email_automations', remote: 'configuration', idField: 'id', isKeyValue: true, configNamespace: 'email_automations' }
+      { local: 'mistral_email_automations', remote: 'configuration', idField: 'id', isKeyValue: true, configNamespace: 'email_automations' },
+      { local: 'mistral_tarifs_publics', remote: 'configuration', idField: 'id', isKeyValue: true, configNamespace: 'configurateur' },
+      { local: 'mistral_location_waitlist', remote: 'configuration', idField: 'id', isKeyValue: true, configNamespace: 'location_waitlist' }
     ],
 
     // Tables necessaires par page publique
     // Note: une meme table Supabase peut etre mappee a plusieurs cles locales
     // via des filtres differents (ex: professeurs -> teachers + pending_teachers)
     publicPageTables: {
-      'boutique':  ['instruments', 'accessoires', 'tailles'],
+      'boutique':  ['instruments', 'accessoires', 'tailles', 'gammes', 'configuration'],
       'annonce':   ['instruments', 'accessoires', 'tailles'],
       'apprendre': ['professeurs'],
       'galerie':   ['galerie'],
       'blog':      ['articles'],
       'article':   ['articles'],
-      'location':  ['instruments'],
-      'index':     ['instruments']
+      'location':  ['instruments', 'configuration', 'configuration:location_waitlist'],
+      'commander': ['configuration'],
+      'cgv':       ['configuration'],
+      'index':     ['instruments', 'configuration']
     }
   };
 
@@ -121,7 +126,22 @@
       return [];
     }
 
-    return SYNC_CONFIG.tables.filter(t => relevantRemoteTables.includes(t.remote));
+    // Extraire les namespaces de configuration explicitement demandes
+    // Format: 'configuration:namespace' (ex: 'configuration:location_waitlist')
+    const explicitConfigNamespaces = relevantRemoteTables
+      .filter(name => name.startsWith('configuration:'))
+      .map(name => name.split(':')[1]);
+
+    return SYNC_CONFIG.tables.filter(t => {
+      if (!relevantRemoteTables.includes(t.remote)) return false;
+      // Pages publiques : charger la config publique (configurateur)
+      // + les namespaces explicitement demandes
+      if (t.remote === 'configuration') {
+        return t.configNamespace === 'configurateur' ||
+               explicitConfigNamespaces.includes(t.configNamespace);
+      }
+      return true;
+    });
   }
 
   function getTableConfig(localKey) {

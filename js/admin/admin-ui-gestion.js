@@ -63,21 +63,21 @@
           <td>${nbLocations}</td>
           <td>${creditFidelite > 0 ? `<span style="color:var(--admin-success);">${creditFidelite.toFixed(0)} €</span>` : '-'}</td>
           <td class="gestion-table__actions">
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editClient('${c.id}')" title="Modifier">
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit-client" data-id="${c.id}" title="Modifier">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </button>
             ${isArchived ? `
-              <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.unarchiveClient('${c.id}')" title="Restaurer">
+              <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="unarchive-client" data-id="${c.id}" title="Restaurer">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
                   <path d="M3 3v5h5"/>
                 </svg>
               </button>
             ` : `
-              <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.deleteClient('${c.id}')" title="Supprimer">
+              <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="delete-client" data-id="${c.id}" title="Supprimer">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 6 5 6 21 6"/>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -152,12 +152,12 @@
         const estPublie = GestionBoutique.estPublie(i.id);
         if (estPublie) {
           boutiqueCell = `
-            <span class="admin-badge admin-badge--success" style="cursor:pointer;" onclick="AdminUI.toggleBoutique('${i.id}')" title="Cliquer pour dépublier">
+            <span class="admin-badge admin-badge--success" style="cursor:pointer;" data-action="toggle-boutique" data-id="${i.id}" title="Cliquer pour dépublier">
               En ligne
             </span>`;
         } else if (i.statut === 'disponible') {
           boutiqueCell = `
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.toggleBoutique('${i.id}')" title="Publier">
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="toggle-boutique" data-id="${i.id}" title="Publier">
               Publier
             </button>`;
         }
@@ -182,20 +182,20 @@
           <td>${locationCell}</td>
           <td class="gestion-table__actions">
             ${canSell ? `
-              <button class="admin-btn admin-btn--primary admin-btn--sm" onclick="AdminUI.vendreInstrument('${i.id}')" title="Vendre cet instrument">
+              <button class="admin-btn admin-btn--primary admin-btn--sm" data-action="vendre-instrument" data-id="${i.id}" title="Vendre cet instrument">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
                   <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                 </svg>
               </button>
             ` : ''}
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editInstrument('${i.id}')" title="Modifier">
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit-instrument" data-id="${i.id}" title="Modifier">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </button>
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.deleteInstrument('${i.id}')" title="Supprimer">
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="delete-instrument" data-id="${i.id}" title="Supprimer">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"/>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -287,26 +287,26 @@
           <td><span class="admin-badge admin-badge--${cautionClass}">${cautionLabel}</span></td>
           <td><span class="admin-badge admin-badge--${statutClass}">${statutLabel}</span></td>
           <td class="gestion-table__actions">
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.downloadContrat('${l.id}')" title="Télécharger contrat">
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="download-contrat" data-id="${l.id}" title="Télécharger contrat">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
               </svg>
             </button>
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editLocation('${l.id}')" title="Modifier">
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit-location" data-id="${l.id}" title="Modifier">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </button>
             ${l.statut === 'en_cours' ? `
-              <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.terminerLocation('${l.id}')" title="Terminer">
+              <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="terminer-location" data-id="${l.id}" title="Terminer">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
               </button>
             ` : `
-              <button class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--danger" onclick="AdminUI.deleteLocation('${l.id}')" title="Supprimer">
+              <button class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--danger" data-action="delete-location" data-id="${l.id}" title="Supprimer">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                 </svg>
@@ -380,13 +380,13 @@
           <td><span class="admin-badge admin-badge--${paiementClass}">${paiementLabel}</span></td>
           <td><span class="admin-badge admin-badge--${statutClass}">${statutLabel}</span></td>
           <td class="gestion-table__actions">
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editCommande('${cmd.id}')" title="Modifier">
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit-commande" data-id="${cmd.id}" title="Modifier">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </button>
-            <button class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--danger" onclick="AdminUI.deleteCommande('${cmd.id}')" title="Supprimer">
+            <button class="admin-btn admin-btn--ghost admin-btn--sm admin-btn--danger" data-action="delete-commande" data-id="${cmd.id}" title="Supprimer">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
               </svg>
@@ -427,6 +427,7 @@
         'acompte': 'Acompte',
         'solde': 'Solde',
         'location': 'Location',
+        'reaccordage': 'Réaccordage',
         'prestation': 'Prestation',
         'avoir': 'Avoir'
       }[f.type] || f.type;
@@ -459,39 +460,47 @@
           <td><span class="admin-badge admin-badge--${statutClass}">${statutLabel}</span></td>
           <td class="gestion-table__actions">
             ${!isAnnulee ? `
-              <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.downloadFacture('${f.id}')" title="Télécharger PDF">
+              <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="download-facture" data-id="${f.id}" title="Télécharger PDF">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                   <polyline points="7 10 12 15 17 10"/>
                   <line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
               </button>
-              <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.envoyerFactureMail('${f.id}')" title="Envoyer par email">
+              <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="envoyer-facture-mail" data-id="${f.id}" title="Envoyer par email">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                   <polyline points="22,6 12,13 2,6"/>
                 </svg>
               </button>
-              <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editFacture('${f.id}')" title="Modifier">
+              <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit-facture" data-id="${f.id}" title="Modifier">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
               </button>
               ${f.statut_paiement !== 'paye' ? `
-                <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.marquerPayee('${f.id}')" title="Marquer payée">
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="marquer-payee" data-id="${f.id}" title="Marquer payée">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
                 </button>
               ` : ''}
-              <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.annulerFacture('${f.id}')" title="Annuler">
+              <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="annuler-facture" data-id="${f.id}" title="Annuler">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"/>
                   <line x1="15" y1="9" x2="9" y2="15"/>
                   <line x1="9" y1="9" x2="15" y2="15"/>
                 </svg>
               </button>
+              ${(f.type !== 'avoir' && f.statut_paiement === 'paye') ? `
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="emettre-avoir" data-id="${f.id}" title="Émettre un avoir">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                  </svg>
+                </button>
+              ` : ''}
             ` : '-'}
           </td>
         </tr>

@@ -95,13 +95,11 @@
   // FONCTIONS UTILITAIRES
   // ============================================================================
 
-  function hasValue(val) {
-    return val !== null && val !== undefined && val !== '' && val !== 'null' && String(val).trim() !== '';
-  }
+  const hasValue = MistralUtils.hasValue;
 
   function formatPrice(price) {
     if (!price && price !== 0) return 'Prix sur demande';
-    return Number(price).toLocaleString('fr-FR') + ' €';
+    return MistralUtils.formatPrice(price);
   }
 
   // ============================================================================
@@ -117,9 +115,8 @@
 
     const instruments = getInstrumentsEnLigne();
     const accessoires = getAccessoiresActifs();
-    const totalCount = instruments.length + accessoires.length;
 
-    updateStockCounters(totalCount);
+    updateStockCounters(instruments.length);
 
     let html = '';
     
@@ -135,7 +132,7 @@
       html += accessoires.map(renderAccessoireCard).join('');
     }
     
-    if (totalCount === 0) {
+    if (instruments.length + accessoires.length === 0) {
       html = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--color-text-muted);"><p style="font-family: var(--font-display); font-size: 1.25rem; margin-bottom: 0.5rem;">Aucun article disponible</p><p style="font-size: 0.9375rem;">Revenez bientôt pour découvrir nos prochaines créations</p></div>';
     }
 
@@ -145,9 +142,25 @@
     container.querySelectorAll('.flash-card').forEach(function(card) {
       card.addEventListener('click', function(e) {
         if (e.target.closest('button')) return;
-        var link = card.querySelector('a');
+        const link = card.querySelector('a');
         if (link) window.location.href = link.href;
       });
+    });
+
+    // Delegated event listeners for data-action cart buttons
+    container.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+
+      e.stopPropagation();
+      var action = btn.dataset.action;
+      var id = btn.dataset.id;
+
+      if (action === 'add-to-cart-instrument') {
+        BoutiqueAdmin.addInstrumentToCart(id, btn);
+      } else if (action === 'add-to-cart-accessoire') {
+        BoutiqueAdmin.addAccessoireToCart(id, btn);
+      }
     });
   }
 
@@ -157,7 +170,7 @@
       ? '<img src="' + instrument.images[0] + '" alt="' + utils.escapeHtml(instrument.nom || '') + '" style="width:100%;height:100%;object-fit:cover;">'
       : '<span style="font-size: 4rem; opacity: 0.2;">🎵</span>';
 
-    const videoIndicator = hasValue(instrument.video)
+    const videoIndicator = hasValue(instrument.video_url)
       ? '<span class="flash-card__video-badge" style="position:absolute;bottom:0.5rem;left:0.5rem;background:rgba(0,0,0,0.7);color:white;padding:0.25rem 0.5rem;border-radius:4px;font-size:0.75rem;">▶ Vidéo</span>'
       : '';
 
@@ -183,7 +196,7 @@
     }
     const specsHtml = specs.length > 0 ? '<p class="flash-card__specs">' + specs.join(' · ') + '</p>' : '';
 
-    var notesRaw = hasValue(instrument.notes_layout) ? instrument.notes_layout : '';
+    let notesRaw = hasValue(instrument.notes_layout) ? instrument.notes_layout : '';
     if (notesRaw && typeof MistralScales !== 'undefined' && MistralScales.convertNotesInString) {
       notesRaw = MistralScales.convertNotesInString(notesRaw);
     }
@@ -195,26 +208,26 @@
       ? '<p class="flash-card__desc" style="font-size:0.875rem;color:var(--color-text-muted);margin:0.5rem 0;line-height:1.4;">' + utils.escapeHtml(instrument.description.substring(0, 100)) + (instrument.description.length > 100 ? '...' : '') + '</p>'
       : '';
 
-    var priceHtml;
+    let priceHtml;
     if (!hasValue(instrument.prix_vente)) {
       priceHtml = '<span class="flash-card__price" style="font-size:0.875rem;">Prix sur demande</span>';
     } else if (hasPromo) {
-      var promoPrice = Math.floor(instrument.prix_vente * (1 - instrument.promo_percent / 100) / 5) * 5;
+      const promoPrice = Math.floor(instrument.prix_vente * (1 - instrument.promo_percent / 100) / 5) * 5;
       priceHtml = '<span class="flash-card__price"><span class="flash-card__price--original">' + formatPrice(instrument.prix_vente) + '</span> ' + formatPrice(promoPrice) + '</span>';
     } else {
       priceHtml = '<span class="flash-card__price">' + formatPrice(instrument.prix_vente) + '</span>';
     }
 
-    var rawName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || instrument.reference || 'Instrument';
+    const rawName = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || instrument.reference || 'Instrument';
     const displayName = (typeof MistralScales !== 'undefined' && MistralScales.convertNotesInString)
       ? MistralScales.convertNotesInString(rawName) : rawName;
 
-    var instrInCart = (typeof MistralCart !== 'undefined' && MistralCart.hasItem(instrument.id));
-    var instrCartLabel = instrInCart ? 'Dans le panier' : 'Ajouter au panier';
-    var instrCartStyle = instrInCart ? 'background:var(--color-success, #4A7C59);color:white;' : 'background:var(--color-accent);color:white;';
+    const instrInCart = (typeof MistralCart !== 'undefined' && MistralCart.hasItem(instrument.id));
+    const instrCartLabel = instrInCart ? 'Dans le panier' : 'Ajouter au panier';
+    const instrCartStyle = instrInCart ? 'background:var(--color-success, #3D6B4A);color:white;' : 'background:var(--color-accent);color:white;';
 
     return '<div class="flash-card" data-type="instrument" data-id="' + instrument.id + '" style="position:relative;text-decoration:none;color:inherit;">' +
-      '<a href="annonce.html?ref=' + instrument.id + '" style="text-decoration:none;color:inherit;display:block;">' +
+      '<a href="annonce.html#ref=' + instrument.id + '" style="text-decoration:none;color:inherit;display:block;">' +
         '<div class="flash-card__image" style="position:relative;">' + imageContent + promoLabel + videoIndicator + photoCount + '</div>' +
         '<div class="flash-card__content">' +
           '<h3 class="flash-card__name">' + utils.escapeHtml(displayName) + '</h3>' +
@@ -225,7 +238,7 @@
         '</div>' +
       '</a>' +
       '<div style="padding:0 0.75rem 0.75rem;">' +
-        '<button class="flash-card__cart-btn" data-cart-instrument="' + instrument.id + '" onclick="event.stopPropagation();BoutiqueAdmin.addInstrumentToCart(\'' + instrument.id + '\', this)" style="width:100%;padding:0.5rem;border:none;border-radius:var(--radius-md,6px);font-size:0.8125rem;font-weight:600;cursor:pointer;transition:all 0.2s;' + instrCartStyle + '">' + instrCartLabel + '</button>' +
+        '<button class="flash-card__cart-btn" data-cart-instrument="' + instrument.id + '" data-action="add-to-cart-instrument" data-id="' + instrument.id + '" style="width:100%;padding:0.5rem;border:none;border-radius:var(--radius-md,6px);font-size:0.8125rem;font-weight:600;cursor:pointer;transition:all 0.2s;' + instrCartStyle + '">' + instrCartLabel + '</button>' +
       '</div>' +
     '</div>';
   }
@@ -252,12 +265,12 @@
       ? '<p class="flash-card__desc" style="font-size:0.875rem;color:var(--color-text-muted);margin:0.5rem 0;line-height:1.4;">' + utils.escapeHtml(accessoire.description.substring(0, 80)) + (accessoire.description.length > 80 ? '...' : '') + '</p>'
       : '';
 
-    var inCart = (typeof MistralCart !== 'undefined' && MistralCart.hasItem(accessoire.id));
-    var cartBtnLabel = inCart ? 'Dans le panier' : 'Ajouter au panier';
-    var cartBtnStyle = inCart ? 'background:var(--color-success, #4A7C59);color:white;' : 'background:var(--color-accent);color:white;';
+    const inCart = (typeof MistralCart !== 'undefined' && MistralCart.hasItem(accessoire.id));
+    const cartBtnLabel = inCart ? 'Dans le panier' : 'Ajouter au panier';
+    const cartBtnStyle = inCart ? 'background:var(--color-success, #3D6B4A);color:white;' : 'background:var(--color-accent);color:white;';
 
     return '<div class="flash-card flash-card--accessoire" data-type="accessoire" data-id="' + accessoire.id + '" style="text-decoration:none;color:inherit;">' +
-      '<a href="annonce.html?ref=' + accessoire.id + '&type=accessoire" style="text-decoration:none;color:inherit;display:block;">' +
+      '<a href="annonce.html#ref=' + accessoire.id + '&type=accessoire" style="text-decoration:none;color:inherit;display:block;">' +
         '<div class="flash-card__image flash-card__image--small" style="position:relative; height: 150px;">' + imageContent + accPromoLabel + '</div>' +
         '<div class="flash-card__content">' +
           '<span class="flash-card__category" style="font-size:0.75rem;color:var(--color-accent);text-transform:uppercase;letter-spacing:0.05em;">' + categorie + '</span>' +
@@ -272,21 +285,21 @@
         '</div>' +
       '</a>' +
       '<div style="padding:0 0.75rem 0.75rem;">' +
-        '<button class="flash-card__cart-btn" data-cart-accessoire="' + accessoire.id + '" onclick="event.stopPropagation();BoutiqueAdmin.addAccessoireToCart(\'' + accessoire.id + '\', this)" style="width:100%;padding:0.5rem;border:none;border-radius:var(--radius-md,6px);font-size:0.8125rem;font-weight:600;cursor:pointer;transition:all 0.2s;' + cartBtnStyle + '">' + cartBtnLabel + '</button>' +
+        '<button class="flash-card__cart-btn" data-cart-accessoire="' + accessoire.id + '" data-action="add-to-cart-accessoire" data-id="' + accessoire.id + '" style="width:100%;padding:0.5rem;border:none;border-radius:var(--radius-md,6px);font-size:0.8125rem;font-weight:600;cursor:pointer;transition:all 0.2s;' + cartBtnStyle + '">' + cartBtnLabel + '</button>' +
       '</div>' +
     '</div>';
   }
 
   function updateStockCounters(count) {
-    var badge = document.querySelector('.flash-badge');
+    const badge = document.querySelector('.flash-badge');
     if (badge) {
       badge.innerHTML = '<span class="flash-dot" style="width:6px;height:6px;animation:none;"></span> ' + count + ' en stock';
     }
     
-    var tabCount = document.getElementById('stock-count-tab');
+    const tabCount = document.getElementById('stock-count-tab');
     if (tabCount) tabCount.textContent = count;
     
-    var sectionCount = document.getElementById('stock-count-section');
+    const sectionCount = document.getElementById('stock-count-section');
     if (sectionCount) sectionCount.textContent = count;
     
     window.dispatchEvent(new CustomEvent('stockUpdated', { detail: { count: count } }));
@@ -299,7 +312,7 @@
   async function retirerInstrument(id) {
     if (!hasAdminCore) return;
     
-    var confirmed = await Confirm.show({
+    const confirmed = await Confirm.show({
       title: 'Retirer de la boutique',
       message: 'Cet instrument ne sera plus visible dans la boutique.',
       confirmText: 'Retirer',
@@ -317,7 +330,7 @@
   async function retirerAccessoire(id) {
     if (!hasAdminCore) return;
     
-    var confirmed = await Confirm.show({
+    const confirmed = await Confirm.show({
       title: 'Masquer l\'accessoire',
       message: 'Cet accessoire ne sera plus visible dans la boutique.',
       confirmText: 'Masquer',
@@ -337,24 +350,24 @@
   // ============================================================================
 
   function contacterPourInstrument(id) {
-    var instruments = getInstrumentsEnLigne();
-    var instrument = instruments.find(function(i) { return i.id === id; });
-    
+    const instruments = getInstrumentsEnLigne();
+    const instrument = instruments.find(function(i) { return i.id === id; });
+
     if (!instrument) return;
-    
-    var nom = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim();
-    var prix = instrument.prix_vente ? formatPrice(instrument.prix_vente) : 'Prix sur demande';
-    
-    var subject = encodeURIComponent('Demande d\'information - ' + nom);
-    var body = encodeURIComponent('Bonjour,\n\nJe suis intéressé(e) par l\'instrument "' + nom + '" (' + prix + ').\n\nPouvez-vous me donner plus d\'informations ?\n\nCordialement');
-    
-    var contactModal = document.querySelector('[data-modal="contact"]');
+
+    const nom = instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim();
+    const prix = instrument.prix_vente ? formatPrice(instrument.prix_vente) : 'Prix sur demande';
+
+    const subject = encodeURIComponent('Demande d\'information - ' + nom);
+    const body = encodeURIComponent('Bonjour,\n\nJe suis intéressé(e) par l\'instrument "' + nom + '" (' + prix + ').\n\nPouvez-vous me donner plus d\'informations ?\n\nCordialement');
+
+    const contactModal = document.querySelector('[data-modal="contact"]');
     if (contactModal) {
       contactModal.click();
       setTimeout(function() {
-        var subjectInput = document.getElementById('contact-subject');
+        const subjectInput = document.getElementById('contact-subject');
         if (subjectInput) subjectInput.value = 'Demande d\'information - ' + nom;
-        var messageInput = document.getElementById('contact-message');
+        const messageInput = document.getElementById('contact-message');
         if (messageInput) messageInput.value = 'Je suis intéressé(e) par l\'instrument "' + nom + '" (' + prix + ').\n\nPouvez-vous me donner plus d\'informations ?';
       }, 300);
     } else {
@@ -363,22 +376,22 @@
   }
 
   function contacterPourAccessoire(id) {
-    var accessoires = getAccessoiresActifs();
-    var accessoire = accessoires.find(function(a) { return a.id === id; });
-    
+    const accessoires = getAccessoiresActifs();
+    const accessoire = accessoires.find(function(a) { return a.id === id; });
+
     if (!accessoire) return;
-    
-    var prix = accessoire.prix ? formatPrice(accessoire.prix) : 'Prix sur demande';
-    var subject = encodeURIComponent('Commande - ' + accessoire.nom);
-    var body = encodeURIComponent('Bonjour,\n\nJe souhaite commander "' + accessoire.nom + '" (' + prix + ').\n\nCordialement');
-    
-    var contactModal = document.querySelector('[data-modal="contact"]');
+
+    const prix = accessoire.prix ? formatPrice(accessoire.prix) : 'Prix sur demande';
+    const subject = encodeURIComponent('Commande - ' + accessoire.nom);
+    const body = encodeURIComponent('Bonjour,\n\nJe souhaite commander "' + accessoire.nom + '" (' + prix + ').\n\nCordialement');
+
+    const contactModal = document.querySelector('[data-modal="contact"]');
     if (contactModal) {
       contactModal.click();
       setTimeout(function() {
-        var subjectInput = document.getElementById('contact-subject');
+        const subjectInput = document.getElementById('contact-subject');
         if (subjectInput) subjectInput.value = 'Commande - ' + accessoire.nom;
-        var messageInput = document.getElementById('contact-message');
+        const messageInput = document.getElementById('contact-message');
         if (messageInput) messageInput.value = 'Je souhaite commander "' + accessoire.nom + '" (' + prix + ').';
       }, 300);
     } else {
@@ -392,29 +405,29 @@
 
   function addInstrumentToCart(id, btnElement) {
     if (typeof MistralCart === 'undefined') return;
-    var instruments = getInstrumentsEnLigne();
-    var instrument = instruments.find(function(i) { return i.id === id; });
+    const instruments = getInstrumentsEnLigne();
+    const instrument = instruments.find(function(i) { return i.id === id; });
     if (!instrument) return;
 
     MistralCart.addInstrument(instrument);
 
     if (btnElement) {
       btnElement.textContent = 'Dans le panier';
-      btnElement.style.background = 'var(--color-success, #4A7C59)';
+      btnElement.style.background = 'var(--color-success, #3D6B4A)';
     }
   }
 
   function addAccessoireToCart(id, btnElement) {
     if (typeof MistralCart === 'undefined') return;
-    var accessoires = getAccessoiresActifs();
-    var accessoire = accessoires.find(function(a) { return a.id === id; });
+    const accessoires = getAccessoiresActifs();
+    const accessoire = accessoires.find(function(a) { return a.id === id; });
     if (!accessoire) return;
 
     MistralCart.addAccessoire(accessoire);
 
     if (btnElement) {
       btnElement.textContent = 'Dans le panier';
-      btnElement.style.background = 'var(--color-success, #4A7C59)';
+      btnElement.style.background = 'var(--color-success, #3D6B4A)';
     }
   }
 
@@ -423,7 +436,7 @@
   // ============================================================================
 
   function openInstrumentPage(id) {
-    window.location.href = 'annonce.html?ref=' + id;
+    window.location.href = 'annonce.html#ref=' + id;
   }
 
 

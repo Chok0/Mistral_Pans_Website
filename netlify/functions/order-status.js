@@ -1,6 +1,8 @@
 // Netlify Function : Consulter le statut d'une commande
 // Le client fournit sa référence + email (pas besoin de compte)
 
+const { checkRateLimit, getClientIp } = require('./utils/rate-limit');
+
 function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return email && emailRegex.test(email) && email.length <= 254;
@@ -67,6 +69,17 @@ exports.handler = async (event, context) => {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': allowedOrigin
   };
+
+  // Rate limiting persistant (Supabase) — 10 lookups/min par IP
+  const clientIp = getClientIp(event);
+  const { allowed: rateLimitOk } = await checkRateLimit(clientIp, 'order-status', 10);
+  if (!rateLimitOk) {
+    return {
+      statusCode: 429,
+      headers,
+      body: JSON.stringify({ error: 'Trop de requêtes, veuillez réessayer dans une minute' })
+    };
+  }
 
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;

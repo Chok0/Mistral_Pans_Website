@@ -1,15 +1,15 @@
 (function() {
   'use strict';
 
-  var form = document.getElementById('suivi-lookup');
-  var errorEl = document.getElementById('suivi-error');
-  var resultEl = document.getElementById('suivi-result');
-  var lookupForm = document.getElementById('lookup-form');
+  const form = document.getElementById('suivi-lookup');
+  const errorEl = document.getElementById('suivi-error');
+  const resultEl = document.getElementById('suivi-result');
+  const lookupForm = document.getElementById('lookup-form');
 
   // Auto-fill from URL params
-  var params = new URLSearchParams(window.location.search);
-  var refParam = params.get('ref');
-  var emailParam = params.get('email');
+  const params = new URLSearchParams(window.location.search);
+  const refParam = params.get('ref');
+  const emailParam = params.get('email');
   if (refParam) document.getElementById('suivi-ref').value = refParam;
   if (emailParam) document.getElementById('suivi-email').value = emailParam;
 
@@ -20,26 +20,26 @@
 
   form.addEventListener('submit', function(e) {
     e.preventDefault();
-    var ref = document.getElementById('suivi-ref').value.trim();
-    var email = document.getElementById('suivi-email').value.trim();
+    const ref = document.getElementById('suivi-ref').value.trim();
+    const email = document.getElementById('suivi-email').value.trim();
     if (ref && email) lookupOrder(ref, email);
   });
 
   async function lookupOrder(ref, email) {
-    var btn = document.getElementById('btn-lookup');
+    const btn = document.getElementById('btn-lookup');
     btn.disabled = true;
     btn.textContent = 'Recherche en cours...';
     errorEl.style.display = 'none';
     resultEl.style.display = 'none';
 
     try {
-      var response = await fetch('/.netlify/functions/order-status', {
+      const response = await fetch('/.netlify/functions/order-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reference: ref, email: email })
       });
 
-      var data = await response.json();
+      const data = await response.json();
 
       if (!response.ok || !data.success) {
         showError(data.error || 'Commande non trouvée');
@@ -73,10 +73,10 @@
     document.getElementById('result-source').textContent = order.sourceLabel;
 
     // Timeline
-    var timelineEl = document.getElementById('result-timeline');
+    const timelineEl = document.getElementById('result-timeline');
     timelineEl.innerHTML = '';
     order.timeline.forEach(function(step) {
-      var el = document.createElement('div');
+      const el = document.createElement('div');
       el.className = 'suivi-timeline__step suivi-timeline__step--' + step.status;
       el.innerHTML =
         '<div class="suivi-timeline__dot">' + (step.status === 'done' ? '\u2713' : step.icon) + '</div>' +
@@ -88,7 +88,7 @@
     document.getElementById('result-total').textContent = formatPrice(order.montantTotal);
     document.getElementById('result-paid').textContent = formatPrice(order.montantPaye);
 
-    var remainingRow = document.getElementById('result-remaining-row');
+    const remainingRow = document.getElementById('result-remaining-row');
     if (order.resteAPayer > 0) {
       remainingRow.style.display = '';
       document.getElementById('result-remaining').textContent = formatPrice(order.resteAPayer);
@@ -97,7 +97,7 @@
     }
 
     // Payment badge
-    var badge = document.getElementById('result-payment-badge');
+    const badge = document.getElementById('result-payment-badge');
     badge.textContent = order.statutPaiementLabel;
     badge.className = 'suivi-payment__badge';
     if (order.statutPaiement === 'paye') badge.classList.add('suivi-payment__badge--paye');
@@ -105,7 +105,7 @@
     else badge.classList.add('suivi-payment__badge--attente');
 
     // Tracking
-    var trackingEl = document.getElementById('result-tracking');
+    const trackingEl = document.getElementById('result-tracking');
     if (order.trackingNumber) {
       trackingEl.style.display = '';
       document.getElementById('result-tracking-number').textContent = order.trackingNumber;
@@ -120,15 +120,10 @@
     errorEl.style.display = 'none';
   };
 
-  function formatPrice(amount) {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency', currency: 'EUR',
-      minimumFractionDigits: 0, maximumFractionDigits: 0
-    }).format(amount || 0);
-  }
+  // Bind reset button (CSP-safe, pas de onclick inline)
+  const btnReset = document.getElementById('btn-reset-lookup');
+  if (btnReset) btnReset.addEventListener('click', window.resetLookup);
 
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
+  const formatPrice = MistralUtils.formatPrice;
+  const escapeHtml  = MistralUtils.escapeHtml;
 })();

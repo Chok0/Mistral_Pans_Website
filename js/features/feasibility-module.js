@@ -12,22 +12,27 @@
 
 const FeasibilityModule = (function() {
 
-  // Notification légère (Toast si dispo, sinon notification DOM éphémère)
+  // Notification legere — delegue au systeme global ou admin
   function showNotice(message) {
+    if (window.MistralToast) {
+      MistralToast.warning(message);
+      return;
+    }
     if (window.MistralAdmin && MistralAdmin.Toast) {
       MistralAdmin.Toast.warning(message);
       return;
     }
+    // Fallback inline
     const el = document.createElement('div');
     el.textContent = message;
     Object.assign(el.style, {
       position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
-      background: '#F59E0B', color: '#fff',
-      padding: '12px 24px', borderRadius: '8px', zIndex: '9999',
+      background: '#D97706', color: '#fff',
+      padding: '12px 24px', borderRadius: '8px', zIndex: '2000',
       fontSize: '0.9rem', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxWidth: '90vw'
     });
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), 5000);
+    setTimeout(function() { el.remove(); }, 5000);
   }
   
   // ===========================================================================
@@ -294,8 +299,8 @@ const FeasibilityModule = (function() {
   // ===========================================================================
   
   function updateOrderButton(result, size, buttonSelector, configName) {
-    var orderBtn = document.querySelector(buttonSelector);
-    var cartBtn = document.querySelector('#btn-add-cart');
+    const orderBtn = document.querySelector(buttonSelector);
+    const cartBtn = document.querySelector('#btn-add-cart');
 
     if (result.status === 'impossible') {
       // Config impossible: boutons grisés

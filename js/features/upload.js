@@ -481,6 +481,10 @@
       .from(CONFIG.STORAGE_BUCKET)
       .getPublicUrl(data.path);
 
+    if (!urlData || !urlData.publicUrl) {
+      throw new Error('Impossible de generer l\'URL publique pour ' + data.path);
+    }
+
     return {
       path: data.path,
       publicUrl: urlData.publicUrl
@@ -714,6 +718,40 @@
   }
 
   // ============================================================================
+  // HELPER: SAVE VIDEO FROM FILE (pour usage direct hors pipeline upload)
+  // ============================================================================
+
+  /**
+   * Sauvegarde un fichier video dans IndexedDB avec generation auto de thumbnail.
+   * Utilisé par le modal instrument pour l'upload vidéo local.
+   *
+   * @param {File} file - Fichier video (mp4, webm)
+   * @param {string} key - Clé de stockage IndexedDB
+   * @returns {Promise<{key: string, thumbnail: string, duration: number}>}
+   */
+  async function saveVideoFromFile(file, key) {
+    if (!CONFIG.ALLOWED_VIDEO_TYPES.includes(file.type)) {
+      throw new Error('Format video non supporté. Utilisez MP4 ou WebM.');
+    }
+    if (file.size > CONFIG.MAX_VIDEO_SIZE) {
+      throw new Error('Video trop volumineuse (max 100 Mo).');
+    }
+
+    // Générer thumbnail + durée
+    const thumbInfo = await generateVideoThumbnail(file);
+
+    // Sauvegarder dans IndexedDB
+    const videoBlob = new Blob([file], { type: file.type });
+    await saveVideoToIndexedDB(key, videoBlob, thumbInfo.dataURL, thumbInfo.duration);
+
+    return {
+      key: key,
+      thumbnail: thumbInfo.dataURL,
+      duration: thumbInfo.duration
+    };
+  }
+
+  // ============================================================================
   // COMPOSANT UI : INPUT FILE AMELIORE
   // ============================================================================
 
@@ -722,6 +760,7 @@
       id = 'media-upload',
       accept = 'image/jpeg,image/png,image/webp,video/mp4,video/webm',
       acceptType = 'all', // 'all', 'image', 'video'
+      multiple = false,
       onSelect = null,
       onUpload = null,
       onError = null
@@ -744,7 +783,7 @@
     const wrapper = document.createElement('div');
     wrapper.className = 'upload-input';
     wrapper.innerHTML = `
-      <input type="file" id="${id}" accept="${acceptAttr}" class="upload-input__file">
+      <input type="file" id="${id}" accept="${acceptAttr}" ${multiple ? 'multiple' : ''} class="upload-input__file">
       <label for="${id}" class="upload-input__label">
         <div class="upload-input__icon">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -785,9 +824,34 @@
     let selectedType = null;
 
     fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
 
+      // Multiple mode: pass all files to onSelect, skip built-in preview
+      if (multiple && files.length >= 1) {
+        // Validate all files first
+        for (const file of files) {
+          const fileType = getFileType(file);
+          if (!fileType) {
+            if (onError) onError('Format non supporte: ' + file.name);
+            return;
+          }
+          if (fileType === 'image' && file.size > CONFIG.MAX_IMAGE_SIZE) {
+            if (onError) onError('Image trop volumineuse (max 10 Mo): ' + file.name);
+            return;
+          }
+          if (fileType === 'video' && file.size > CONFIG.MAX_VIDEO_SIZE) {
+            if (onError) onError('Video trop volumineuse (max 100 Mo): ' + file.name);
+            return;
+          }
+        }
+        if (onSelect) onSelect(files);
+        fileInput.value = '';
+        return;
+      }
+
+      // Single file mode (original behavior)
+      const file = files[0];
       const fileType = getFileType(file);
 
       if (!fileType) {
@@ -999,6 +1063,13 @@
         transition: background 0.2s;
       }
 
+      /* Touch target 44px via pseudo-element (WCAG 2.5.5) */
+      .upload-input__remove::after {
+        content: '';
+        position: absolute;
+        inset: -8px;
+      }
+
       .upload-input__remove:hover {
         background: var(--admin-error, #e74c3c);
       }
@@ -1073,6 +1144,7 @@
     uploadVideo,
     uploadMedia,
     deleteImage,
+    saveVideoFromFile,
 
     // URLs
     getImageURL,

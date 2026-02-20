@@ -1,13 +1,70 @@
-/* ==========================================================================
-   MISTRAL PANS - Scale Player Component
-   Virtual Handpan with Web Audio API
-   Uses MistralScales from scales-data.js when available
-   ========================================================================== */
+/**
+ * =============================================================================
+ * MISTRAL PANS - Composant Handpan Player Interactif
+ * =============================================================================
+ *
+ * Handpan virtuel interactif avec rendu SVG et lecture audio via Web Audio API.
+ *
+ * Ce module genere un instrument handpan cliquable/touchable en SVG, capable
+ * d'afficher et jouer differentes gammes musicales. Il supporte deux modes :
+ *   - Mode "gamme" : selection parmi les gammes de MistralScales (scales-data.js)
+ *   - Mode "layout" : positionnement type par type (ding, tonales, mutants, bottoms)
+ *     a partir d'une chaine notes_layout du configurateur
+ *
+ * Fonctionnalites :
+ *   - Rendu SVG dynamique avec degrades et ombres
+ *   - Lecture audio polyphonique (FLAC/MP3 selon support navigateur)
+ *   - Support multi-touch pour appareils mobiles
+ *   - Animation d'ondes circulaires au toucher
+ *   - Retour haptique (vibration) sur mobile
+ *   - Mode agrandi (plein ecran) avec overlay
+ *   - Lecture sequentielle automatique (arpege montant puis descendant)
+ *   - Notation musicale adaptative (anglo-saxonne / francaise)
+ *   - Auto-initialisation via attributs data-* sur le HTML
+ *
+ * Dependances :
+ *   - js/data/scales-data.js (MistralScales) — optionnel, fallback interne
+ *   - ressources/audio/*.flac — echantillons audio (E2 a F5, 56 notes)
+ *
+ * Export :
+ *   - Classe globale `HandpanPlayer` (instanciable)
+ *   - module.exports pour environnements Node/CommonJS
+ *
+ * =============================================================================
+ */
 
 class HandpanPlayer {
-  // Instance counter for unique IDs
+
+  // ===========================================================================
+  // PROPRIETES STATIQUES
+  // ===========================================================================
+
+  /** Compteur d'instances pour generer des IDs SVG uniques (evite les collisions de gradient/filtre) */
   static instanceCount = 0;
 
+  // ===========================================================================
+  // CONSTRUCTEUR & INITIALISATION
+  // ===========================================================================
+
+  /**
+   * Cree une nouvelle instance du lecteur Handpan.
+   *
+   * Le constructeur resout le conteneur DOM, configure les options par defaut,
+   * parse un eventuel layout personnalise, construit le dictionnaire de gammes,
+   * detecte le format audio supporte, et lance le rendu initial.
+   *
+   * @param {string|HTMLElement} container - Selecteur CSS ou element DOM qui accueillera le player
+   * @param {Object} [options={}] - Options de configuration
+   * @param {string} [options.scale='kurd'] - Cle de la gamme par defaut (ex: 'kurd', 'hijaz')
+   * @param {boolean} [options.showNoteNames=true] - Afficher les noms des notes sur le SVG
+   * @param {boolean} [options.showScaleSelector=true] - Afficher le selecteur de gammes
+   * @param {string} [options.accentColor='#0D7377'] - Couleur d'accentuation CSS
+   * @param {number} [options.size=300] - Taille du SVG en pixels (largeur = hauteur)
+   * @param {boolean} [options.enableHaptics=true] - Activer le retour haptique sur mobile
+   * @param {boolean} [options.enableWaveAnimation=true] - Activer l'animation d'ondes au toucher
+   * @param {string} [options.layout] - Chaine notes_layout (ex: "D/A-Bb-C-D-E-F-G-A") — active le mode type
+   * @param {string} [options.audioPath='ressources/audio/'] - Chemin vers le dossier des echantillons
+   */
   constructor(container, options = {}) {
     this.container = typeof container === 'string'
       ? document.querySelector(container)
@@ -18,10 +75,10 @@ class HandpanPlayer {
       return;
     }
 
-    // Unique instance ID for SVG elements
+    /** Identifiant unique de cette instance (pour les IDs SVG internes) */
     this.instanceId = ++HandpanPlayer.instanceCount;
 
-    // Options
+    // Fusion des options avec les valeurs par defaut
     this.options = {
       scale: options.scale || 'kurd',
       showNoteNames: options.showNoteNames !== false,
@@ -33,7 +90,12 @@ class HandpanPlayer {
       ...options
     };
 
-    // Custom notes from layout string (bypasses scale system)
+    /**
+     * Notes personnalisees issues du parsing d'un layout.
+     * Si defini, le player passe en mode "type" (ding/tonales/mutants/bottoms)
+     * et desactive le selecteur de gammes.
+     * @type {Array<{name: string, type: string}>|null}
+     */
     this.customNotes = null;
     if (options.layout) {
       this.customNotes = HandpanPlayer.parseLayout(options.layout);
@@ -42,28 +104,74 @@ class HandpanPlayer {
       }
     }
 
-    // Scale definitions - use unified MistralScales if available
+    /**
+     * Dictionnaire des gammes disponibles, construit depuis MistralScales
+     * ou depuis un fallback interne si le module n'est pas charge.
+     * Structure : { [cle]: { name, description, mood, notes: string[] } }
+     */
     this.scales = this._buildScalesFromMistralScales();
 
+    /** Cle de la gamme actuellement selectionnee */
     this.currentScale = this.options.scale;
+
+    /**
+     * Cache des objets Audio pre-charges, indexe par nom de fichier.
+     * Evite de recharger un echantillon deja telecharge.
+     * @type {Object.<string, HTMLAudioElement>}
+     */
     this.audioCache = {};
+
+    /**
+     * Ensemble des clones Audio en cours de lecture.
+     * Permet le nettoyage propre lors de la destruction de l'instance.
+     * @type {Set<HTMLAudioElement>}
+     */
     this.activeAudioClones = new Set();
+
+    /** Chemin vers le repertoire des fichiers audio */
     this.audioPath = options.audioPath || 'ressources/audio/';
 
-    // Detect supported audio format: prefer FLAC, fallback to MP3 (Safari/iOS)
+    /**
+     * Detection du format audio supporte par le navigateur.
+     * FLAC est prefere (meilleure qualite), MP3 en fallback (Safari/iOS ancien).
+     */
     const probe = new Audio();
     this.audioExt = (probe.canPlayType('audio/flac') !== '') ? '.flac' : '.mp3';
 
-    // State management
+    // --- Etat interne ---
+
+    /** Indique si une lecture sequentielle de gamme est en cours */
     this.isPlaying = false;
+
+    /** AbortController pour interrompre une lecture sequentielle en cours */
     this.playAbortController = null;
+
+    /**
+     * Map des gestionnaires d'evenements attaches, pour un nettoyage fiable.
+     * Cle : identifiant unique, Valeur : { element, event, handler }
+     * @type {Map<string, {element: Element, event: string, handler: Function}>}
+     */
     this.boundHandlers = new Map();
+
+    /**
+     * Ensemble des IDs de setTimeout actifs.
+     * Permet d'annuler tous les timers en cas de destruction.
+     * @type {Set<number>}
+     */
     this.activeTimeouts = new Set();
 
-    // Web Audio API context (shared across instances)
+    /**
+     * Contexte Web Audio API (partage entre instances si possible).
+     * Initialise au premier clic utilisateur (restriction autoplay navigateurs).
+     * @type {AudioContext|null}
+     */
     this.audioContext = null;
 
-    // Listen for notation mode changes
+    /**
+     * Ecoute les changements de mode de notation (anglo-saxon <-> francais).
+     * Quand l'utilisateur bascule la notation, on reconstruit les gammes
+     * et on re-rend le player avec les nouveaux noms de notes.
+     */
     this._onNotationChange = () => {
       this.scales = this._buildScalesFromMistralScales();
       this.render();
@@ -74,15 +182,30 @@ class HandpanPlayer {
     this.init();
   }
 
-  // Build scales object from MistralScales (unified source) or use fallback
+  /**
+   * Construit le dictionnaire de gammes a partir de MistralScales (source unifiee).
+   *
+   * Algorithme :
+   * 1. Si MistralScales est disponible, itere sur SCALES_DATA
+   * 2. Pour chaque gamme ayant des baseNotes, determine si la tonalite
+   *    utilise des bemols ou des dieses (theorie musicale)
+   * 3. Convertit les notes internes vers la notation utilisateur
+   * 4. Si MistralScales n'est pas charge, retourne un fallback minimal
+   *    avec 4 gammes classiques (Kurd, Amara, Hijaz, Equinox)
+   *
+   * @returns {Object.<string, {name: string, description: string, mood: string, notes: string[]}>}
+   *   Dictionnaire gammes indexe par cle (ex: 'kurd', 'hijaz')
+   * @private
+   */
   _buildScalesFromMistralScales() {
-    // Use MistralScales if available (from scales-data.js)
+    // Utilise MistralScales si disponible (charge depuis scales-data.js)
     if (typeof MistralScales !== 'undefined' && MistralScales.SCALES_DATA) {
       const scales = {};
       const userNotation = MistralScales.toUserNotation || MistralScales.toDisplayNotation;
       for (const [key, data] of Object.entries(MistralScales.SCALES_DATA)) {
         if (data.baseNotes && data.baseNotes.length > 0) {
-          // Use proper music theory to determine sharp/flat for base tonality
+          // Determine si la tonalite de base doit s'ecrire avec des bemols
+          // (ex: F Equinox -> Ab, Db, Eb) ou des dieses (ex: D Hijaz -> C#)
           const baseTonality = data.baseRoot + data.baseOctave;
           const useFlats = MistralScales.shouldUseFlats(baseTonality, data);
           const notes = data.baseNotes.map(n => userNotation(n, useFlats));
@@ -97,7 +220,7 @@ class HandpanPlayer {
       return scales;
     }
 
-    // Fallback if MistralScales not loaded
+    // Fallback minimal si MistralScales n'est pas charge (4 gammes de base)
     return {
       kurd: { name: 'D Kurd', description: 'La plus populaire.', mood: 'Melancolique', notes: ['D3', 'A3', 'Bb3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4'] },
       amara: { name: 'D Amara', description: 'Variante douce.', mood: 'Doux', notes: ['D3', 'A3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'] },
@@ -106,13 +229,29 @@ class HandpanPlayer {
     };
   }
 
+  /**
+   * Initialisation du player : rendu SVG, attachement des evenements,
+   * et pre-chargement des echantillons audio de la gamme courante.
+   * @private
+   */
   init() {
     this.render();
     this.bindEvents();
     this.preloadCurrentScale();
   }
 
-  // Initialize Web Audio API on first user interaction
+  // ===========================================================================
+  // AUDIO — CONTEXTE, CHARGEMENT ET LECTURE
+  // ===========================================================================
+
+  /**
+   * Initialise le contexte Web Audio API lors de la premiere interaction utilisateur.
+   *
+   * Les navigateurs modernes bloquent la lecture audio tant qu'il n'y a pas eu
+   * d'interaction utilisateur (politique autoplay). Cette methode est donc appelee
+   * au premier clic/touch sur une note.
+   * @private
+   */
   initAudioContext() {
     if (this.audioContext) return;
 
@@ -123,14 +262,26 @@ class HandpanPlayer {
     }
   }
 
-  // Convert note name to audio file name (C#4 -> Cs4, Bb3 -> As3)
+  /**
+   * Convertit un nom de note musicale en nom de fichier audio.
+   *
+   * Convention de nommage des fichiers :
+   *   - Les dieses (#) deviennent 's' : C#4 -> Cs4
+   *   - Les bemols (b) sont convertis en dieses enharmoniques : Bb3 -> As3
+   *
+   * Delegue a MistralScales.noteToFileName() si disponible, sinon
+   * utilise une table de conversion interne (bemols -> dieses).
+   *
+   * @param {string} noteName - Nom de la note (ex: "C#4", "Bb3", "D4")
+   * @returns {string} Nom du fichier sans extension (ex: "Cs4", "As3", "D4")
+   */
   noteToFileName(noteName) {
-    // Use MistralScales if available
+    // Delegue a MistralScales si disponible (gestion centralisee)
     if (typeof MistralScales !== 'undefined' && MistralScales.noteToFileName) {
       return MistralScales.noteToFileName(noteName);
     }
 
-    // Fallback
+    // Table de conversion bemols -> dieses pour noms de fichiers
     const flatToSharp = {
       'Db': 'Cs', 'Eb': 'Ds', 'Fb': 'E', 'Gb': 'Fs',
       'Ab': 'Gs', 'Bb': 'As', 'Cb': 'B'
@@ -146,12 +297,23 @@ class HandpanPlayer {
     return fileName.replace('#', 's');
   }
 
-  // Preload audio for current scale or custom notes
+  /**
+   * Pre-charge les echantillons audio de toutes les notes de la gamme courante.
+   * Cree des objets Audio en avance pour eviter la latence au premier clic.
+   */
   preloadCurrentScale() {
     const notes = this._getNoteNames();
     notes.forEach(note => this.preloadAudio(note));
   }
 
+  /**
+   * Pre-charge un echantillon audio unique dans le cache.
+   *
+   * Si le fichier est deja en cache, ne fait rien (evite les doublons).
+   * L'attribut preload='auto' demande au navigateur de telecharger le fichier.
+   *
+   * @param {string} noteName - Nom de la note a pre-charger (ex: "D3", "Bb3")
+   */
   preloadAudio(noteName) {
     const fileName = this.noteToFileName(noteName);
     if (this.audioCache[fileName]) return;
@@ -161,7 +323,54 @@ class HandpanPlayer {
     this.audioCache[fileName] = audio;
   }
 
-  // Get unique SVG IDs for this instance
+  /**
+   * Joue un echantillon audio pour une note donnee.
+   *
+   * Strategie de lecture polyphonique :
+   * 1. Si la note est en cache, on clone l'element Audio (permet de jouer
+   *    la meme note plusieurs fois simultanement)
+   * 2. Sinon, on cree un nouvel Audio, on le met en cache, et on le joue
+   * 3. Le volume est fixe a 0.7 (70%) pour eviter la saturation
+   * 4. Les clones sont nettoyes automatiquement a la fin de la lecture
+   *
+   * @param {string} noteName - Nom de la note a jouer (ex: "D3", "A4")
+   */
+  playNote(noteName) {
+    const fileName = this.noteToFileName(noteName);
+
+    // Si en cache : cloner pour permettre la polyphonie (meme note jouee plusieurs fois)
+    if (this.audioCache[fileName]) {
+      const audio = this.audioCache[fileName].cloneNode();
+      audio.volume = 0.7;
+      this.activeAudioClones.add(audio);
+      audio.addEventListener('ended', () => {
+        this.activeAudioClones.delete(audio);
+        audio.src = '';
+      }, { once: true });
+      audio.play().catch(e => console.warn('Erreur lecture audio:', e));
+      return;
+    }
+
+    // Pas en cache : charger, mettre en cache et jouer
+    const audio = new Audio(`${this.audioPath}${fileName}${this.audioExt}`);
+    audio.volume = 0.7;
+    this.audioCache[fileName] = audio;
+    audio.play().catch(e => console.warn('Erreur lecture audio:', e));
+  }
+
+  // ===========================================================================
+  // SVG — IDENTIFIANTS UNIQUES ET RESOLUTION DES NOTES
+  // ===========================================================================
+
+  /**
+   * Genere les identifiants SVG uniques pour cette instance.
+   *
+   * Chaque instance a ses propres IDs de gradient et filtre pour eviter
+   * les conflits quand plusieurs players coexistent sur la meme page.
+   *
+   * @returns {{shellGradient: string, noteShadow: string, waveAnimation: string}}
+   *   Objet contenant les IDs SVG uniques
+   */
   getSvgIds() {
     return {
       shellGradient: `shell-gradient-${this.instanceId}`,
@@ -170,7 +379,15 @@ class HandpanPlayer {
     };
   }
 
-  // Get the list of note names for the current state (custom or scale-based)
+  /**
+   * Recupere la liste des noms de notes pour l'etat actuel du player.
+   *
+   * En mode "layout" (customNotes), retourne les noms affiches des notes
+   * personnalisees. En mode "gamme", retourne les notes de la gamme selectionnee.
+   *
+   * @returns {string[]} Tableau des noms de notes (ex: ["D3", "A3", "Bb3", ...])
+   * @private
+   */
   _getNoteNames() {
     if (this.customNotes) {
       return this.customNotes.map(n => this._toDisplayName(n.name));
@@ -179,7 +396,21 @@ class HandpanPlayer {
     return scale ? scale.notes : [];
   }
 
-  // Convert internal sharp notation to display (flats when appropriate, French if preferred)
+  /**
+   * Convertit une note interne (notation anglo-saxonne avec dieses)
+   * vers la notation d'affichage appropriee.
+   *
+   * Transformations appliquees :
+   * 1. Dieses -> bemols enharmoniques si applicable (C# -> Db)
+   * 2. Anglo-saxon -> francais si le mode notation est "french" (Db -> Reb)
+   *
+   * Necessite MistralScales pour les conversions avancees, sinon
+   * retourne la note telle quelle.
+   *
+   * @param {string} noteName - Nom interne de la note (ex: "C#4", "A3")
+   * @returns {string} Nom d'affichage adapte au mode de notation courant
+   * @private
+   */
   _toDisplayName(noteName) {
     if (typeof MistralScales !== 'undefined' && MistralScales.SHARPS_TO_FLATS) {
       const m = noteName.match(/^([A-G]#?)(\d)?$/);
@@ -195,6 +426,19 @@ class HandpanPlayer {
     return noteName;
   }
 
+  // ===========================================================================
+  // RENDU SVG — GENERATION DU HANDPAN VISUEL
+  // ===========================================================================
+
+  /**
+   * Point d'entree principal du rendu.
+   *
+   * Aiguille vers le mode de rendu adapte :
+   * - _renderTyped() si un layout personnalise est defini (ding/tonales/mutants/bottoms)
+   * - _renderSimple() pour le mode gamme classique (selecteur + cercle de notes)
+   *
+   * Injecte ensuite les styles CSS du composant dans le <head> si absents.
+   */
   render() {
     if (this.customNotes) {
       this._renderTyped();
@@ -204,7 +448,20 @@ class HandpanPlayer {
     this.addStyles();
   }
 
-  // Original render for scale-based mode
+  /**
+   * Rendu en mode "gamme" (simple) : affiche un handpan avec selecteur de gammes.
+   *
+   * Structure generee :
+   * - Selecteur de gammes (boutons radio visuels)
+   * - SVG du handpan : coquille circulaire + notes disposees en cercle
+   * - Bloc d'info : nom de gamme, liste des notes, ambiance
+   * - Boutons de controle : lecture sequentielle + mode agrandi
+   *
+   * Le Ding (premiere note) est place au centre-haut avec un rayon plus grand.
+   * Les notes restantes sont disposees en cercle autour du centre par
+   * calculateNotePositions().
+   * @private
+   */
   _renderSimple() {
     const scale = this.scales[this.currentScale];
     if (!scale) {
@@ -214,10 +471,10 @@ class HandpanPlayer {
 
     const notes = scale.notes;
     const size = this.options.size;
-    const center = size / 2;
-    const outerRadius = size * 0.42;
-    const innerRadius = size * 0.15;
-    const noteRadius = size * 0.09;
+    const center = size / 2;               // Centre du SVG
+    const outerRadius = size * 0.42;       // Rayon du cercle de notes peripheriques
+    const innerRadius = size * 0.15;       // Rayon de la zone centrale (position du ding)
+    const noteRadius = size * 0.09;        // Rayon de chaque cercle de note
     const ids = this.getSvgIds();
 
     const notePositions = this.calculateNotePositions(notes.length, center, outerRadius, innerRadius);
@@ -295,28 +552,46 @@ class HandpanPlayer {
     `;
   }
 
-  // Type-aware render for layout-based mode (ding, tonals, mutants, bottoms)
+  /**
+   * Rendu en mode "type" (layout) : affiche un handpan avec positionnement par type de note.
+   *
+   * Ce mode est utilise par le configurateur quand un layout personnalise est fourni.
+   * Les notes sont classees en 4 categories, chacune avec un style visuel distinct :
+   *   - Ding (centre) : note fondamentale, cercle plus grand, gris clair
+   *   - Tonales (anneau principal) : notes melodiques, gris moyen
+   *   - Mutants (anneau interieur, haut) : notes additionnelles, gris clair, opacite reduite
+   *   - Bottoms (anneau exterieur, bas) : notes graves sous la coque, gris fonce, trait pointille
+   *
+   * Si des bottoms sont presents, le viewBox SVG est etendu vers le bas (115% de la taille)
+   * pour accommoder les notes sous la coque.
+   *
+   * Genere aussi une legende visuelle si des mutants ou bottoms sont presents.
+   * @private
+   */
   _renderTyped() {
     const allNotes = this.customNotes;
     const size = this.options.size;
     const center = size / 2;
     const ids = this.getSvgIds();
 
+    // Separation des notes par type pour un positionnement adapte
     const ding = allNotes.find(n => n.type === 'ding');
     const tonals = allNotes.filter(n => n.type === 'tonal');
     const mutants = allNotes.filter(n => n.type === 'mutant');
     const bottoms = allNotes.filter(n => n.type === 'bottom');
 
-    const shellRadius = size * 0.42;
-    const tonalRadius = size * 0.31;
-    const dingSize = size * 0.09;
-    const noteSize = size * 0.065;
-    const mutantRadius = size * 0.18;
-    const mutantNoteSize = noteSize * 0.85;
-    const bottomRadius = size * 0.46;
-    const bottomNoteSize = noteSize * 0.85;
-    const fontSize = size * 0.032;
+    // --- Dimensions proportionnelles au size ---
+    const shellRadius = size * 0.42;       // Rayon de la coque
+    const tonalRadius = size * 0.31;       // Rayon de l'anneau des tonales
+    const dingSize = size * 0.09;          // Rayon du ding central
+    const noteSize = size * 0.065;         // Rayon des notes tonales
+    const mutantRadius = size * 0.18;      // Rayon de l'anneau des mutants (plus proche du centre)
+    const mutantNoteSize = noteSize * 0.85;  // Mutants legerement plus petits
+    const bottomRadius = size * 0.46;      // Rayon des bottoms (au-dela de la coque)
+    const bottomNoteSize = noteSize * 0.85;  // Bottoms legerement plus petits
+    const fontSize = size * 0.032;         // Taille de police proportionnelle
 
+    // Etendre le viewBox si des bottoms sont presents (notes sous la coque)
     const hasBottoms = bottoms.length > 0;
     const viewH = hasBottoms ? size * 1.15 : size;
     const viewY = 0;
@@ -324,7 +599,7 @@ class HandpanPlayer {
     let svgNotes = '';
     let noteIndex = 0;
 
-    // Ding
+    // --- Ding (note centrale fondamentale) ---
     if (ding) {
       const dName = this._toDisplayName(ding.name);
       svgNotes += `
@@ -341,7 +616,7 @@ class HandpanPlayer {
       noteIndex++;
     }
 
-    // Mutants (inner ring, top)
+    // --- Mutants (anneau interieur, arc dans la partie haute de la coque) ---
     mutants.forEach((note, i) => {
       const pos = this._getMutantPosition(i, mutants.length, mutantRadius, center);
       const dName = this._toDisplayName(note.name);
@@ -359,7 +634,7 @@ class HandpanPlayer {
       noteIndex++;
     });
 
-    // Tonals (main ring)
+    // --- Tonales (anneau principal, disposition alternee gauche/droite) ---
     tonals.forEach((note, i) => {
       const pos = this._getTonalPosition(i, tonals.length, tonalRadius, center);
       const dName = this._toDisplayName(note.name);
@@ -377,7 +652,7 @@ class HandpanPlayer {
       noteIndex++;
     });
 
-    // Bottoms (outer ring, bottom half)
+    // --- Bottoms (anneau exterieur, arc dans la partie basse, sous la coque) ---
     bottoms.forEach((note, i) => {
       const pos = this._getBottomPosition(i, bottoms.length, bottomRadius, center);
       const dName = this._toDisplayName(note.name);
@@ -395,11 +670,11 @@ class HandpanPlayer {
       noteIndex++;
     });
 
-    // Build note names for info display (ordered: ding, tonals, mutants, bottoms)
+    // Construction de l'affichage des noms de notes (ordre : ding, tonales, mutants, bottoms)
     const displayNotes = allNotes.map(n => this._toDisplayName(n.name));
     const scaleName = ding ? this._toDisplayName(ding.name).replace(/\d$/, '') : '';
 
-    // Legend
+    // Legende visuelle (affichee uniquement si mutants ou bottoms presents)
     let legendHtml = '';
     if (mutants.length > 0 || bottoms.length > 0) {
       legendHtml = '<div class="handpan-legend">';
@@ -468,7 +743,37 @@ class HandpanPlayer {
     `;
   }
 
-  // Tonal positioning (alternating left/right, same as configurator)
+  // ===========================================================================
+  // POSITIONNEMENT DES NOTES — ALGORITHMES GEOMETRIQUES
+  // ===========================================================================
+
+  /**
+   * Calcule la position d'une note tonale sur l'anneau principal.
+   *
+   * Algorithme de disposition alternee gauche/droite, identique au configurateur :
+   *   - Les notes sont reparties en alternant cote droit et cote gauche
+   *   - La derniere note est toujours placee en bas (90 degres)
+   *   - Le comportement differe selon la parite du nombre total de notes
+   *
+   * Pour un nombre pair de tonales :
+   *   - La premiere note est en haut (270 degres)
+   *   - Les notes intermediaires alternent droite (315+) et gauche (225-)
+   *   - La derniere note est en bas (90 degres)
+   *
+   * Pour un nombre impair de tonales :
+   *   - Les notes alternent directement droite (290+) et gauche (250-)
+   *   - La derniere note est en bas (90 degres)
+   *
+   * Les angles sont en degres trigonometriques (0=droite, 90=haut, 180=gauche, 270=bas)
+   * mais l'axe Y SVG est inverse, d'ou le `center - sin(angle)` dans le retour.
+   *
+   * @param {number} index - Index de la note dans la liste des tonales
+   * @param {number} total - Nombre total de tonales
+   * @param {number} radius - Rayon de l'anneau des tonales
+   * @param {number} center - Coordonnee du centre du SVG
+   * @returns {{x: number, y: number}} Position SVG de la note
+   * @private
+   */
   _getTonalPosition(index, total, radius, center) {
     let angleDeg;
     const lastIndex = total - 1;
@@ -486,6 +791,7 @@ class HandpanPlayer {
       let adjustedIndex, middleCount, isRight, sideIndex, notesPerSide;
 
       if (isEvenTotal) {
+        // Nombre pair : la 1ere note est en haut, on distribue le reste en alternant
         adjustedIndex = index - 1;
         middleCount = total - 2;
         isRight = (adjustedIndex % 2 === 1);
@@ -493,24 +799,29 @@ class HandpanPlayer {
         notesPerSide = Math.ceil(middleCount / 2);
 
         if (isRight) {
+          // Cote droit : de 315 degres vers le bas
           const step = notesPerSide > 1 ? 90 / (notesPerSide - 1) : 0;
           angleDeg = 315 + sideIndex * step;
           if (angleDeg >= 360) angleDeg -= 360;
         } else {
+          // Cote gauche : de 225 degres vers le bas
           const step = notesPerSide > 1 ? 90 / (notesPerSide - 1) : 0;
           angleDeg = 225 - sideIndex * step;
         }
       } else {
+        // Nombre impair : alternance directe droite/gauche
         isRight = (index % 2 === 0);
         sideIndex = Math.floor(index / 2);
         notesPerSide = Math.ceil((total - 1) / 2);
 
         if (isRight) {
+          // Cote droit : plage de 120 degres depuis 290 degres
           const range = 120;
           const step = notesPerSide > 1 ? range / (notesPerSide - 1) : 0;
           angleDeg = 290 + sideIndex * step;
           if (angleDeg >= 360) angleDeg -= 360;
         } else {
+          // Cote gauche : plage de 120 degres depuis 250 degres
           const range = 120;
           const step = notesPerSide > 1 ? range / (notesPerSide - 1) : 0;
           angleDeg = 250 - sideIndex * step;
@@ -518,6 +829,7 @@ class HandpanPlayer {
       }
     }
 
+    // Conversion degres -> coordonnees SVG (Y inverse car SVG a l'axe Y vers le bas)
     const angleRad = angleDeg * Math.PI / 180;
     return {
       x: center + Math.cos(angleRad) * radius,
@@ -525,11 +837,25 @@ class HandpanPlayer {
     };
   }
 
-  // Mutant positioning (arc at top of shell)
+  /**
+   * Calcule la position d'une note mutant sur l'arc superieur de la coque.
+   *
+   * Les mutants sont disposes en arc de cercle dans la partie haute du handpan,
+   * entre le ding et les tonales. L'arc s'elargit avec le nombre de notes
+   * (de 40 degres pour 1 note a 120 degres max pour plusieurs).
+   *
+   * @param {number} index - Index du mutant dans la liste
+   * @param {number} total - Nombre total de mutants
+   * @param {number} radius - Rayon de l'anneau des mutants
+   * @param {number} center - Coordonnee du centre du SVG
+   * @returns {{x: number, y: number}} Position SVG du mutant
+   * @private
+   */
   _getMutantPosition(index, total, radius, center) {
     if (total === 1) {
       return { x: center, y: center - radius };
     }
+    // Largeur de l'arc proportionnelle au nombre de mutants (40 + 30 par note, max 120)
     const arcSpread = Math.min(120, 40 + (total - 1) * 30);
     const startAngle = 90 + arcSpread / 2;
     const step = arcSpread / (total - 1);
@@ -542,11 +868,26 @@ class HandpanPlayer {
     };
   }
 
-  // Bottom positioning (arc at bottom of shell)
+  /**
+   * Calcule la position d'une note bottom sur l'arc inferieur (sous la coque).
+   *
+   * Les bottoms sont disposes en arc de cercle dans la partie basse,
+   * au-dela du rayon de la coque, representant les notes situees physiquement
+   * sous l'instrument. L'arc s'elargit avec le nombre de notes
+   * (de 40 degres pour 1 note a 140 degres max pour plusieurs).
+   *
+   * @param {number} index - Index du bottom dans la liste
+   * @param {number} total - Nombre total de bottoms
+   * @param {number} radius - Rayon de l'anneau des bottoms
+   * @param {number} center - Coordonnee du centre du SVG
+   * @returns {{x: number, y: number}} Position SVG du bottom
+   * @private
+   */
   _getBottomPosition(index, total, radius, center) {
     if (total === 1) {
       return { x: center, y: center + radius };
     }
+    // Largeur de l'arc proportionnelle au nombre de bottoms (40 + 25 par note, max 140)
     const arcSpread = Math.min(140, 40 + (total - 1) * 25);
     const startAngle = 270 - arcSpread / 2;
     const step = arcSpread / (total - 1);
@@ -559,18 +900,33 @@ class HandpanPlayer {
     };
   }
 
+  /**
+   * Calcule les positions des notes pour le mode "gamme" simple (non-type).
+   *
+   * Disposition :
+   * - Le Ding (index 0) est place au centre-haut, a mi-distance du rayon interieur
+   * - Les notes restantes sont disposees en cercle sur le rayon exterieur
+   * - L'alternance gauche/droite simule la disposition physique d'un vrai handpan
+   *   (notes basses en haut, notes hautes en bas, en zigzag)
+   *
+   * @param {number} noteCount - Nombre total de notes (ding inclus)
+   * @param {number} center - Coordonnee du centre du SVG
+   * @param {number} outerRadius - Rayon du cercle des notes peripheriques
+   * @param {number} innerRadius - Rayon de la zone centrale (pour le ding)
+   * @returns {Array<{x: number, y: number}>} Tableau des positions pour chaque note
+   */
   calculateNotePositions(noteCount, center, outerRadius, innerRadius) {
     const positions = [];
 
-    // First note (Ding) is always in the center-top
+    // Ding (premiere note) : place au centre-haut
     positions.push({ x: center, y: center - innerRadius * 0.5 });
 
-    // Remaining notes arranged in a circle
+    // Notes peripheriques : disposees en cercle avec alternance gauche/droite
     const remainingNotes = noteCount - 1;
-    const startAngle = -Math.PI / 2 + Math.PI / remainingNotes; // Start from top-right
+    const startAngle = -Math.PI / 2 + Math.PI / remainingNotes; // Depart depuis le haut-droit
 
     for (let i = 0; i < remainingNotes; i++) {
-      // Alternate between left and right, going down
+      // Alternance : indices pairs a droite, impairs a gauche (zigzag descendant)
       const index = i % 2 === 0 ? Math.floor(i / 2) : remainingNotes - 1 - Math.floor(i / 2);
       const angle = startAngle + (index * 2 * Math.PI / remainingNotes);
 
@@ -583,6 +939,18 @@ class HandpanPlayer {
     return positions;
   }
 
+  // ===========================================================================
+  // SELECTEUR DE GAMMES
+  // ===========================================================================
+
+  /**
+   * Genere le HTML du selecteur de gammes (boutons radio visuels).
+   *
+   * Chaque bouton affiche le nom de la gamme et porte un title avec sa description.
+   * La gamme courante est marquee avec la classe 'active'.
+   *
+   * @returns {string} Fragment HTML du selecteur de gammes
+   */
   renderScaleSelector() {
     return `
       <div class="handpan-scale-selector">
@@ -602,6 +970,24 @@ class HandpanPlayer {
     `;
   }
 
+  // ===========================================================================
+  // STYLES CSS — INJECTION DYNAMIQUE
+  // ===========================================================================
+
+  /**
+   * Injecte les styles CSS du composant dans le <head> du document.
+   *
+   * Les styles ne sont injectes qu'une seule fois (verifie l'ID 'handpan-player-styles').
+   * Cela permet a plusieurs instances de coexister sans dupliquer les styles.
+   *
+   * Le CSS utilise des variables CSS pour la personnalisation :
+   *   - --accent-color : couleur d'accentuation (boutons actifs, mood)
+   *   - --size : taille du player
+   *
+   * Z-index respecte l'echelle du design system :
+   *   - 499 : overlay du mode agrandi (--z-player-overlay)
+   *   - 500 : player en mode agrandi (--z-player-enlarged)
+   */
   addStyles() {
     if (document.getElementById('handpan-player-styles')) return;
 
@@ -621,7 +1007,7 @@ class HandpanPlayer {
         left: 50%;
         transform: translate(-50%, -50%);
         max-width: 90vmin;
-        z-index: 1000;
+        z-index: 500; /* --z-player-enlarged */
         background: rgba(255,255,255,0.98);
         padding: 2rem;
         border-radius: 1rem;
@@ -637,7 +1023,8 @@ class HandpanPlayer {
         position: fixed;
         inset: 0;
         background: rgba(0,0,0,0.5);
-        z-index: 999;
+        z-index: 499; /* --z-player-overlay */
+        -webkit-backdrop-filter: blur(4px);
         backdrop-filter: blur(4px);
       }
 
@@ -693,7 +1080,7 @@ class HandpanPlayer {
       .handpan-visual svg {
         display: block;
         filter: drop-shadow(0 8px 24px rgba(0,0,0,0.15));
-        touch-action: manipulation;
+        touch-action: none;
       }
 
       .note-group {
@@ -721,7 +1108,7 @@ class HandpanPlayer {
         100% { transform: scale(1); }
       }
 
-      /* Wave animation */
+      /* Animation d'ondes circulaires au toucher d'une note */
       .wave-ring {
         fill: none;
         stroke: rgba(255,255,255,0.6);
@@ -832,7 +1219,7 @@ class HandpanPlayer {
         flex-shrink: 0;
       }
 
-      /* Legend for typed notes */
+      /* Legende pour les notes typees (tonales, mutants, bottoms) */
       .handpan-legend {
         display: flex;
         justify-content: center;
@@ -859,61 +1246,105 @@ class HandpanPlayer {
       .legend-dot--mutant { background: #B8B8B8; border: 1px solid #787878; }
       .legend-dot--bottom { background: #505050; border: 1px solid #505050; }
 
-      /* Typed note styles */
+      /* Style specifique des notes mutant (opacite reduite) */
       .note-mutant { opacity: 0.85; }
     `;
 
     document.head.appendChild(styles);
   }
 
+  // ===========================================================================
+  // EVENEMENTS — GESTION DES INTERACTIONS UTILISATEUR
+  // ===========================================================================
+
+  /**
+   * Attache tous les gestionnaires d'evenements du player.
+   *
+   * Evenements geres :
+   * - pointerdown sur le SVG : clic/touch sur une note (unifie souris + tactile)
+   * - touchstart sur le SVG : support multi-touch (accords a plusieurs doigts)
+   * - click sur les boutons de gamme : changement de gamme
+   * - click sur le bouton play : lecture sequentielle de la gamme
+   * - click sur le bouton resize : mode agrandi/reduit
+   *
+   * Chaque gestionnaire est stocke dans this.boundHandlers pour un
+   * nettoyage fiable via unbindEvents().
+   */
   bindEvents() {
-    // Clear previous handlers
+    // Nettoyer les gestionnaires precedents (evite les doublons apres re-rendu)
     this.unbindEvents();
 
     const svg = this.container.querySelector('svg');
     if (!svg) return;
 
-    // Use pointer events for unified touch/mouse handling
-    const handlePointerDown = (e) => {
-      const noteGroup = e.target.closest('.note-group');
-      if (!noteGroup) return;
+    // --- Tactile : touchstart non-passif pour multi-touch rapide ---
+    // On utilise touchstart comme handler principal sur tactile,
+    // et pointerdown uniquement pour la souris (desktop).
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
-      // Prevent double-firing on touch devices
-      if (e.pointerType === 'touch') {
+    if (isTouchDevice) {
+      // Touch : handler non-passif pour pouvoir preventDefault (evite le scroll)
+      const handleTouchStart = (e) => {
+        let triggered = false;
+        Array.from(e.changedTouches).forEach(touch => {
+          const element = document.elementFromPoint(touch.clientX, touch.clientY);
+          const noteGroup = element?.closest('.note-group');
+          if (noteGroup) {
+            triggered = true;
+            const note = noteGroup.dataset.note;
+            this.triggerNote(noteGroup, note);
+          }
+        });
+        // Empecher le scroll et le zoom si on a touche une note
+        if (triggered) e.preventDefault();
+      };
+
+      svg.addEventListener('touchstart', handleTouchStart, { passive: false });
+      this.boundHandlers.set('svg-touchstart', { element: svg, event: 'touchstart', handler: handleTouchStart });
+
+      // Touchmove : detecter le glissement sur d'autres notes (slide entre notes)
+      const recentlyTriggered = new Set();
+      const handleTouchMove = (e) => {
+        Array.from(e.changedTouches).forEach(touch => {
+          const element = document.elementFromPoint(touch.clientX, touch.clientY);
+          const noteGroup = element?.closest('.note-group');
+          if (noteGroup) {
+            const note = noteGroup.dataset.note;
+            const key = touch.identifier + '-' + note;
+            if (!recentlyTriggered.has(key)) {
+              recentlyTriggered.add(key);
+              this.triggerNote(noteGroup, note);
+              // Autoriser re-declenchement apres 150ms
+              setTimeout(() => recentlyTriggered.delete(key), 150);
+            }
+          }
+        });
         e.preventDefault();
-      }
+      };
 
-      const note = noteGroup.dataset.note;
-      this.triggerNote(noteGroup, note);
-    };
+      svg.addEventListener('touchmove', handleTouchMove, { passive: false });
+      this.boundHandlers.set('svg-touchmove', { element: svg, event: 'touchmove', handler: handleTouchMove });
+    } else {
+      // Desktop : pointerdown pour la souris
+      const handlePointerDown = (e) => {
+        const noteGroup = e.target.closest('.note-group');
+        if (!noteGroup) return;
+        const note = noteGroup.dataset.note;
+        this.triggerNote(noteGroup, note);
+      };
 
-    svg.addEventListener('pointerdown', handlePointerDown);
-    this.boundHandlers.set('svg-pointerdown', { element: svg, event: 'pointerdown', handler: handlePointerDown });
+      svg.addEventListener('pointerdown', handlePointerDown);
+      this.boundHandlers.set('svg-pointerdown', { element: svg, event: 'pointerdown', handler: handlePointerDown });
+    }
 
-    // Multi-touch support
-    const handleTouchStart = (e) => {
-      // Allow multi-touch - process all touch points
-      Array.from(e.changedTouches).forEach(touch => {
-        const element = document.elementFromPoint(touch.clientX, touch.clientY);
-        const noteGroup = element?.closest('.note-group');
-        if (noteGroup) {
-          const note = noteGroup.dataset.note;
-          this.triggerNote(noteGroup, note);
-        }
-      });
-    };
-
-    svg.addEventListener('touchstart', handleTouchStart, { passive: true });
-    this.boundHandlers.set('svg-touchstart', { element: svg, event: 'touchstart', handler: handleTouchStart });
-
-    // Scale selector
+    // --- Selecteur de gammes ---
     this.container.querySelectorAll('.handpan-scale-btn').forEach((btn, index) => {
       const handler = () => this.setScale(btn.dataset.scale);
       btn.addEventListener('click', handler);
       this.boundHandlers.set(`scale-btn-${index}`, { element: btn, event: 'click', handler });
     });
 
-    // Play scale button
+    // --- Bouton lecture sequentielle ---
     const playBtn = this.container.querySelector('.handpan-btn-play');
     if (playBtn) {
       const playHandler = () => this.togglePlayScale();
@@ -921,7 +1352,7 @@ class HandpanPlayer {
       this.boundHandlers.set('play-btn', { element: playBtn, event: 'click', handler: playHandler });
     }
 
-    // Resize button
+    // --- Bouton agrandir/reduire ---
     const resizeBtn = this.container.querySelector('.handpan-btn-resize');
     if (resizeBtn) {
       const resizeHandler = () => this.toggleEnlarged();
@@ -930,6 +1361,11 @@ class HandpanPlayer {
     }
   }
 
+  /**
+   * Detache tous les gestionnaires d'evenements precedemment attaches.
+   * Appele avant chaque bindEvents() pour eviter les doublons,
+   * et lors de la destruction de l'instance.
+   */
   unbindEvents() {
     this.boundHandlers.forEach(({ element, event, handler }) => {
       element.removeEventListener(event, handler);
@@ -937,7 +1373,23 @@ class HandpanPlayer {
     this.boundHandlers.clear();
   }
 
-  // Unified note trigger with haptics and wave animation
+  // ===========================================================================
+  // INTERACTION — DECLENCHEMENT DE NOTE ET EFFETS
+  // ===========================================================================
+
+  /**
+   * Declencheur unifie pour jouer une note avec tous ses effets associes.
+   *
+   * Enchaine dans l'ordre :
+   * 1. Initialisation du contexte audio (si premier clic)
+   * 2. Lecture de l'echantillon audio
+   * 3. Animation visuelle de pulsation sur la note
+   * 4. Animation d'ondes circulaires (si activee)
+   * 5. Retour haptique par vibration (si active et supporte)
+   *
+   * @param {SVGGElement} noteGroup - Element SVG <g> de la note cliquee
+   * @param {string} note - Nom de la note (ex: "D3", "Bb3")
+   */
   triggerNote(noteGroup, note) {
     this.initAudioContext();
     this.playNote(note);
@@ -952,24 +1404,40 @@ class HandpanPlayer {
     }
   }
 
-  // Haptic feedback for mobile
+  /**
+   * Declenche un retour haptique (vibration courte) sur les appareils mobiles.
+   * Utilise l'API Vibration si disponible (15ms — discret mais perceptible).
+   */
   triggerHaptic() {
     if ('vibrate' in navigator) {
       navigator.vibrate(15);
     }
   }
 
-  // Wave animation from note
+  /**
+   * Cree une animation d'onde circulaire emanant d'une note touchee.
+   *
+   * L'onde est un cercle SVG qui s'agrandit (scale x3) et disparait (opacity 0)
+   * en 600ms. Elle est ajoutee au conteneur <g class="wave-container"> du SVG
+   * et supprimee automatiquement apres l'animation.
+   *
+   * Le rayon initial de l'onde correspond au rayon de la note touchee
+   * (plus grand pour le ding central).
+   *
+   * @param {SVGGElement} noteGroup - Element SVG <g> de la note source
+   */
   createWaveAnimation(noteGroup) {
     const svg = this.container.querySelector('svg');
     const waveContainer = svg.querySelector('.wave-container');
     if (!waveContainer) return;
 
+    // Recuperer les coordonnees de la note depuis ses data-attributes
     const x = parseFloat(noteGroup.dataset.x);
     const y = parseFloat(noteGroup.dataset.y);
     const isCenter = noteGroup.dataset.index === '0';
     const baseRadius = isCenter ? this.options.size * 0.09 * 1.3 : this.options.size * 0.09;
 
+    // Creer l'element cercle SVG pour l'onde
     const wave = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     wave.setAttribute('cx', x);
     wave.setAttribute('cy', y);
@@ -980,7 +1448,7 @@ class HandpanPlayer {
 
     waveContainer.appendChild(wave);
 
-    // Cleanup after animation
+    // Supprimer l'onde du DOM apres la fin de l'animation (600ms)
     const timeoutId = setTimeout(() => {
       wave.remove();
       this.activeTimeouts.delete(timeoutId);
@@ -988,52 +1456,15 @@ class HandpanPlayer {
     this.activeTimeouts.add(timeoutId);
   }
 
-  // Toggle enlarged view
-  toggleEnlarged() {
-    const player = this.container.querySelector('.handpan-player');
-    const isEnlarged = player.classList.contains('enlarged');
-
-    if (isEnlarged) {
-      // Remove overlay
-      const overlay = document.querySelector('.handpan-overlay');
-      if (overlay) overlay.remove();
-      player.classList.remove('enlarged');
-    } else {
-      // Add overlay
-      const overlay = document.createElement('div');
-      overlay.className = 'handpan-overlay';
-      overlay.addEventListener('click', () => this.toggleEnlarged());
-      document.body.appendChild(overlay);
-      player.classList.add('enlarged');
-    }
-
-    // Re-bind events for new SVG size context
-    this.bindEvents();
-  }
-
-  playNote(noteName) {
-    const fileName = this.noteToFileName(noteName);
-
-    // Check cache
-    if (this.audioCache[fileName]) {
-      const audio = this.audioCache[fileName].cloneNode();
-      audio.volume = 0.7;
-      this.activeAudioClones.add(audio);
-      audio.addEventListener('ended', () => {
-        this.activeAudioClones.delete(audio);
-        audio.src = '';
-      }, { once: true });
-      audio.play().catch(e => console.warn('Erreur lecture audio:', e));
-      return;
-    }
-
-    // Load and play
-    const audio = new Audio(`${this.audioPath}${fileName}${this.audioExt}`);
-    audio.volume = 0.7;
-    this.audioCache[fileName] = audio;
-    audio.play().catch(e => console.warn('Erreur lecture audio:', e));
-  }
-
+  /**
+   * Anime visuellement une note (pulsation de 400ms).
+   *
+   * Ajoute la classe CSS 'active' qui declenche l'animation note-pulse
+   * (scale 1 -> 1.05 -> 1 avec remplissage blanc). La classe est retiree
+   * automatiquement apres 400ms.
+   *
+   * @param {SVGGElement} noteGroup - Element SVG <g> de la note a animer
+   */
   animateNote(noteGroup) {
     noteGroup.classList.add('active');
     const timeoutId = setTimeout(() => {
@@ -1043,7 +1474,51 @@ class HandpanPlayer {
     this.activeTimeouts.add(timeoutId);
   }
 
-  // Toggle play/stop for scale playback
+  // ===========================================================================
+  // MODE AGRANDI (FULLSCREEN-LIKE)
+  // ===========================================================================
+
+  /**
+   * Bascule entre le mode normal et le mode agrandi du player.
+   *
+   * En mode agrandi :
+   * - Un overlay semi-transparent avec flou est ajoute derriere le player
+   * - Le player passe en position fixe centree (z-index 500)
+   * - Le SVG est agrandi a min(500px, 80vmin)
+   * - L'icone du bouton resize est pivotee a 180 degres
+   * - Un clic sur l'overlay ferme le mode agrandi
+   *
+   * Apres chaque bascule, les evenements sont re-attaches car le DOM a change.
+   */
+  toggleEnlarged() {
+    const player = this.container.querySelector('.handpan-player');
+    const isEnlarged = player.classList.contains('enlarged');
+
+    if (isEnlarged) {
+      // Fermer le mode agrandi : retirer l'overlay et la classe
+      const overlay = document.querySelector('.handpan-overlay');
+      if (overlay) overlay.remove();
+      player.classList.remove('enlarged');
+    } else {
+      // Ouvrir le mode agrandi : ajouter overlay + classe
+      const overlay = document.createElement('div');
+      overlay.className = 'handpan-overlay';
+      overlay.addEventListener('click', () => this.toggleEnlarged());
+      document.body.appendChild(overlay);
+      player.classList.add('enlarged');
+    }
+
+    // Re-attacher les evenements apres le changement de contexte SVG
+    this.bindEvents();
+  }
+
+  // ===========================================================================
+  // LECTURE SEQUENTIELLE — ARPEGE AUTOMATIQUE
+  // ===========================================================================
+
+  /**
+   * Bascule entre lecture et arret de la gamme (toggle play/stop).
+   */
   togglePlayScale() {
     if (this.isPlaying) {
       this.stopPlayScale();
@@ -1052,6 +1527,12 @@ class HandpanPlayer {
     }
   }
 
+  /**
+   * Arrete la lecture sequentielle en cours.
+   *
+   * Utilise l'AbortController pour interrompre la boucle async de playScale().
+   * Remet le bouton play dans son etat initial.
+   */
   stopPlayScale() {
     this.isPlaying = false;
     if (this.playAbortController) {
@@ -1066,18 +1547,35 @@ class HandpanPlayer {
     }
   }
 
+  /**
+   * Joue la gamme complete de maniere sequentielle (arpege montant puis descendant).
+   *
+   * Sequence de lecture :
+   * 1. Arpege montant : chaque note jouee avec 300ms d'intervalle
+   * 2. Pause de 500ms au sommet
+   * 3. Arpege descendant : retour en arriere avec 250ms d'intervalle
+   *    (exclut la derniere note pour eviter la repetition)
+   *
+   * La lecture est interruptible a tout moment via stopPlayScale() grace
+   * a un AbortController. Chaque point d'attente verifie le signal d'abort.
+   *
+   * Un mapping note -> element DOM est construit au prealable pour un lookup
+   * fiable (supporte les noms internes ET les noms affiches).
+   *
+   * @returns {Promise<void>}
+   */
   async playScale() {
     if (this.isPlaying) return;
 
     const notes = this._getNoteNames();
     const playBtn = this.container.querySelector('.handpan-btn-play');
 
-    // Build a map of note name -> DOM element for reliable lookup
+    // Construire une map nom de note -> element DOM pour un lookup fiable
+    // On mappe a la fois le nom interne (data-note) et le nom affiche
     const noteGroupMap = {};
     this.container.querySelectorAll('.note-group').forEach(g => {
       const noteName = g.dataset.note;
       if (noteName) {
-        // Map both internal name and display name
         noteGroupMap[noteName] = g;
         noteGroupMap[this._toDisplayName(noteName)] = g;
       }
@@ -1093,7 +1591,7 @@ class HandpanPlayer {
     }
 
     try {
-      // Play each note with delay
+      // Phase 1 : arpege montant (du ding vers la note la plus aigue)
       for (let i = 0; i < notes.length; i++) {
         if (signal.aborted) return;
         await this.delay(300);
@@ -1102,8 +1600,10 @@ class HandpanPlayer {
         if (group) this.triggerNote(group, notes[i]);
       }
 
-      // Play a simple arpeggio back down
+      // Pause au sommet de l'arpege
       await this.delay(500);
+
+      // Phase 2 : arpege descendant (retour vers le ding, sans repeter la derniere note)
       for (let i = notes.length - 2; i >= 0; i--) {
         if (signal.aborted) return;
         await this.delay(250);
@@ -1116,6 +1616,20 @@ class HandpanPlayer {
     }
   }
 
+  /**
+   * Utilitaire de delai asynchrone avec support d'annulation.
+   *
+   * Retourne une Promise qui se resout apres le delai specifie,
+   * ou se rejette avec une DOMException 'AbortError' si le
+   * playAbortController est signale pendant l'attente.
+   *
+   * Le timeout est enregistre dans activeTimeouts pour un nettoyage
+   * fiable lors de la destruction de l'instance.
+   *
+   * @param {number} ms - Delai en millisecondes
+   * @returns {Promise<void>}
+   * @throws {DOMException} AbortError si la lecture est interrompue
+   */
   delay(ms) {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
@@ -1124,7 +1638,7 @@ class HandpanPlayer {
       }, ms);
       this.activeTimeouts.add(timeoutId);
 
-      // Support abort
+      // Ecouter le signal d'abort pour interrompre le delai
       if (this.playAbortController) {
         this.playAbortController.signal.addEventListener('abort', () => {
           clearTimeout(timeoutId);
@@ -1135,10 +1649,23 @@ class HandpanPlayer {
     });
   }
 
+  // ===========================================================================
+  // API PUBLIQUE — SELECTION DE GAMME, TAILLE, ETAT
+  // ===========================================================================
+
+  /**
+   * Change la gamme active du player.
+   *
+   * Arrete toute lecture en cours, met a jour la gamme, re-rend le SVG,
+   * re-attache les evenements, pre-charge les echantillons audio,
+   * et emet un evenement 'scalechange' pour les ecouteurs externes.
+   *
+   * @param {string} scaleKey - Cle de la nouvelle gamme (ex: 'kurd', 'hijaz')
+   */
   setScale(scaleKey) {
     if (!this.scales[scaleKey]) return;
 
-    // Stop any playing sequence
+    // Arreter toute lecture sequentielle en cours
     this.stopPlayScale();
 
     this.currentScale = scaleKey;
@@ -1146,12 +1673,18 @@ class HandpanPlayer {
     this.bindEvents();
     this.preloadCurrentScale();
 
-    // Dispatch event for external listeners
+    // Emettre un evenement personnalise pour les composants externes
     this.container.dispatchEvent(new CustomEvent('scalechange', {
       detail: { scale: scaleKey, scaleData: this.scales[scaleKey] }
     }));
   }
 
+  /**
+   * Retourne les informations de la gamme actuellement selectionnee.
+   *
+   * @returns {{key: string, name: string, description: string, mood: string, notes: string[]}}
+   *   Objet contenant la cle et les donnees de la gamme active
+   */
   getScale() {
     return {
       key: this.currentScale,
@@ -1159,64 +1692,125 @@ class HandpanPlayer {
     };
   }
 
-  // Update size dynamically
+  /**
+   * Met a jour dynamiquement la taille du player et re-rend le SVG.
+   *
+   * @param {number} newSize - Nouvelle taille en pixels
+   */
   setSize(newSize) {
     this.options.size = newSize;
     this.render();
     this.bindEvents();
   }
 
-  // Cleanup method to prevent memory leaks
+  // ===========================================================================
+  // DESTRUCTION — NETTOYAGE MEMOIRE
+  // ===========================================================================
+
+  /**
+   * Detruit completement l'instance du player et libere toutes les ressources.
+   *
+   * Operations de nettoyage :
+   * 1. Arrete toute lecture sequentielle en cours
+   * 2. Annule tous les timeouts actifs (animations, delais)
+   * 3. Detache tous les gestionnaires d'evenements (SVG, boutons)
+   * 4. Retire l'ecouteur global de changement de notation
+   * 5. Supprime l'overlay du mode agrandi si present
+   * 6. Arrete et libere tous les clones audio en cours de lecture
+   * 7. Vide le cache audio (arrete et libere chaque echantillon)
+   * 8. Vide le conteneur DOM
+   * 9. Ferme le contexte Web Audio API
+   *
+   * Appeler cette methode est essentiel pour eviter les fuites memoire
+   * quand le player est retire de la page (SPA, changement de gamme
+   * dans le configurateur, etc.).
+   */
   destroy() {
-    // Stop playback
+    // 1. Arreter la lecture sequentielle
     this.stopPlayScale();
 
-    // Clear all timeouts
+    // 2. Annuler tous les timeouts actifs
     this.activeTimeouts.forEach(id => clearTimeout(id));
     this.activeTimeouts.clear();
 
-    // Remove event listeners
+    // 3. Detacher tous les event listeners
     this.unbindEvents();
     if (this._onNotationChange) {
       window.removeEventListener('notation-mode-change', this._onNotationChange);
     }
 
-    // Remove overlay if enlarged
+    // 4. Supprimer l'overlay du mode agrandi
     const overlay = document.querySelector('.handpan-overlay');
     if (overlay) overlay.remove();
 
-    // Clean up active audio clones
+    // 5. Arreter et liberer les clones audio actifs
     this.activeAudioClones.forEach(a => { a.pause(); a.src = ''; });
     this.activeAudioClones.clear();
 
-    // Clear audio cache
+    // 6. Vider le cache audio
     Object.values(this.audioCache).forEach(audio => {
       audio.pause();
       audio.src = '';
     });
     this.audioCache = {};
 
-    // Clear container
+    // 7. Vider le conteneur DOM
     this.container.innerHTML = '';
 
-    // Close audio context if we own it
+    // 8. Fermer le contexte Web Audio API
     if (this.audioContext && this.audioContext.state !== 'closed') {
       this.audioContext.close().catch(() => {});
     }
   }
 
-  // ── Static: Parse a notes_layout string into typed note objects ──
-  // Layout format: "D/-A-Bb-C-D-E-F-G-A_" or "D/(F)-(G)-A-Bb-C-D-E-F-G-A-C-[D]"
-  // Returns array of {name: "D3", type: "ding"|"tonal"|"mutant"|"bottom"}
+  // ===========================================================================
+  // METHODE STATIQUE — PARSING DE LAYOUT (notes_layout)
+  // ===========================================================================
+
+  /**
+   * Parse une chaine notes_layout en tableau d'objets notes types.
+   *
+   * Format du layout :
+   *   "D/A-Bb-C-D-E-F-G-A"            -> ding + tonales simples
+   *   "D/A-Bb-C-D-E-F-G-A_"           -> trailing underscore ignore
+   *   "D/(F)-(G)-A-Bb-C-D-E-F-G-A-C"  -> (parentheses) = bottoms
+   *   "D/[E]-A-Bb-C-D-E-F-G-A"        -> [crochets] = mutants
+   *   "D3/A3-Bb3-C4-D4-E4-F4-G4-A4"   -> octaves explicites
+   *
+   * Algorithme de resolution des octaves :
+   * - Si une note a un numero d'octave explicite, il est utilise directement
+   * - Sinon, l'algorithme infere l'octave en suivant le chromatisme :
+   *   - Pour les tonales/mutants : quand l'index chromatique d'une note est
+   *     inferieur ou egal a celui de la note precedente, on incremente l'octave
+   *     (la gamme monte naturellement)
+   *   - Pour les bottoms : l'octave est independant des tonales
+   * - Le ding definit l'octave de reference (defaut: 3 si non precise)
+   *
+   * Separateurs acceptes : tiret (-) ou espace
+   *
+   * @param {string} layout - Chaine notes_layout a parser
+   * @returns {Array<{name: string, type: string}>|null}
+   *   Tableau d'objets {name: "D3", type: "ding"|"tonal"|"mutant"|"bottom"}
+   *   ou null si le layout est invalide ou vide
+   * @static
+   */
   static parseLayout(layout) {
     if (!layout || typeof layout !== 'string') return null;
 
+    /** Noms des 12 notes chromatiques (utilises pour calculer les index et inferer les octaves) */
     const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+    /** Table de conversion bemols -> dieses enharmoniques */
     const FLATS_TO_SHARPS = {
       'Db': 'C#', 'Eb': 'D#', 'Fb': 'E', 'Gb': 'F#',
       'Ab': 'G#', 'Bb': 'A#', 'Cb': 'B'
     };
 
+    /**
+     * Normalise un nom de note en remplacant les bemols par leurs dieses enharmoniques.
+     * @param {string} str - Nom de note potentiellement avec bemol
+     * @returns {string} Nom de note normalise avec diese
+     */
     function normalizeNote(str) {
       for (const [flat, sharp] of Object.entries(FLATS_TO_SHARPS)) {
         if (str.startsWith(flat)) return str.replace(flat, sharp);
@@ -1224,6 +1818,11 @@ class HandpanPlayer {
       return str;
     }
 
+    /**
+     * Parse une chaine de note en ses composants (nom + octave optionnelle).
+     * @param {string} str - Chaine de note (ex: "C#4", "Bb", "D3")
+     * @returns {{note: string, octave: number|null}|null} Composants parses ou null si invalide
+     */
     function parseNoteStr(str) {
       str = normalizeNote(str);
       const m = str.match(/^([A-G]#?)(\d)?$/);
@@ -1231,25 +1830,26 @@ class HandpanPlayer {
       return { note: m[1], octave: m[2] ? parseInt(m[2]) : null };
     }
 
-    // Clean up
+    // Nettoyage : retirer le underscore trailing et les espaces superflus
     let cleaned = layout.replace(/_$/, '').replace(/\s+/g, ' ').trim();
     const slashIdx = cleaned.indexOf('/');
     if (slashIdx === -1) return null;
 
-    // Parse ding (before /)
+    // --- Parsing du ding (partie avant le /) ---
     const dingStr = cleaned.substring(0, slashIdx).trim();
     const dingParsed = parseNoteStr(dingStr);
     if (!dingParsed) return null;
 
-    const rootOctave = dingParsed.octave || 3;
+    const rootOctave = dingParsed.octave || 3;  // Octave par defaut : 3
     const rootNote = dingParsed.note;
 
-    // Tokenize the rest
+    // --- Tokenisation de la partie apres le / ---
+    // Les parentheses () delimitent les bottoms, les crochets [] les mutants
     const notesPart = cleaned.substring(slashIdx + 1).trim();
     const tokens = [];
     let current = '';
-    let inParens = false;
-    let inBrackets = false;
+    let inParens = false;    // Dans des parentheses (bottom)
+    let inBrackets = false;  // Dans des crochets (mutant)
 
     for (let i = 0; i < notesPart.length; i++) {
       const ch = notesPart[i];
@@ -1266,6 +1866,7 @@ class HandpanPlayer {
         current += ']'; tokens.push(current.trim());
         current = ''; inBrackets = false;
       } else if ((ch === '-' || ch === ' ') && !inParens && !inBrackets) {
+        // Separateur (tiret ou espace) en dehors des delimiteurs
         if (current.trim()) tokens.push(current.trim());
         current = '';
       } else {
@@ -1276,29 +1877,32 @@ class HandpanPlayer {
 
     const results = [];
 
-    // Add ding
+    // Ajouter le ding comme premiere note
     results.push({
       name: rootNote + rootOctave,
       type: 'ding'
     });
 
-    // Track octave state
+    // --- Resolution automatique des octaves ---
+    // L'algorithme suit la progression chromatique : quand l'index d'une note
+    // est inferieur ou egal a la precedente, on monte d'une octave
     const rootIndex = NOTE_NAMES.indexOf(rootNote);
-    let tonalOctave = rootOctave;
-    let lastTonalIndex = rootIndex;
-    let isFirstTonal = true;
-    let bottomOctave = rootOctave;
+    let tonalOctave = rootOctave;     // Octave courante pour tonales/mutants
+    let lastTonalIndex = rootIndex;    // Dernier index chromatique (pour detection de wrap)
+    let isFirstTonal = true;           // La premiere tonale ne declenche pas d'increment
+    let bottomOctave = rootOctave;     // Octave independante pour les bottoms
 
     tokens.filter(t => t.length > 0).forEach(token => {
-      let type = 'tonal';
+      let type = 'tonal';  // Type par defaut
       let noteStr = token;
 
+      // Determiner le type selon les delimiteurs
       if (token.startsWith('(') && token.endsWith(')')) {
         type = 'bottom';
-        noteStr = token.slice(1, -1);
+        noteStr = token.slice(1, -1);  // Retirer les parentheses
       } else if (token.startsWith('[') && token.endsWith(']')) {
         type = 'mutant';
-        noteStr = token.slice(1, -1);
+        noteStr = token.slice(1, -1);  // Retirer les crochets
       }
 
       const parsed = parseNoteStr(noteStr);
@@ -1308,18 +1912,22 @@ class HandpanPlayer {
       const noteIndex = NOTE_NAMES.indexOf(parsed.note);
 
       if (noteOctave === null) {
+        // Octave non specifiee : inferer automatiquement
         if (type === 'tonal' || type === 'mutant') {
           if (isFirstTonal) {
             isFirstTonal = false;
           } else {
+            // Si l'index chromatique descend ou reste egal, on monte d'octave
             if (noteIndex <= lastTonalIndex) tonalOctave++;
           }
           noteOctave = tonalOctave;
           lastTonalIndex = noteIndex;
         } else {
+          // Les bottoms utilisent leur propre suivi d'octave
           noteOctave = bottomOctave;
         }
       } else {
+        // Octave explicite : mettre a jour le suivi pour les notes suivantes
         if (type === 'tonal' || type === 'mutant') {
           tonalOctave = noteOctave;
           lastTonalIndex = noteIndex;
@@ -1335,11 +1943,30 @@ class HandpanPlayer {
       });
     });
 
+    // Retourner null si seul le ding a ete parse (layout invalide ou incomplet)
     return results.length > 1 ? results : null;
   }
 }
 
-// Auto-init players with data attributes
+// =============================================================================
+// AUTO-INITIALISATION VIA ATTRIBUTS DATA-*
+// =============================================================================
+
+/**
+ * Initialise automatiquement un HandpanPlayer pour chaque element
+ * portant l'attribut `data-handpan-player` dans le DOM.
+ *
+ * Attributs data-* supportes :
+ *   - data-scale : cle de la gamme initiale (defaut: 'kurd')
+ *   - data-size : taille en pixels (defaut: 300)
+ *   - data-scale-selector : afficher le selecteur ('false' pour masquer)
+ *   - data-note-names : afficher les noms de notes ('false' pour masquer)
+ *   - data-haptics : activer le retour haptique ('false' pour desactiver)
+ *   - data-wave : activer l'animation d'ondes ('false' pour desactiver)
+ *
+ * Exemple HTML :
+ *   <div data-handpan-player data-scale="hijaz" data-size="400"></div>
+ */
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-handpan-player]').forEach(el => {
     new HandpanPlayer(el, {
@@ -1353,7 +1980,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Export for module usage
+// Export pour usage en tant que module CommonJS (tests Node, bundlers)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = HandpanPlayer;
 }

@@ -13,10 +13,7 @@
 
   const { $, $$, escapeHtml, formatPrice, formatDate, Toast, Confirm, Modal, Storage, utils } = window.AdminUIHelpers;
 
-  // État local du module
-  let mediaUploadedImage = null;
-  let articleUploadedImage = null;
-  let articleQuillEditor = null;
+  // État scopé par modal via AdminUI.getModalState()
 
   function renderProfesseurs() {
     // Rendu des demandes en attente
@@ -38,8 +35,8 @@
                 <div style="font-size: 0.875rem; color: var(--admin-text-muted);">${escapeHtml(t.location || '')}</div>
               </div>
               <div style="display: flex; gap: 0.5rem;">
-                <button class="admin-btn admin-btn--primary admin-btn--sm" onclick="AdminUI.approveTeacher('${t.id}')">Approuver</button>
-                <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.rejectTeacher('${t.id}')">Rejeter</button>
+                <button class="admin-btn admin-btn--primary admin-btn--sm" data-action="approve-teacher" data-id="${t.id}">Approuver</button>
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="reject-teacher" data-id="${t.id}">Rejeter</button>
               </div>
             </div>
           </div>
@@ -66,8 +63,8 @@
                 <div style="font-size: 0.875rem; color: var(--admin-text-muted);">${escapeHtml(t.location || '')}</div>
               </div>
               <div style="display: flex; gap: 0.5rem;">
-                <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editTeacher('${t.id}')">Modifier</button>
-                <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.deleteTeacher('${t.id}')">Supprimer</button>
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit-teacher" data-id="${t.id}">Modifier</button>
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="delete-teacher" data-id="${t.id}">Supprimer</button>
               </div>
             </div>
           </div>
@@ -104,45 +101,48 @@
         <div style="aspect-ratio: 1; overflow: hidden;">
           ${item.image ? `<img src="${item.image}" alt="${escapeHtml(item.titre || '')}" style="width: 100%; height: 100%; object-fit: cover;">` : 
             `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--admin-surface-hover);"><span style="font-size: 3rem; opacity: 0.3;">🖼️</span></div>`}
+          ${item.images && item.images.length > 1 ? `<span style="position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(0,0,0,0.7); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">&#128247; ${item.images.length}</span>` : ''}
           ${item.video ? `<span style="position: absolute; bottom: 0.5rem; left: 0.5rem; background: rgba(0,0,0,0.7); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">▶ Vidéo</span>` : ''}
         </div>
         <div style="padding: 0.75rem;">
           <div style="font-weight: 500; margin-bottom: 0.25rem;">${escapeHtml(item.titre || 'Sans titre')}</div>
           ${item.instrument ? `<div style="font-size: 0.8rem; color: var(--admin-text-muted);">${escapeHtml(item.instrument)}</div>` : ''}
           <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editMedia('${item.id}')">Modifier</button>
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.deleteMedia('${item.id}')">Supprimer</button>
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit-media" data-id="${item.id}">Modifier</button>
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="delete-media" data-id="${item.id}">Supprimer</button>
           </div>
         </div>
       </div>
     `).join('');
   }
 
-  // Variable pour l'upload de vidéo média (image déjà déclarée en haut du module)
-  let mediaUploadedVideo = null;
-
   function initMediaUpload() {
-    mediaUploadedImage = null;
-    mediaUploadedVideo = null;
-    
-    // Image upload
+    const mediaState = AdminUI.getModalState('media');
+    mediaState.uploadedImages = [];
+    mediaState.uploadedVideo = null;
+
+    // Image upload (multi-image support)
     const imageContainer = $('#media-image-upload');
     if (imageContainer && typeof MistralUpload !== 'undefined') {
       imageContainer.innerHTML = '';
       const input = MistralUpload.createUploadInput({
         id: 'media-image-file',
         acceptType: 'image',
-        onSelect: async (file) => {
-          const compress = isCompressionEnabled('media');
-          const base64 = await fileToBase64(file, compress, 'hero');
-          mediaUploadedImage = base64;
-          showMediaImagePreview(base64);
-          Toast.success('Image chargée');
+        multiple: true,
+        onSelect: async (files) => {
+          const fileList = files instanceof FileList ? Array.from(files) : (Array.isArray(files) ? files : [files]);
+          for (const file of fileList) {
+            const compress = (AdminUI.isCompressionEnabled ? AdminUI.isCompressionEnabled('media') : false);
+            const base64 = await AdminUI.fileToBase64(file, compress, 'hero');
+            mediaState.uploadedImages.push(base64);
+          }
+          showMediaImagesPreview(mediaState.uploadedImages);
+          Toast.success(fileList.length > 1 ? `${fileList.length} images chargées` : 'Image chargée');
         }
       });
       imageContainer.appendChild(input);
     }
-    
+
     // Clear previews
     if ($('#media-image-preview')) $('#media-image-preview').innerHTML = '';
     if ($('#media-video-preview')) $('#media-video-preview').innerHTML = '';
@@ -150,43 +150,73 @@
     if ($('#media-video-url')) $('#media-video-url').value = '';
   }
   
-  function showMediaImagePreview(src) {
+  function showMediaImagesPreview(images) {
     const container = $('#media-image-preview');
     if (!container) return;
-    container.innerHTML = `
-      <div class="upload-preview-item" style="width: 150px; height: 150px;">
-        <img src="${src}" alt="Preview">
-        <button type="button" class="upload-preview-remove" onclick="AdminUI.removeMediaImage()">×</button>
+    if (!images || images.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    container.innerHTML = images.map((src, index) => `
+      <div class="upload-preview-item" style="width: 100px; height: 100px; display: inline-block; position: relative; margin: 4px;">
+        <img src="${src}" alt="Preview ${index + 1}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">
+        <button type="button" class="upload-preview-remove" data-action="remove-media-image-at" data-param="${index}" style="position: absolute; top: -6px; right: -6px;">×</button>
+        ${index === 0 ? '<span style="position: absolute; bottom: 2px; left: 2px; background: var(--color-accent); color: white; font-size: 0.65rem; padding: 1px 4px; border-radius: 3px;">Cover</span>' : ''}
       </div>
-    `;
+    `).join('');
+  }
+
+  // Backward compat alias
+  function showMediaImagePreview(src) {
+    showMediaImagesPreview(src ? [src] : []);
   }
   
+  function removeMediaImageAt(index) {
+    const images = AdminUI.getModalState('media').uploadedImages || [];
+    const idx = parseInt(index, 10);
+    if (idx >= 0 && idx < images.length) {
+      images.splice(idx, 1);
+    }
+    showMediaImagesPreview(images);
+  }
+
+  // Backward compat: remove all images
   function removeMediaImage() {
-    mediaUploadedImage = null;
-    if ($('#media-image-preview')) $('#media-image-preview').innerHTML = '';
+    AdminUI.getModalState('media').uploadedImages = [];
+    showMediaImagesPreview([]);
   }
   
   function saveMedia() {
     const id = $('#media-id')?.value;
-    
-    // Récupérer l'image (uploadée ou URL)
-    let image = mediaUploadedImage || $('#media-image-url')?.value?.trim() || '';
+    const mediaState = AdminUI.getModalState('media');
+
+    // Récupérer les images (uploadées ou URL fallback)
+    let images = mediaState.uploadedImages || [];
+
+    // Also check URL input as single image fallback
+    const imageUrl = $('#media-image-url')?.value?.trim();
+    if (imageUrl && images.length === 0) {
+      images = [imageUrl];
+    }
+
+    const image = images.length > 0 ? images[0] : '';
     let video = $('#media-video-url')?.value?.trim() || '';
-    
+
     const data = {
       titre: $('#media-titre')?.value?.trim(),
       description: $('#media-description')?.value?.trim(),
       image: image,
+      images: images,
       video: video,
       instrument: $('#media-instrument')?.value?.trim(),
       date: $('#media-date')?.value || new Date().toISOString().slice(0, 10)
     };
-    
+
     if (!data.titre) {
       Toast.error('Titre requis');
       return;
     }
-    
+
     if (!data.image) {
       Toast.error('Image requise');
       return;
@@ -208,8 +238,7 @@
     }
     
     Storage.set('mistral_gallery', gallery);
-    closeModal('media');
-    mediaUploadedImage = null;
+    AdminUI.closeModal('media');
     renderGalerie();
   }
   
@@ -228,11 +257,15 @@
     $('#media-instrument').value = media.instrument || '';
     $('#media-date').value = media.date || '';
     
-    if (media.image) {
-      mediaUploadedImage = media.image;
-      showMediaImagePreview(media.image);
+    // Load existing images array (backward compat: fallback to single image)
+    if (media.images && media.images.length > 0) {
+      AdminUI.getModalState('media').uploadedImages = [...media.images];
+      showMediaImagesPreview(media.images);
+    } else if (media.image) {
+      AdminUI.getModalState('media').uploadedImages = [media.image];
+      showMediaImagesPreview([media.image]);
     }
-    
+
     if (media.video) {
       $('#media-video-url').value = media.video;
     }
@@ -247,9 +280,7 @@
     });
     
     if (confirmed) {
-      let gallery = Storage.get('mistral_gallery', []);
-      gallery = gallery.filter(m => m.id !== id);
-      Storage.set('mistral_gallery', gallery);
+      Storage.remove('mistral_gallery', id);
       renderGalerie();
       Toast.success('Média supprimé');
     }
@@ -317,21 +348,19 @@
           </div>
           ${article.excerpt ? `<p style="font-size: 0.875rem; color: var(--admin-text-muted); margin: 0.5rem 0; line-height: 1.4;">${escapeHtml(article.excerpt.substring(0, 150))}${article.excerpt.length > 150 ? '...' : ''}</p>` : ''}
           <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.editArticle('${article.id}')">Modifier</button>
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.toggleArticleStatut('${article.id}')">
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit-article" data-id="${article.id}">Modifier</button>
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="toggle-article-statut" data-id="${article.id}">
               ${article.status === 'published' ? 'Dépublier' : 'Publier'}
             </button>
-            <button class="admin-btn admin-btn--ghost admin-btn--sm" onclick="AdminUI.deleteArticle('${article.id}')">Supprimer</button>
+            <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="delete-article" data-id="${article.id}">Supprimer</button>
           </div>
         </div>
       </div>
     `).join('');
   }
 
-  // Note: articleUploadedImage et articleQuillEditor déclarés en haut du module
-
   function initArticleUpload() {
-    articleUploadedImage = null;
+    AdminUI.getModalState('article').uploadedImage = null;
     
     const imageContainer = $('#article-image-upload');
     if (imageContainer && typeof MistralUpload !== 'undefined') {
@@ -340,9 +369,9 @@
         id: 'article-image-file',
         acceptType: 'image',
         onSelect: async (file) => {
-          const compress = isCompressionEnabled('article');
-          const base64 = await fileToBase64(file, compress, 'standard');
-          articleUploadedImage = base64;
+          const compress = (AdminUI.isCompressionEnabled ? AdminUI.isCompressionEnabled('article') : false);
+          const base64 = await AdminUI.fileToBase64(file, compress, 'standard');
+          AdminUI.getModalState('article').uploadedImage = base64;
           showArticleImagePreview(base64);
           Toast.success('Image chargée');
         }
@@ -356,19 +385,44 @@
     initArticleEditor();
   }
   
-  function initArticleEditor() {
+  async function initArticleEditor() {
     const editorContainer = $('#article-editor');
     if (!editorContainer) return;
-    
+
     // Détruire l'ancien éditeur si existe
-    if (articleQuillEditor) {
-      articleQuillEditor = null;
+    const artState = AdminUI.getModalState('article');
+    if (artState.quillEditor) {
+      artState.quillEditor = null;
     }
-    
+
     editorContainer.innerHTML = '';
-    
+
+    // Lazy-load Quill.js + CSS si pas encore chargé
+    if (typeof Quill === 'undefined' && window.MistralUtils) {
+      try {
+        await Promise.all([
+          MistralUtils.loadScript('js/vendor/quill.min.js?v=3.5.3'),
+          MistralUtils.loadStylesheet('js/vendor/quill.snow.css?v=3.5.3')
+        ]);
+      } catch (err) {
+        console.warn('[Blog] Echec chargement Quill.js :', err.message);
+      }
+    }
+
     if (typeof Quill !== 'undefined') {
-      articleQuillEditor = new Quill('#article-editor', {
+      // Nettoyer les toolbars Quill existantes pour éviter les doublons
+      var editorEl = document.getElementById('article-editor');
+      if (editorEl) {
+        var existingToolbar = editorEl.previousElementSibling;
+        while (existingToolbar && existingToolbar.classList.contains('ql-toolbar')) {
+          var tb = existingToolbar;
+          existingToolbar = existingToolbar.previousElementSibling;
+          tb.remove();
+        }
+        editorEl.innerHTML = '';
+        editorEl.className = editorEl.className.replace(/ql-\S+/g, '').trim();
+      }
+      artState.quillEditor = new Quill('#article-editor', {
         theme: 'snow',
         placeholder: 'Rédigez votre article...',
         modules: {
@@ -393,13 +447,13 @@
     container.innerHTML = `
       <div class="upload-preview-item" style="width: 200px; height: 120px;">
         <img src="${src}" alt="Preview">
-        <button type="button" class="upload-preview-remove" onclick="AdminUI.removeArticleImage()">×</button>
+        <button type="button" class="upload-preview-remove" data-action="remove-article-image">×</button>
       </div>
     `;
   }
   
   function removeArticleImage() {
-    articleUploadedImage = null;
+    AdminUI.getModalState('article').uploadedImage = null;
     if ($('#article-image-preview')) $('#article-image-preview').innerHTML = '';
   }
   
@@ -408,9 +462,10 @@
     const id = $('#article-id')?.value;
     
     // Récupérer le contenu de l'éditeur
+    const artState = AdminUI.getModalState('article');
     let content = '';
-    if (articleQuillEditor) {
-      content = articleQuillEditor.root.innerHTML;
+    if (artState.quillEditor) {
+      content = artState.quillEditor.root.innerHTML;
     } else {
       const fallback = $('#article-contenu-fallback');
       if (fallback) content = fallback.value;
@@ -420,7 +475,7 @@
     const data = {
       title: $('#article-titre')?.value?.trim(),
       category: $('#article-categorie')?.value || 'actualite',
-      coverImage: articleUploadedImage || '',
+      coverImage: artState.uploadedImage || '',
       excerpt: $('#article-resume')?.value?.trim(),
       content: content,
       status: $('#article-statut')?.value === 'publie' ? 'published' : 'draft',
@@ -463,8 +518,7 @@
     Storage.set('mistral_blog_articles', articles);
     
     
-    closeModal('article');
-    articleUploadedImage = null;
+    AdminUI.closeModal('article');
     renderBlog();
     
   }
@@ -495,16 +549,17 @@
     $('#article-statut').value = article.status === 'published' ? 'publie' : 'brouillon';
     
     if (article.coverImage) {
-      articleUploadedImage = article.coverImage;
+      AdminUI.getModalState('article').uploadedImage = article.coverImage;
       showArticleImagePreview(article.coverImage);
     }
     
     // Charger le contenu dans l'éditeur (sanitizé pour éviter XSS)
     setTimeout(() => {
-      if (articleQuillEditor && article.content) {
+      const artEditor = AdminUI.getModalState('article').quillEditor;
+      if (artEditor && article.content) {
         // Sanitize le HTML avant de l'injecter dans l'éditeur
         const sanitizedContent = utils.sanitizeHtml ? utils.sanitizeHtml(article.content) : article.content;
-        articleQuillEditor.root.innerHTML = sanitizedContent;
+        artEditor.root.innerHTML = sanitizedContent;
       } else {
         const fallback = $('#article-contenu-fallback');
         if (fallback) fallback.value = article.content || '';
@@ -541,9 +596,7 @@
     });
     
     if (confirmed) {
-      let articles = Storage.get('mistral_blog_articles', []);
-      articles = articles.filter(a => a.id !== id);
-      Storage.set('mistral_blog_articles', articles);
+      Storage.remove('mistral_blog_articles', id);
       renderBlog();
       Toast.success('Article supprimé');
     }
@@ -708,33 +761,49 @@
       
       <!-- Actions -->
       <div class="stats-actions">
-        <button class="admin-btn admin-btn--secondary" onclick="MistralStats.Export.download('mistral-stats-${new Date().toISOString().split('T')[0]}.json', MistralStats.Export.toJSON())">
+        <button class="admin-btn admin-btn--secondary" data-action="export-stats-json">
           Exporter JSON
         </button>
-        <button class="admin-btn admin-btn--secondary" onclick="MistralStats.Export.download('mistral-stats-${new Date().toISOString().split('T')[0]}.csv', MistralStats.Export.toCSV(${days}), 'text/csv')">
+        <button class="admin-btn admin-btn--secondary" data-action="export-stats-csv" data-param="${days}">
           Exporter CSV
         </button>
-        <button class="admin-btn admin-btn--ghost" onclick="if(confirm('Effacer toutes les statistiques ?')){MistralStats.Admin.clearAll();AdminUI.refreshAll();}">
+        <button class="admin-btn admin-btn--ghost" data-action="clear-stats-confirm">
           Réinitialiser
         </button>
       </div>
     `;
     
-    // Initialiser les graphiques Chart.js
+    // Initialiser les graphiques Chart.js (lazy-load)
     initAnalyticsCharts(dailyTrend, peakHours);
   }
-  
-  function initAnalyticsCharts(dailyTrend, peakHours) {
-    // Vérifier si Chart.js est disponible
+
+  // Instances Chart.js (pour détruire avant re-création)
+  let _chartTrend = null;
+  let _chartHours = null;
+
+  async function initAnalyticsCharts(dailyTrend, peakHours) {
+    // Lazy-load Chart.js si pas encore chargé
+    if (typeof Chart === 'undefined' && window.MistralUtils) {
+      try {
+        await MistralUtils.loadScript('js/vendor/chart.umd.js?v=3.5.3');
+      } catch (err) {
+        console.warn('[Analytics] Echec chargement Chart.js :', err.message);
+      }
+    }
+
     if (typeof Chart === 'undefined') {
       console.warn('Chart.js non disponible');
       return;
     }
-    
+
+    // Détruire les anciens charts avant re-création
+    if (_chartTrend) { _chartTrend.destroy(); _chartTrend = null; }
+    if (_chartHours) { _chartHours.destroy(); _chartHours = null; }
+
     // Graphique tendance
     const trendCtx = document.getElementById('chart-trend');
     if (trendCtx) {
-      new Chart(trendCtx, {
+      _chartTrend = new Chart(trendCtx, {
         type: 'line',
         data: {
           labels: dailyTrend.map(d => {
@@ -776,7 +845,7 @@
     // Graphique heures
     const hoursCtx = document.getElementById('chart-hours');
     if (hoursCtx) {
-      new Chart(hoursCtx, {
+      _chartHours = new Chart(hoursCtx, {
         type: 'bar',
         data: {
           labels: peakHours.map(h => h.hour),
@@ -821,6 +890,7 @@
     editMedia,
     deleteMedia,
     removeMediaImage,
+    removeMediaImageAt,
     renderBlog,
     initArticleUpload,
     initArticleEditor,

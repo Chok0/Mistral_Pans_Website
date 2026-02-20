@@ -8,33 +8,54 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
+  <!-- Preconnect: faster DNS + TLS for critical external origins -->
+  <link rel="preconnect" href="https://qnkyzhccudtaduqduoxn.supabase.co">
+  <link rel="preload" href="js/core/config.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/vendor/supabase.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/services/supabase-client.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/services/supabase-sync.js?v=3.5.3" as="script">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta name="description" content="Galerie des handpans Mistral Pans. Découvrez nos créations artisanales, instruments uniques fabriqués en Île-de-France.">
   <link rel="canonical" href="https://mistralpans.fr/galerie.html">
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://mistralpans.fr/galerie.html">
-  <meta property="og:title" content="Galerie Mistral Pans - Nos créations">
+  <meta property="og:title" content="Galerie Handpan — Mistral Pans | Nos créations artisanales">
   <meta property="og:description" content="Découvrez nos créations artisanales de handpans.">
   <meta property="og:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
   <meta property="og:locale" content="fr_FR">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Galerie Mistral Pans - Nos créations">
+  <meta name="twitter:title" content="Galerie Handpan — Mistral Pans | Nos créations artisanales">
   <meta name="twitter:description" content="Découvrez nos créations artisanales de handpans.">
   <meta name="twitter:image" content="https://mistralpans.fr/ressources/images/20230801_1622372.jpg">
 
-  <title>Galerie — Mistral Pans | Nos créations</title>
+  <title>Galerie Handpan — Mistral Pans | Nos créations artisanales</title>
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3.5.3">
 
   <!-- Admin Styles -->
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/admin.css?v=3.5.3">
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230D7377'/></svg>">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Galerie Handpan — Mistral Pans",
+    "description": "Galerie de nos handpans artisanaux fabriqués en Île-de-France.",
+    "url": "https://mistralpans.fr/galerie.html",
+    "mainEntity": {
+      "@type": "ImageGallery",
+      "name": "Créations Mistral Pans"
+    }
+  }
+  </script>
 </head>
 <body data-page="galerie">
 
@@ -78,13 +99,14 @@
   <div id="contact-modal-container"></div>
 
 <!-- Scripts -->
-<script src="js/core/cookie-consent.js"></script>
-<script src="js/core/main.js"></script>
+<script src="js/core/cookie-consent.js?v=3.5.3"></script>
+<script src="js/core/utils.js?v=3.5.3"></script>
+<script src="js/core/main.js?v=3.5.3"></script>
 
 <!-- Admin Scripts -->
-<script src="js/admin/admin-core.js" defer></script>
-<script src="js/features/upload.js" defer></script>
-<script src="js/admin/galerie-admin.js" defer></script>
-<script src="js/features/mistral-stats.js" defer></script>
+<script src="js/admin/admin-core.js?v=3.5.3" defer></script>
+<script src="js/features/upload.js?v=3.5.3" defer></script>
+<script src="js/admin/galerie-admin.js?v=3.5.3" defer></script>
+<script src="js/features/mistral-stats.js?v=3.5.3" defer></script>
 </body>
 </html>

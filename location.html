@@ -8,6 +8,14 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
+  <!-- Preconnect: faster DNS + TLS for critical external origins -->
+  <link rel="preconnect" href="https://qnkyzhccudtaduqduoxn.supabase.co">
+  <link rel="preload" href="js/core/config.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/vendor/supabase.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/services/supabase-client.js?v=3.5.3" as="script">
+  <link rel="preload" href="js/services/supabase-sync.js?v=3.5.3" as="script">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta name="description" content="Louez un handpan pour 60€/mois. Essayez avant d'acheter, 50% du loyer déduit si vous achetez. Service unique en Île-de-France.">
   <link rel="canonical" href="https://mistralpans.fr/location.html">
 
@@ -30,10 +38,26 @@
   <!-- Fonts -->
   
   <!-- Styles -->
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3.5.3">
   
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230D7377'/></svg>">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "name": "Location de Handpan",
+    "description": "Louez un handpan pour 60€/mois. 50% du loyer déduit en cas d'achat. Service unique en Île-de-France.",
+    "provider": { "@type": "Organization", "name": "Mistral Pans", "url": "https://mistralpans.fr" },
+    "areaServed": { "@type": "AdministrativeArea", "name": "Île-de-France" },
+    "offers": {
+      "@type": "Offer",
+      "priceCurrency": "EUR",
+      "price": "60",
+      "priceSpecification": { "@type": "UnitPriceSpecification", "price": "60", "priceCurrency": "EUR", "unitText": "mois" }
+    }
+  }
+  </script>
 </head>
 <body data-page="location">
 
@@ -42,7 +66,24 @@
   
   <main>
   <!-- ========== HERO ========== -->
-  <section id="main-content" class="hero" style="background-image: url('ressources/images/20240225_112013.jpg');">
+  <section id="main-content" class="hero">
+    <picture class="hero__bg">
+      <source type="image/webp"
+        srcset="ressources/images/20240225_112013-480w.webp 480w,
+               ressources/images/20240225_112013-768w.webp 768w,
+               ressources/images/20240225_112013-1200w.webp 1200w,
+               ressources/images/20240225_112013.webp 1920w"
+        sizes="100vw">
+      <img src="ressources/images/20240225_112013-1200w.jpg"
+        srcset="ressources/images/20240225_112013-480w.jpg 480w,
+               ressources/images/20240225_112013-768w.jpg 768w,
+               ressources/images/20240225_112013-1200w.jpg 1200w,
+               ressources/images/20240225_112013.jpg 1920w"
+        sizes="100vw"
+        alt="Handpan Mistral Pans en location"
+        width="1920" height="1440"
+        fetchpriority="high">
+    </picture>
     <div class="hero__overlay"></div>
     <div class="container">
       <div class="hero__content hero__content--centered">
@@ -72,7 +113,7 @@
         <h2>Comment ça marche</h2>
       </div>
       
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-xl);">
+      <div class="location-cards-grid">
         
         <!-- Conditions -->
         <div style="background: var(--color-white); padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid var(--color-border);">
@@ -273,7 +314,7 @@
               <p style="font-weight:600;" id="rental-selected-name"></p>
               <p class="text-sm text-muted" id="rental-selected-details"></p>
             </div>
-            <button class="btn btn--ghost btn--sm" onclick="LocationRental.showStep('instruments')" style="margin-left:auto;">Changer</button>
+            <button class="btn btn--ghost btn--sm" id="btn-location-change" style="margin-left:auto;">Changer</button>
           </div>
           <form id="location-form" data-form="contact" data-honeypot>
             <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
@@ -307,18 +348,32 @@
               <label class="form-label" for="contact-message">Précisions (optionnel)</label>
               <textarea id="contact-message" name="message" class="form-textarea" placeholder="Avez-vous déjà joué du handpan ? Questions particulières ?"></textarea>
             </div>
+            <div class="form-group">
+              <label class="form-label">Mode de récupération *</label>
+              <label class="rental-mode-option">
+                <input type="radio" name="rental-mode" value="atelier" checked>
+                <span>Retrait à l'atelier (gratuit)</span>
+              </label>
+              <label class="rental-mode-option">
+                <input type="radio" name="rental-mode" value="livraison">
+                <span>Livraison à domicile (+<span id="rental-frais-livraison">100</span>€ de frais)</span>
+              </label>
+            </div>
             <button type="submit" class="btn btn--primary btn--full">Réserver cet instrument</button>
           </form>
         </div>
 
-        <!-- Step 3: Confirmation -->
+        <!-- Step 3: Confirmation (simple, sans Calendly) -->
         <div id="rental-step-confirm" style="display:none;">
           <div style="text-align:center;padding:var(--space-xl) 0;">
             <p style="font-size:2rem;margin-bottom:var(--space-sm);">✓</p>
-            <p style="font-size:1.25rem;font-weight:600;color:var(--color-success);margin-bottom:var(--space-sm);">Instrument réservé !</p>
-            <p style="color:var(--color-text-light);max-width:400px;margin:0 auto;">
-              Vérifiez vos emails pour les prochaines étapes.
-              Cette réservation est valide 72h.
+            <p style="font-size:1.25rem;font-weight:600;color:var(--color-success);margin-bottom:var(--space-sm);">Demande envoyée !</p>
+            <p style="color:var(--color-text-light);max-width:400px;margin:0 auto var(--space-md);">
+              Consultez vos emails pour les prochaines étapes.
+              Vous y trouverez votre contrat de location et les informations nécessaires.
+            </p>
+            <p style="color:var(--color-text-light);font-size:0.9rem;max-width:400px;margin:0 auto;">
+              N'oubliez pas de nous transmettre les pièces demandées par retour d'email.
             </p>
           </div>
         </div>
@@ -328,10 +383,11 @@
   
   <!-- Scripts -->
   
-  <script src="js/core/cookie-consent.js"></script>
-  <script src="js/core/main.js"></script>
+  <script src="js/core/cookie-consent.js?v=3.5.3"></script>
+  <script src="js/core/utils.js?v=3.5.3"></script>
+  <script src="js/core/main.js?v=3.5.3"></script>
   
-  <script src="js/pages/location.js"></script>
-  <script src="js/features/mistral-stats.js"></script>
+  <script src="js/pages/location.js?v=3.5.3"></script>
+  <script src="js/features/mistral-stats.js?v=3.5.3"></script>
 </body>
 </html>

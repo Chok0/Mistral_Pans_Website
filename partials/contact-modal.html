@@ -16,27 +16,27 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="contact-firstname">Prénom *</label>
-            <input type="text" id="contact-firstname" name="firstname" class="form-input" required>
+            <input type="text" id="contact-firstname" name="firstname" class="form-input" required maxlength="50">
           </div>
           <div class="form-group">
             <label class="form-label" for="contact-lastname">Nom *</label>
-            <input type="text" id="contact-lastname" name="lastname" class="form-input" required>
+            <input type="text" id="contact-lastname" name="lastname" class="form-input" required maxlength="50">
           </div>
         </div>
         
         <div class="form-group">
           <label class="form-label" for="contact-email">Email *</label>
-          <input type="email" id="contact-email" name="email" class="form-input" required>
+          <input type="email" id="contact-email" name="email" class="form-input" required maxlength="255">
         </div>
         
         <div class="form-group">
           <label class="form-label" for="contact-phone">Téléphone</label>
-          <input type="tel" id="contact-phone" name="phone" class="form-input">
+          <input type="tel" id="contact-phone" name="phone" class="form-input" maxlength="20">
         </div>
         
         <div class="form-group">
           <label class="form-label" for="contact-message">Votre message *</label>
-          <textarea id="contact-message" name="message" class="form-textarea" rows="4" required></textarea>
+          <textarea id="contact-message" name="message" class="form-textarea" rows="4" required maxlength="2000"></textarea>
         </div>
 
         <!-- Consentement RGPD -->
@@ -51,7 +51,7 @@
         </div>
 
         <!-- Message de statut -->
-        <div id="contact-status" class="form-status" style="display: none;"></div>
+        <div id="contact-status" class="form-status" style="display: none;" role="alert" aria-live="assertive"></div>
         
         <button type="submit" id="contact-submit" class="btn btn--primary btn--full">Envoyer</button>
       </form>
@@ -72,8 +72,8 @@
 }
 .form-status--success {
   background: rgba(74, 124, 89, 0.1);
-  border: 1px solid #4A7C59;
-  color: #4A7C59;
+  border: 1px solid #3D6B4A;
+  color: #3D6B4A;
 }
 .form-status--error {
   background: rgba(231, 76, 60, 0.1);

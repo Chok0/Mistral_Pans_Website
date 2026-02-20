@@ -7,8 +7,8 @@
 (function(window) {
   'use strict';
 
-  var STORAGE_KEY = 'mistral_cart';
-  var MAX_ITEMS = 20;
+  const STORAGE_KEY = 'mistral_cart';
+  const MAX_ITEMS = 20;
 
   // ============================================================================
   // STRUCTURE DU PANIER
@@ -44,7 +44,7 @@
   // ÉTAT INTERNE
   // ============================================================================
 
-  var cart = [];
+  let cart = [];
 
   // ============================================================================
   // PERSISTENCE (sessionStorage)
@@ -61,7 +61,7 @@
 
   function load() {
     try {
-      var data = sessionStorage.getItem(STORAGE_KEY);
+      const data = sessionStorage.getItem(STORAGE_KEY);
       if (data) {
         cart = JSON.parse(data);
         if (!Array.isArray(cart)) cart = [];
@@ -77,7 +77,7 @@
   // ============================================================================
 
   function generateId() {
-    return 'cart_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
+    return MistralUtils.generateId('cart');
   }
 
   // ============================================================================
@@ -85,7 +85,7 @@
   // ============================================================================
 
   function dispatchUpdate() {
-    var event = new CustomEvent('cart-updated', {
+    const event = new CustomEvent('cart-updated', {
       detail: {
         count: getItemCount(),
         total: getTotal(),
@@ -107,12 +107,12 @@
     if (cart.length >= MAX_ITEMS) return null;
 
     // Vérifier si cet instrument est déjà dans le panier (unicité)
-    var existing = cart.find(function(item) {
+    const existing = cart.find(function(item) {
       return item.type === 'instrument' && item.sourceId === instrument.id;
     });
     if (existing) return existing.id;
 
-    var item = {
+    const item = {
       id: generateId(),
       type: 'instrument',
       sourceId: instrument.id,
@@ -158,7 +158,7 @@
     if (cart.length >= MAX_ITEMS) return null;
 
     // Vérifier si cet accessoire est déjà dans le panier → incrémenter quantité
-    var existing = cart.find(function(item) {
+    const existing = cart.find(function(item) {
       return item.type === 'accessoire' && item.sourceId === accessoire.id;
     });
     if (existing) {
@@ -167,7 +167,7 @@
       return existing.id;
     }
 
-    var item = {
+    const item = {
       id: generateId(),
       type: 'accessoire',
       sourceId: accessoire.id,
@@ -196,7 +196,7 @@
     if (!config) return null;
     if (cart.length >= MAX_ITEMS) return null;
 
-    var item = {
+    const item = {
       id: generateId(),
       type: 'custom',
       sourceId: null,
@@ -235,7 +235,7 @@
    * Retirer un item du panier par son ID
    */
   function removeItem(itemId) {
-    var index = cart.findIndex(function(item) { return item.id === itemId; });
+    const index = cart.findIndex(function(item) { return item.id === itemId; });
     if (index === -1) return false;
     cart.splice(index, 1);
     save();
@@ -246,7 +246,7 @@
    * Modifier la quantité d'un item (accessoires uniquement)
    */
   function updateQuantity(itemId, quantity) {
-    var item = cart.find(function(i) { return i.id === itemId; });
+    const item = cart.find(function(i) { return i.id === itemId; });
     if (!item) return false;
     if (item.type !== 'accessoire') return false;
     if (quantity < 1) {
@@ -261,7 +261,7 @@
    * Ajouter/supprimer une option sur un item (housse, livraison)
    */
   function updateItemOption(itemId, option) {
-    var item = cart.find(function(i) { return i.id === itemId; });
+    const item = cart.find(function(i) { return i.id === itemId; });
     if (!item) return false;
 
     // Supprimer l'option existante du même type
@@ -311,8 +311,8 @@
    * Prix total d'un item (prix * quantité + options)
    */
   function getItemTotal(item) {
-    var base = (item.prix || 0) * (item.quantite || 1);
-    var optionsTotal = (item.options || []).reduce(function(sum, opt) {
+    const base = (item.prix || 0) * (item.quantite || 1);
+    const optionsTotal = (item.options || []).reduce(function(sum, opt) {
       return sum + (opt.prix || 0);
     }, 0);
     return base + optionsTotal;
@@ -348,8 +348,8 @@
    * 'mixed' si les deux
    */
   function getSource() {
-    var hasStock = cart.some(function(i) { return i.type === 'instrument' || i.type === 'accessoire'; });
-    var hasCustom = cart.some(function(i) { return i.type === 'custom'; });
+    const hasStock = cart.some(function(i) { return i.type === 'instrument' || i.type === 'accessoire'; });
+    const hasCustom = cart.some(function(i) { return i.type === 'custom'; });
     if (hasStock && hasCustom) return 'mixed';
     if (hasCustom) return 'custom';
     return 'stock';
