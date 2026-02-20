@@ -5,11 +5,14 @@
  *
  * Ce module remplace l'ancien systeme de synchronisation localStorage <-> Supabase.
  *
- * Nouvelle approche "Supabase-first":
- * - Les donnees sont stockees en memoire (Map), PAS dans localStorage
- * - Au chargement, on recupere les donnees depuis Supabase
- * - Les ecritures vont directement vers Supabase + memoire
+ * Approche "Supabase-first" avec cache stale-while-revalidate :
+ * - Les donnees sont stockees en memoire (Map) + cache sessionStorage
+ * - Au chargement : cache sessionStorage → render immediat → fetch Supabase → MAJ
+ * - Les ecritures vont vers Supabase + memoire + cache
+ * - sessionStorage se vide a la fermeture de l'onglet (zero souci RGPD)
  * - localStorage est reserve aux preferences utilisateur (consent, stats)
+ * - Prefetch en idle : les tables des autres pages publiques sont prefetchees
+ *   en arriere-plan pour une navigation instantanee
  *
  * API:
  * - MistralSync.getData(key)       -> Array depuis la memoire
@@ -87,6 +90,67 @@
 
   // Set de cles gerees pour lookup rapide
   const managedKeys = new Set(SYNC_CONFIG.tables.map(t => t.local));
+
+  // ============================================================================
+  // CACHE SESSIONSTORE (stale-while-revalidate)
+  // ============================================================================
+  //
+  // Les donnees publiques sont cachees dans sessionStorage pour permettre
+  // un affichage instantane au rechargement de page. Le cache est :
+  // - Ecrit apres chaque fetch Supabase reussi
+  // - Lu au demarrage pour un render immediat (avant le fetch reseau)
+  // - Vide automatiquement a la fermeture de l'onglet (sessionStorage)
+  // - Reserve aux donnees publiques (pas de donnees admin/sensibles)
+
+  const CACHE_PREFIX = 'mistral_cache_';
+
+  const CACHEABLE_KEYS = new Set([
+    'mistral_gestion_instruments',
+    'mistral_accessoires',
+    'mistral_tailles',
+    'mistral_gammes_data',
+    'mistral_tarifs_publics',
+    'mistral_location_waitlist',
+    'mistral_teachers',
+    'mistral_pending_teachers',
+    'mistral_gallery',
+    'mistral_blog_articles'
+  ]);
+
+  function writeCache(key, data) {
+    if (!CACHEABLE_KEYS.has(key)) return;
+    try {
+      sessionStorage.setItem(CACHE_PREFIX + key, JSON.stringify(data));
+    } catch (e) {
+      // QuotaExceeded ou sessionStorage indisponible — on ignore silencieusement
+    }
+  }
+
+  function readCache(key) {
+    if (!CACHEABLE_KEYS.has(key)) return null;
+    try {
+      const raw = sessionStorage.getItem(CACHE_PREFIX + key);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Restaure les donnees depuis le cache sessionStorage vers le dataStore
+   * @returns {boolean} true si au moins une table a ete restauree
+   */
+  function restoreFromCache(targetTables) {
+    let restored = false;
+    for (const tc of targetTables) {
+      const cached = readCache(tc.local);
+      if (cached !== null) {
+        dataStore.set(tc.local, cached);
+        restored = true;
+      }
+    }
+    return restored;
+  }
 
   // ============================================================================
   // HELPERS
@@ -316,6 +380,7 @@
   function setDataLocal(key, data) {
     if (!managedKeys.has(key)) return false;
     dataStore.set(key, data);
+    writeCache(key, data);
     window.dispatchEvent(new CustomEvent('mistral-data-change', {
       detail: { key, data }
     }));
@@ -334,8 +399,9 @@
       return false;
     }
 
-    // Mettre a jour le store en memoire
+    // Mettre a jour le store en memoire + cache
     dataStore.set(key, data);
+    writeCache(key, data);
 
     // Pousser vers Supabase en arriere-plan (sans bloquer)
     const tableConfig = getTableConfig(key);
@@ -716,6 +782,13 @@
 
     await Promise.all(promises);
 
+    // Mettre a jour le cache sessionStorage (pages publiques uniquement)
+    if (!isAdminPage) {
+      for (const tc of targetTables) {
+        writeCache(tc.local, dataStore.get(tc.local));
+      }
+    }
+
     lastSync = new Date().toISOString();
     isSyncing = false;
 
@@ -752,6 +825,13 @@
   // INITIALISATION
   // ============================================================================
 
+  function flushReadyCallbacks() {
+    readyCallbacks.forEach(cb => {
+      try { cb(); } catch (e) { log(`Erreur callback onReady: ${e.message}`, 'error'); }
+    });
+    readyCallbacks.length = 0;
+  }
+
   async function init() {
     log('Initialisation du module de donnees...');
 
@@ -760,19 +840,34 @@
     // Nettoyer les anciennes cles localStorage (migration)
     cleanupLocalStorage();
 
-    // Charger les donnees depuis Supabase
+    // Phase 1 : Restaurer le cache sessionStorage pour un render immediat
+    // (pages publiques uniquement — admin charge toujours depuis Supabase)
+    if (!isAdminPage) {
+      const targetTables = getTablesForCurrentPage();
+      const restored = restoreFromCache(targetTables);
+      if (restored) {
+        isReady = true;
+        flushReadyCallbacks();
+        window.dispatchEvent(new CustomEvent('mistral-sync-complete'));
+        log('Cache sessionStorage restaure → render immediat', 'success');
+      }
+    }
+
+    // Phase 2 : Charger les donnees fraiches depuis Supabase
     await refresh();
 
-    // Marquer comme pret
-    isReady = true;
-
-    // Appeler les callbacks en attente
-    readyCallbacks.forEach(cb => {
-      try { cb(); } catch (e) { log(`Erreur callback onReady: ${e.message}`, 'error'); }
-    });
-    readyCallbacks.length = 0;
+    // Marquer comme pret (si le cache n'a pas deja declenche)
+    if (!isReady) {
+      isReady = true;
+      flushReadyCallbacks();
+    }
 
     log('Module de donnees pret', 'success');
+
+    // Phase 3 : Prefetch des tables pour les autres pages publiques
+    if (!isAdminPage) {
+      schedulePrefetch();
+    }
   }
 
   // Demarrer quand le DOM est pret
@@ -780,6 +875,79 @@
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
+  }
+
+  // ============================================================================
+  // PREFETCH (precharge les autres pages publiques en idle)
+  // ============================================================================
+
+  function schedulePrefetch() {
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(() => prefetchOtherPages(), { timeout: 5000 });
+    } else {
+      setTimeout(prefetchOtherPages, 2000);
+    }
+  }
+
+  /**
+   * Prefetch les tables publiques non encore cachees.
+   * Stocke les resultats dans dataStore + sessionStorage.
+   * Ainsi, la navigation vers une autre page chargera instantanement depuis le cache.
+   */
+  async function prefetchOtherPages() {
+    if (!window.MistralDB) return;
+    const client = window.MistralDB.getClient();
+    if (!client) return;
+
+    // Toutes les tables publiques mentionnees dans publicPageTables
+    const allPublicRemotes = new Set();
+    Object.values(SYNC_CONFIG.publicPageTables).forEach(tables => {
+      tables.forEach(name => {
+        allPublicRemotes.add(name.includes(':') ? name.split(':')[0] : name);
+      });
+    });
+
+    // Filtrer : seulement les tables cachables pas encore en cache
+    const toPrefetch = SYNC_CONFIG.tables.filter(tc => {
+      if (!allPublicRemotes.has(tc.remote)) return false;
+      if (!CACHEABLE_KEYS.has(tc.local)) return false;
+      if (readCache(tc.local) !== null) return false;
+      return true;
+    });
+
+    if (toPrefetch.length === 0) {
+      log('Prefetch: cache deja complet');
+      return;
+    }
+
+    log(`Prefetch: ${toPrefetch.length} sources pour les autres pages...`);
+
+    // Regrouper par table distante (meme logique de batching que refresh)
+    const groups = new Map();
+    for (const tc of toPrefetch) {
+      if (!groups.has(tc.remote)) groups.set(tc.remote, []);
+      groups.get(tc.remote).push(tc);
+    }
+
+    const promises = [];
+    for (const [, configs] of groups) {
+      if (configs.length === 1) {
+        promises.push(fetchTable(configs[0]));
+      } else if (configs[0].isKeyValue) {
+        promises.push(fetchBatchedKeyValue(configs));
+      } else {
+        promises.push(fetchBatchedTable(configs));
+      }
+    }
+
+    await Promise.all(promises);
+
+    // Ecrire en cache sessionStorage
+    for (const tc of toPrefetch) {
+      writeCache(tc.local, dataStore.get(tc.local));
+    }
+
+    log('Prefetch termine → cache global pret', 'success');
   }
 
   // ============================================================================
