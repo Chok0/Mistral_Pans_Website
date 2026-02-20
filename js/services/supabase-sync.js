@@ -63,16 +63,6 @@
       'commander': ['configuration'],
       'cgv':       ['configuration'],
       'index':     ['instruments', 'configuration']
-    },
-
-    // Colonnes a charger pour les pages publiques (reduit la taille du payload)
-    // Si absent, select('*') est utilise (admin)
-    publicColumns: {
-      'instruments': 'id,reference,gamme,tonalite,taille,materiau,nombre_notes,prix_vente,statut,photos,updated_at',
-      'accessoires': 'id,nom,categorie,prix,stock,statut,description,photo,tailles_compatibles,visible_configurateur,updated_at',
-      'articles': 'id,slug,title,excerpt,cover_image,status,tags,published_at,updated_at',
-      'galerie': 'id,type,src,thumbnail,titre,description,ordre,featured,updated_at',
-      'professeurs': 'id,nom,location,lat,lng,email,website,photo_url,course_types,course_formats,instrument_available,statut,updated_at'
     }
   };
 
@@ -375,15 +365,6 @@
   // ============================================================================
 
   /**
-   * Determine les colonnes a selectionner pour une table
-   * Pages publiques: colonnes reduites (publicColumns), Admin: select('*')
-   */
-  function getSelectColumns(remoteName) {
-    if (isAdminPage) return '*';
-    return SYNC_CONFIG.publicColumns[remoteName] || '*';
-  }
-
-  /**
    * Recupere les donnees d'une table depuis Supabase (requete individuelle)
    */
   async function fetchTable(tableConfig) {
@@ -398,10 +379,9 @@
         return await fetchKeyValueTable(tableConfig, client);
       }
 
-      const columns = getSelectColumns(tableConfig.remote);
       let query = client
         .from(tableConfig.remote)
-        .select(columns);
+        .select('*');
 
       // Appliquer un filtre si defini (ex: statut = 'active' pour professeurs)
       if (tableConfig.fetchFilter) {
@@ -545,10 +525,9 @@
     if (!client) return false;
 
     try {
-      const columns = getSelectColumns(configs[0].remote);
       const { data, error } = await client
         .from(configs[0].remote)
-        .select(columns)
+        .select('*')
         .order('updated_at', { ascending: false });
 
       if (error) {
