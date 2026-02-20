@@ -293,10 +293,15 @@
           <p class="teacher-card__location">📍 ${utils.escapeHtml(t.location || t.city || '')}</p>
           ${t.bio ? `<p style="font-size: 0.875rem; color: var(--color-text-light); margin-bottom: var(--space-md);">${utils.escapeHtml(t.bio).substring(0, 100)}${t.bio.length > 100 ? '...' : ''}</p>` : ''}
           <div class="teacher-card__actions">
-            <a href="mailto:${t.email}" class="teacher-card__btn teacher-card__btn--email" data-action="stop-propagation">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              Écrire à ${utils.escapeHtml(firstName)}
-            </a>
+            ${window.matchMedia('(max-width: 768px)').matches
+              ? `<a href="mailto:${t.email}" class="teacher-card__btn teacher-card__btn--email" data-action="stop-propagation">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                Écrire à ${utils.escapeHtml(firstName)}
+              </a>`
+              : `<span class="teacher-card__btn teacher-card__btn--email" data-action="stop-propagation" style="cursor:default;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                ${utils.escapeHtml(t.email)}
+              </span>`}
             ${phoneClean ? (window.matchMedia('(max-width: 768px)').matches
               ? `<a href="tel:${phoneClean}" class="teacher-card__btn teacher-card__btn--phone" data-action="stop-propagation">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.09.6.21 1.19.39 1.77a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.58.18 1.17.3 1.77.39A2 2 0 0 1 22 16.92z"/></svg>
@@ -377,6 +382,9 @@
                 </div>
               </div>
               <div class="admin-list-item__actions">
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="view-pending" data-id="${p.id}">
+                  Voir
+                </button>
                 <button class="admin-btn admin-btn--primary admin-btn--sm" data-action="approve" data-ns="ApprendreAdmin" data-id="${p.id}">
                   Approuver
                 </button>
@@ -414,6 +422,9 @@
       const id = btn.dataset.id;
 
       switch (action) {
+        case 'view-pending':
+          openTeacherProfile(id);
+          break;
         case 'approve':
           ApprendreAdmin.approve(id);
           break;
@@ -1061,7 +1072,17 @@
   // ============================================================================
 
   function openTeacherProfile(teacherId) {
-    const teacher = Teachers.get(teacherId);
+    let teacher = Teachers.get(teacherId);
+    // Chercher aussi dans les demandes en attente
+    if (!teacher) {
+      const pending = Teachers.getPending().find(t => t.id === teacherId);
+      if (pending) {
+        teacher = {
+          ...pending,
+          name: pending.name || `${pending.firstname || ''} ${pending.lastname || ''}`.trim()
+        };
+      }
+    }
     if (!teacher) return;
 
     const modal = document.getElementById('teacher-profile-modal');
@@ -1103,8 +1124,13 @@
 
     // Boutons contact
     const firstName = teacher.name.split(' ')[0];
+    const isMobileProfile = window.matchMedia('(max-width: 768px)').matches;
     let contactHtml = `<div class="teacher-profile__actions" style="display:flex;gap:0.75rem;margin-top:1.5rem;flex-wrap:wrap;">`;
-    contactHtml += `<a href="mailto:${utils.escapeHtml(teacher.email)}" class="btn btn--primary" target="_blank" rel="noopener">📧 Écrire à ${utils.escapeHtml(firstName)}</a>`;
+    if (isMobileProfile) {
+      contactHtml += `<a href="mailto:${utils.escapeHtml(teacher.email)}" class="btn btn--primary" target="_blank" rel="noopener">📧 Écrire à ${utils.escapeHtml(firstName)}</a>`;
+    } else {
+      contactHtml += `<span class="btn btn--primary" style="cursor:default;">📧 ${utils.escapeHtml(teacher.email)}</span>`;
+    }
     if (teacher.phone) {
       const phoneClean = teacher.phone.replace(/\s/g, '');
       const isMobile = window.matchMedia('(max-width: 768px)').matches;
