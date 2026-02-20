@@ -1225,7 +1225,7 @@ body[data-page="boutique"] {
   top: var(--header-height, 64px);
   left: 0;
   right: 0;
-  z-index: var(--z-sticky);
+  z-index: calc(var(--z-sticky) - 1);
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
 }
