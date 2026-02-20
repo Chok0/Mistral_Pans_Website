@@ -3,18 +3,24 @@
  * MISTRAL PANS - Configuration Supabase (template)
  * =============================================================================
  *
- * INSTRUCTIONS:
- * 1. Copiez ce fichier vers js/core/config.js
- * 2. Remplacez les valeurs par vos identifiants Supabase
+ * PRODUCTION (Netlify) :
+ *   config.js est genere automatiquement au build par scripts/generate-config.sh
+ *   Definir les variables d'environnement dans Netlify > Site > Environment variables :
+ *     - SUPABASE_URL
+ *     - SUPABASE_ANON_KEY
+ *
+ * DEVELOPPEMENT LOCAL :
+ *   1. Copiez ce fichier vers js/core/config.js
+ *   2. Remplacez les valeurs par vos identifiants Supabase
  *
  * Pour obtenir vos identifiants:
- * 1. Connectez-vous à https://supabase.com/dashboard
- * 2. Sélectionnez votre projet
- * 3. Allez dans Settings > API
- * 4. Copiez "Project URL" et "anon public" key
+ *   1. Connectez-vous a https://supabase.com/dashboard
+ *   2. Selectionnez votre projet
+ *   3. Allez dans Settings > API
+ *   4. Copiez "Project URL" et "anon public" key
  *
- * Note: La clé anon est conçue pour être exposée côté client.
- * La sécurité repose sur les politiques RLS, pas sur le secret de cette clé.
+ * Note: La cle anon est concue pour etre exposee cote client.
+ * La securite repose sur les politiques RLS, pas sur le secret de cette cle.
  *
  * =============================================================================
  */

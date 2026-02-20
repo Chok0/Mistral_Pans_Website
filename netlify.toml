@@ -1,6 +1,7 @@
 # Netlify configuration for Mistral Pans
 
 [build]
+  command = "bash scripts/generate-config.sh"
   publish = "."
   functions = "netlify/functions"
 
