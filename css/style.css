@@ -2000,7 +2000,7 @@ h3 {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: var(--space-lg);
-  color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.55);  /* Raised from 0.4 for WCAG AA contrast (4.6:1 on --color-bg-dark) */
 }
 
 .footer__links {
@@ -2027,7 +2027,7 @@ h3 {
   padding-top: var(--space-xl);
   border-top: 1px solid rgba(255,255,255,0.1);
   font-size: 0.875rem;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.55);  /* Raised from 0.4 for WCAG AA contrast (4.6:1 on --color-bg-dark) */
 }
 
 .footer__social {
@@ -2337,7 +2337,7 @@ h3 {
 
 .cookie-banner__legal {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.6);  /* Raised from 0.5 for WCAG AA contrast */
   margin: 0;
 }
 
