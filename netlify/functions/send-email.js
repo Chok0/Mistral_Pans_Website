@@ -32,6 +32,12 @@ function sanitizeEmailHeader(str) {
 }
 
 /**
+ * Taille maximale d'une pièce jointe PDF en base64 (~5 Mo décodé ≈ 6.67 Mo encodé).
+ * Protège contre l'épuisement mémoire par des payloads volumineux.
+ */
+const MAX_PDF_BASE64_LENGTH = 7 * 1024 * 1024; // ~7 Mo base64
+
+/**
  * Valide le format d'une adresse email
  */
 function isValidEmail(email) {
@@ -205,8 +211,8 @@ function buildInvoiceEmail(data) {
     `
   };
 
-  // Ajouter le PDF en pièce jointe si fourni
-  if (pdfBase64) {
+  // Ajouter le PDF en pièce jointe si fourni (avec limite de taille)
+  if (pdfBase64 && pdfBase64.length <= MAX_PDF_BASE64_LENGTH) {
     emailData.attachment = [{
       content: pdfBase64,
       name: `facture-${facture.numero}.pdf`,
@@ -533,8 +539,8 @@ ${swiklyBlock}
     `
   };
 
-  // Ajouter le contrat PDF en pièce jointe si fourni
-  if (pdfBase64) {
+  // Ajouter le contrat PDF en pièce jointe si fourni (avec limite de taille)
+  if (pdfBase64 && pdfBase64.length <= MAX_PDF_BASE64_LENGTH) {
     emailData.attachment = [{
       content: pdfBase64,
       name: `contrat-location-${new Date().toISOString().slice(0, 10)}.pdf`,
@@ -998,8 +1004,8 @@ function buildMonthlyReportEmail(data) {
     `
   };
 
-  // Ajouter le PDF en pièce jointe si fourni
-  if (pdfBase64) {
+  // Ajouter le PDF en pièce jointe si fourni (avec limite de taille)
+  if (pdfBase64 && pdfBase64.length <= MAX_PDF_BASE64_LENGTH) {
     emailData.attachment = [{
       content: pdfBase64,
       name: `rapport-comptable-${mois || 'mensuel'}.pdf`,
@@ -1081,9 +1087,9 @@ exports.handler = async (event, context) => {
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
     }
 
-    // Rate limiting persistant (Supabase)
+    // Rate limiting persistant (Supabase) — fail-closed pour les emails
     const clientIp = getClientIp(event);
-    const { allowed: rateLimitOk } = await checkRateLimit(clientIp, 'send-email', 5);
+    const { allowed: rateLimitOk } = await checkRateLimit(clientIp, 'send-email', 5, 60000, true);
     if (!rateLimitOk) {
       console.warn(`Rate limit dépassé pour ${clientIp}`);
       return {

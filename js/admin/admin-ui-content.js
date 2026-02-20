@@ -461,7 +461,7 @@
     
     const id = $('#article-id')?.value;
     
-    // Récupérer le contenu de l'éditeur
+    // Récupérer le contenu de l'éditeur et sanitiser avant persistence
     const artState = AdminUI.getModalState('article');
     let content = '';
     if (artState.quillEditor) {
@@ -469,6 +469,10 @@
     } else {
       const fallback = $('#article-contenu-fallback');
       if (fallback) content = fallback.value;
+    }
+    // Sanitiser le HTML Quill avant sauvegarde (protection XSS sur article.html)
+    if (content && utils.sanitizeHtml) {
+      content = utils.sanitizeHtml(content);
     }
     
     // Mapper vers les noms de champs utilisés par MistralAdmin.Blog

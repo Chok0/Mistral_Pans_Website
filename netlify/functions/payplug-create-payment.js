@@ -359,9 +359,9 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Origin': allowedOrigin
   };
 
-  // Rate limiting persistant (Supabase)
+  // Rate limiting persistant (Supabase) — fail-closed pour les paiements
   const clientIp = getClientIp(event);
-  const { allowed: rateLimitOk } = await checkRateLimit(clientIp, 'payplug', 5);
+  const { allowed: rateLimitOk } = await checkRateLimit(clientIp, 'payplug', 5, 60000, true);
   if (!rateLimitOk) {
     console.warn(`Rate limit dépassé pour ${clientIp}`);
     return {

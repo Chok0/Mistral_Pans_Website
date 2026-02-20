@@ -138,10 +138,12 @@ exports.handler = async (event, context) => {
     const orders = await response.json();
 
     if (!orders || orders.length === 0) {
+      // Message générique pour éviter l'énumération d'emails (ne pas révéler
+      // si la référence existe mais l'email ne correspond pas)
       return {
         statusCode: 404,
         headers,
-        body: JSON.stringify({ error: 'Aucune commande trouvée avec cette référence et cet email' })
+        body: JSON.stringify({ error: 'Commande non trouvée. Vérifiez votre référence et votre adresse email.' })
       };
     }
 

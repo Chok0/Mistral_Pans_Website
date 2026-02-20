@@ -277,7 +277,7 @@ async function loadPartial(filename) {
 function getCurrentPageName() {
   const path = window.location.pathname;
   const filename = path.substring(path.lastIndexOf('/') + 1) || 'index.html';
-  return filename.replace('.html', '');
+  return filename.split('.html')[0] || 'index';
 }
 
 /**
