@@ -68,8 +68,8 @@
     // Colonnes a charger pour les pages publiques (reduit la taille du payload)
     // Si absent, select('*') est utilise (admin)
     publicColumns: {
-      'instruments': 'id,reference,gamme,tonalite,taille,materiau,nombre_notes,prix_vente,statut,photos,updated_at',
-      'accessoires': 'id,nom,categorie,prix,stock,statut,description,photo,tailles_compatibles,visible_configurateur,updated_at',
+      'instruments': 'id,reference,gamme,tonalite,taille,materiau,nombre_notes,prix_vente,statut,images,updated_at',
+      'accessoires': 'id,nom,categorie,prix,stock,statut,description,image,tailles_compatibles,visible_configurateur,updated_at',
       'articles': 'id,slug,title,excerpt,cover_image,status,tags,published_at,updated_at',
       'galerie': 'id,type,src,thumbnail,titre,description,ordre,featured,updated_at',
       'professeurs': 'id,nom,location,lat,lng,email,website,photo_url,course_types,course_formats,instrument_available,statut,updated_at'
