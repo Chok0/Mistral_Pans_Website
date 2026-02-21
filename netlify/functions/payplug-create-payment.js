@@ -272,7 +272,7 @@ async function validateStockPrice(amountCents, instrumentId, paymentType) {
 
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/instruments?id=eq.${instrumentId}&select=prix_vente,statut`,
+      `${SUPABASE_URL}/rest/v1/instruments?id=eq.${instrumentId}&select=prix_vente,statut,promo_percent`,
       {
         method: 'GET',
         headers: {
@@ -297,9 +297,25 @@ async function validateStockPrice(amountCents, instrumentId, paymentType) {
       return { valid: false, reason: 'Cet instrument n\'est plus disponible' };
     }
 
-    const dbPriceCents = instrument.prix_vente * 100;
+    // Appliquer la promo si applicable (même formule que cart.js: arrondi à 5€ inf.)
+    const promoPercent = instrument.promo_percent || 0;
+    const effectivePrice = promoPercent > 0
+      ? Math.floor(instrument.prix_vente * (1 - promoPercent / 100) / 5) * 5
+      : instrument.prix_vente;
+    const dbPriceCents = effectivePrice * 100;
 
-    // Pour un acompte (30%), le montant doit être >= 30% du prix DB
+    console.log('[validateStockPrice]', {
+      instrumentId,
+      paymentType,
+      amountCents,
+      dbPrixVente: instrument.prix_vente,
+      promoPercent,
+      effectivePrice,
+      dbPriceCents,
+      statut: instrument.statut
+    });
+
+    // Pour un acompte (30%), le montant doit être >= 30% du prix effectif
     if (paymentType === 'acompte') {
       const expectedDeposit = Math.round(dbPriceCents * 0.30);
       // Tolérance de 1€ pour les arrondis
@@ -310,7 +326,7 @@ async function validateStockPrice(amountCents, instrumentId, paymentType) {
         };
       }
     } else if (paymentType === 'full' || paymentType === 'installments') {
-      // Le montant doit couvrir au minimum le prix instrument
+      // Le montant doit couvrir au minimum le prix effectif (après promo)
       // (peut être plus élevé si housse/livraison inclus)
       if (amountCents < dbPriceCents - 100) {
         return {
@@ -417,6 +433,20 @@ exports.handler = async (event, context) => {
     // ── Validation prix côté serveur ──
     if (metadata?.cartMode && metadata?.items) {
       // Mode panier multi-items : valider chaque item
+      console.log('[PayPlug] Validation panier:', {
+        paymentType,
+        totalAmount: amount,
+        itemCount: metadata.items.length,
+        items: metadata.items.map(i => ({
+          type: i.type,
+          nom: i.nom,
+          sourceId: i.sourceId,
+          prix: i.prix,
+          total: i.total,
+          quantite: i.quantite,
+          options: i.options?.length || 0
+        }))
+      });
       for (const item of metadata.items) {
         // 1. Instruments en stock : vérifier prix DB
         if (item.type === 'instrument' && item.sourceId) {

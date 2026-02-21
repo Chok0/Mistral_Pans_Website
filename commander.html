@@ -129,22 +129,13 @@
           </ul>
         </div>
 
-        <!-- Option 3: RDV -->
-        <div class="order-option" data-option="appointment" tabindex="0" role="button" aria-label="Personnaliser mon projet avec un rendez-vous">
-          <div class="order-option__icon">📅</div>
-          <h3 class="order-option__title">Personnaliser mon projet</h3>
-          <p class="order-option__description">
-            Discutons de votre projet avant de commander.
-          </p>
-          <ul class="order-option__details">
-            <li>Échange téléphone ou visio</li>
-            <li>Conseil sur les gammes</li>
-            <li>Devis personnalisé</li>
-            <li>Sans engagement</li>
-          </ul>
-        </div>
+        <!-- Option 3: RDV — retiré de la grille, affiché en lien discret ci-dessous -->
 
       </div>
+
+      <p class="text-center text-sm text-muted" style="margin-top: var(--space-lg);">
+        Besoin de conseils ? <a href="#" data-option="appointment" class="link-appointment">Prenez rendez-vous</a> pour discuter de votre projet.
+      </p>
       
       <!-- Form: Deposit -->
       <div id="form-deposit" class="order-form">
@@ -175,7 +166,7 @@
         
         <form data-form="order" data-honeypot>
           <!-- Honeypot anti-spam -->
-          <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+          <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" inert>
             <label for="hp-order-website">Site web</label>
             <input type="text" name="website" id="hp-order-website" autocomplete="off" tabindex="-1">
           </div>
@@ -313,7 +304,7 @@
 
         <form data-form="full" data-honeypot>
           <!-- Honeypot anti-spam -->
-          <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+          <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" inert>
             <label for="hp-full-website">Site web</label>
             <input type="text" name="website" id="hp-full-website" autocomplete="off" tabindex="-1">
           </div>
@@ -445,7 +436,7 @@
 
           <form data-form="oney" data-honeypot>
             <!-- Honeypot anti-spam -->
-            <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+            <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" inert>
               <label for="hp-oney-website">Site web</label>
               <input type="text" name="website" id="hp-oney-website" autocomplete="off" tabindex="-1">
             </div>
@@ -534,7 +525,7 @@
         
         <form data-form="appointment" data-honeypot>
           <!-- Honeypot anti-spam -->
-          <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true" tabindex="-1">
+          <div class="form-group" style="position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden;" inert>
             <label for="hp-rdv-website">Site web</label>
             <input type="text" name="website" id="hp-rdv-website" autocomplete="off" tabindex="-1">
           </div>
