@@ -35,6 +35,25 @@ function generateOrderReference() {
 }
 
 /**
+ * Formate un numéro de téléphone français au format E.164 pour PayPlug.
+ * Ex: "06 12 34 56 78" → "+33612345678", "+33612345678" → "+33612345678"
+ * Retourne null si le format n'est pas reconnu.
+ */
+function formatPhoneE164(phone) {
+  if (!phone) return null;
+  // Supprimer espaces, tirets, points, parenthèses
+  const cleaned = String(phone).replace(/[\s\-.\(\)]/g, '');
+  // Déjà en format international +33...
+  if (/^\+33\d{9}$/.test(cleaned)) return cleaned;
+  // Format français local 0X XX XX XX XX (10 chiffres commençant par 0)
+  if (/^0[1-9]\d{8}$/.test(cleaned)) return '+33' + cleaned.substring(1);
+  // Format international sans + : 33...
+  if (/^33\d{9}$/.test(cleaned)) return '+' + cleaned;
+  // Format non reconnu — retourner tel quel (PayPlug rejettera si invalide)
+  return cleaned;
+}
+
+/**
  * Supprime les clés undefined/null d'un objet (un seul niveau)
  */
 function cleanObject(obj) {
@@ -633,7 +652,7 @@ exports.handler = async (event, context) => {
       first_name: sanitize(customer.firstName, 100),
       last_name: sanitize(customer.lastName, 100),
       email: customer.email.trim().toLowerCase(),
-      mobile_phone_number: sanitize(customer.phone, 20),
+      mobile_phone_number: formatPhoneE164(customer.phone),
       address1: sanitize(customer.address?.line1, 255),
       postcode: sanitize(customer.address?.postalCode, 16),
       city: sanitize(customer.address?.city, 100),
@@ -641,9 +660,10 @@ exports.handler = async (event, context) => {
       language: 'fr'
     });
 
-    // delivery_type PSD2 : SHIP_TO_STORE si retrait, CARRIER si expédition
+    // delivery_type PSD2 : BILLING si expédition à l'adresse, SHIP_TO_STORE si retrait
+    // Valeurs PayPlug: BILLING, SHIP_TO_STORE, DIGITAL_GOODS, TRAVEL_OR_EVENT, OTHER
     const shippingMethod = metadata?.shippingMethod || 'retrait';
-    const deliveryType = shippingMethod === 'colissimo' ? 'CARRIER' : 'SHIP_TO_STORE';
+    const deliveryType = shippingMethod === 'colissimo' ? 'BILLING' : 'SHIP_TO_STORE';
 
     // Construire l'objet shipping
     const shipping = cleanObject({
