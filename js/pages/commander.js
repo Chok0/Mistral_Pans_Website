@@ -1256,7 +1256,16 @@
     }
 
     // Adresse complete requise (sauf retrait atelier)
-    if (orderData.shippingMethod !== 'retrait') {
+    if (orderData.shippingMethod === 'retrait') {
+      // En retrait, remplacer les placeholders par l'adresse de l'atelier
+      // (PayPlug exige des valeurs valides pour billing/shipping PSD2)
+      customer.address = {
+        line1: 'Retrait atelier Mistral Pans',
+        postalCode: '75000',
+        city: 'Paris',
+        country: 'FR'
+      };
+    } else {
       if (!customer.address.line1 || !customer.address.postalCode || !customer.address.city) {
         showMessage('Veuillez entrer une adresse complète (rue, code postal, ville)', 'error');
         return null;
