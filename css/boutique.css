@@ -757,6 +757,13 @@ body[data-page="boutique"] {
   color: var(--color-text);
 }
 
+.price-delay {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin: 0.5rem 0 0;
+}
+
 .config-note {
   font-size: 0.75rem;
   color: var(--color-text-muted);

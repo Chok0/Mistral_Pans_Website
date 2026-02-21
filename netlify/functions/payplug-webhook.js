@@ -682,7 +682,8 @@ async function sendPaymentConfirmationEmail(payment, metadata) {
           amount: payment.amount / 100,
           reference: metadata.order_reference,
           type: metadata.payment_type
-        }
+        },
+        shippingMethod: metadata.shipping_method || null
       })
     });
 

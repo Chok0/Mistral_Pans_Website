@@ -630,6 +630,17 @@ function buildPaymentConfirmationEmail(data) {
   const type = payment.type === 'acompte' ? 'Acompte' :
                payment.type === 'solde' ? 'Solde' : 'Paiement';
 
+  // Bloc retrait atelier (lien Calendly) si mode retrait
+  const isRetrait = data.shippingMethod === 'retrait';
+  const calendlyUrl = 'https://calendly.com/adrien-santamaria/30min';
+  const retraitBlock = isRetrait ? `
+            <div style="background: #FFF8F0; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #D97706; text-align: center;">
+              <div style="font-size: 28px; margin-bottom: 8px;">&#128197;</div>
+              <p style="font-weight: bold; color: #92400E; margin: 0 0 8px 0;">Retrait à l'atelier</p>
+              <p style="color: #666; margin: 0 0 16px 0;">Planifiez un créneau pour venir récupérer votre instrument :</p>
+              <a href="${calendlyUrl}" style="display: inline-block; background: #D97706; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Planifier le retrait</a>
+            </div>` : '';
+
   return {
     to: [{ email: clientEmail, name: clientName }],
     bcc: [{ email: 'contact@mistralpans.fr', name: 'Mistral Pans' }],
@@ -654,7 +665,7 @@ function buildPaymentConfirmationEmail(data) {
       <body>
         <div class="container">
           <div class="header">
-            <div class="checkmark">✓</div>
+            <div class="checkmark">&#10003;</div>
             <h1>Paiement reçu</h1>
           </div>
           <div class="content">
@@ -667,7 +678,7 @@ function buildPaymentConfirmationEmail(data) {
               <div class="amount">${montant}</div>
               <div style="color: #666; font-size: 14px;">Référence : ${reference}</div>
             </div>
-
+            ${retraitBlock}
             <p>Un reçu détaillé vous sera envoyé séparément.</p>
 
             <p>Merci de votre confiance,<br><strong>L'équipe Mistral Pans</strong></p>

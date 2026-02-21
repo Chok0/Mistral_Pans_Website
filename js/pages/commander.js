@@ -641,6 +641,15 @@
       if (liExpedition) liExpedition.textContent = 'Délai : 8-12 semaines';
     }
 
+    // Masquer les lignes de delai pour le stock (disponibilite immediate)
+    var delayRows = ['summary-deposit-delay-row', 'summary-full-delay-row'];
+    delayRows.forEach(function(id) {
+      var row = document.getElementById(id);
+      if (row) row.style.display = stock ? 'none' : '';
+    });
+    var delayEstimate = document.getElementById('delay-estimate');
+    if (delayEstimate) delayEstimate.style.display = stock ? 'none' : '';
+
     // Étape header
     const eyebrow = document.querySelector('.order-header .eyebrow');
     if (eyebrow) {
@@ -878,45 +887,6 @@
   }
 
   /**
-   * Charge l'iframe Calendly dans un conteneur, avec fallback RGPD.
-   *
-   * Si les cookies Calendly sont acceptes (via MistralCookies), charge
-   * l'iframe directement. Sinon, affiche un lien externe avec un message
-   * invitant l'utilisateur a accepter les cookies.
-   *
-   * Le flag dataset.loaded empeche le rechargement multiple.
-   *
-   * @param {string} containerId - ID du conteneur HTML pour l'embed Calendly
-   */
-  function loadCalendlyEmbed(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container || container.dataset.loaded) return;
-
-    const calendlyUrl = 'https://calendly.com/adrien-santamaria/30min';
-    const allowed = typeof MistralCookies !== 'undefined' && MistralCookies.isServiceAllowed('calendly');
-
-    if (allowed) {
-      container.innerHTML =
-        '<iframe src="' + calendlyUrl + '" ' +
-        'width="100%" height="650" frameborder="0" ' +
-        'title="Calendrier de rendez-vous" loading="lazy" ' +
-        'style="border:0;border-radius:var(--radius-md);min-height:650px;"></iframe>';
-    } else {
-      container.innerHTML =
-        '<div class="calendly-fallback">' +
-        '<p>Pour planifier votre rendez-vous :</p>' +
-        '<a href="' + calendlyUrl + '" target="_blank" rel="noopener" class="btn btn--primary">' +
-        'Ouvrir le calendrier' +
-        '</a>' +
-        '<p class="text-sm text-muted" style="margin-top:var(--space-sm);">' +
-        'Activez les cookies &laquo; Rendez-vous &raquo; pour afficher le calendrier ici.' +
-        '</p>' +
-        '</div>';
-    }
-    container.dataset.loaded = '1';
-  }
-
-  /**
    * Met a jour l'affichage d'une ligne de livraison dans un resume de commande.
    * Affiche la ligne si un mode de livraison est selectionne, la masque sinon.
    *
@@ -1106,7 +1076,7 @@
    * En cas d'erreur d'initialisation, le formulaire integre reste masque
    * et le mode heberge (redirection) sera utilise comme fallback.
    */
-  function initIntegratedPaymentForm() {
+  async function initIntegratedPaymentForm() {
     if (typeof MistralPayplug === 'undefined' || !MistralPayplug.isIntegratedAvailable()) {
       return;
     }
@@ -1124,7 +1094,19 @@
     }
 
     try {
-      MistralPayplug.initIntegratedForm(containers, { testMode: false });
+      // Detecter le mode test/live depuis le serveur (basé sur la clé API)
+      var testMode = false;
+      try {
+        var modeResp = await fetch('/.netlify/functions/payplug-create-payment');
+        if (modeResp.ok) {
+          var modeData = await modeResp.json();
+          testMode = modeData.testMode === true;
+        }
+      } catch (e) {
+        console.warn('[Commander] Impossible de detecter le mode PayPlug, fallback live');
+      }
+
+      MistralPayplug.initIntegratedForm(containers, { testMode: testMode });
 
       // Afficher les logos des reseaux de cartes supportes
       const schemesContainer = document.getElementById('card-schemes');
@@ -1145,6 +1127,7 @@
 
       cardForm.style.display = '';
       integratedFormReady = true;
+      if (testMode) console.info('[Commander] PayPlug SDK initialisé en mode TEST');
     } catch (error) {
       console.warn('[Commander] Erreur init Integrated Payment:', error.message);
     }
@@ -2047,6 +2030,24 @@
       nextSteps = '<p>Votre acompte a bien été enregistré. Nous vous contacterons pour le solde quand votre instrument sera prêt.</p>';
     }
 
+    // Bloc retrait atelier : lien pour planifier le RDV
+    const isRetrait = pendingOrder?.shippingMethod === 'retrait';
+    const calendlyUrl = 'https://calendly.com/adrien-santamaria/30min';
+    let retraitBlock = '';
+    if (isRetrait) {
+      retraitBlock =
+        '<div class="payment-result__retrait">' +
+          '<h3>Retrait à l\'atelier</h3>' +
+          '<p>Planifiez un créneau pour venir récupérer votre instrument :</p>' +
+          '<a href="' + calendlyUrl + '" target="_blank" rel="noopener" class="btn btn--accent">' +
+            'Planifier le retrait' +
+          '</a>' +
+          '<p class="text-sm text-muted" style="margin-top:var(--space-sm);">' +
+            'Ce lien est également disponible dans votre email de confirmation.' +
+          '</p>' +
+        '</div>';
+    }
+
     // Remplacement complet du contenu de la page
     container.innerHTML =
       '<div class="payment-result payment-result--success">' +
@@ -2059,6 +2060,7 @@
           amountDetail +
         '</div>' +
         nextSteps +
+        retraitBlock +
         '<p>Un email de confirmation vous a été envoyé.</p>' +
         '<div class="payment-result__actions">' +
           '<a href="index.html" class="btn btn--primary">Retour à l\'accueil</a>' +
@@ -2219,17 +2221,6 @@
     const error = document.getElementById('shipping-error');
     if (error) error.style.display = 'none';
 
-    // Afficher/masquer le bloc Calendly retrait
-    const calendlyBlock = document.getElementById('calendly-retrait');
-    if (calendlyBlock) {
-      if (method === 'retrait') {
-        calendlyBlock.style.display = '';
-        loadCalendlyEmbed('calendly-commander-container');
-      } else {
-        calendlyBlock.style.display = 'none';
-      }
-    }
-
     // Adapter les champs adresse
     updateAddressFields();
 
@@ -2365,18 +2356,34 @@
    * et publie dans la table `configuration`. Fallback : "4 à 6 semaines".
    */
   function loadDelaiFabrication() {
-    var el = document.getElementById('delay-estimate');
-    if (!el) return;
+    // Tous les elements de delai a mettre a jour
+    var targets = [
+      document.getElementById('delay-estimate'),
+      document.getElementById('summary-deposit-delay'),
+      document.getElementById('summary-full-delay')
+    ].filter(Boolean);
 
-    // Attendre que Supabase soit disponible
+    if (targets.length === 0) return;
+
+    var fallback = '4 à 6 semaines';
+
+    function updateAll(text) {
+      targets.forEach(function(el) {
+        // L'element #delay-estimate a un prefixe "Delai : "
+        el.textContent = el.id === 'delay-estimate'
+          ? 'Délai : ' + text
+          : text;
+      });
+    }
+
     function fetchDelai() {
       if (!window.MistralDB) {
-        el.textContent = 'Délai : 4 à 6 semaines';
+        updateAll(fallback);
         return;
       }
       var client = MistralDB.getClient();
       if (!client) {
-        el.textContent = 'Délai : 4 à 6 semaines';
+        updateAll(fallback);
         return;
       }
 
@@ -2391,25 +2398,24 @@
             var semaines = parseInt(typeof result.data.value === 'string'
               ? JSON.parse(result.data.value) : result.data.value, 10);
             if (semaines && semaines > 0) {
-              el.textContent = 'Délai : environ ' + semaines + ' semaines';
+              updateAll('environ ' + semaines + ' semaines');
               return;
             }
           }
-          el.textContent = 'Délai : 4 à 6 semaines';
+          updateAll(fallback);
         })
         .catch(function() {
-          el.textContent = 'Délai : 4 à 6 semaines';
+          updateAll(fallback);
         });
     }
 
-    // MistralDB peut ne pas etre encore charge (dynamique via main.js)
     if (window.MistralDB) {
       fetchDelai();
     } else {
       window.addEventListener('mistral-sync-complete', fetchDelai, { once: true });
-      // Fallback si sync ne se declenche pas (timeout 5s)
       setTimeout(function() {
-        if (el.textContent.indexOf('en cours') !== -1) {
+        var el = document.getElementById('delay-estimate');
+        if (el && el.textContent.indexOf('en cours') !== -1) {
           fetchDelai();
         }
       }, 5000);
