@@ -1542,6 +1542,7 @@
     window.addEventListener('mistral-sync-complete', () => {
       renderAccessoiresSection();
       updateDisplay();
+      loadDelaiFabrication();
     });
     window.addEventListener('mistral-data-change', (e) => {
       if (e.detail?.key === 'mistral_accessoires') {
@@ -1550,5 +1551,28 @@
       }
     });
   });
+
+  /**
+   * Charge le delai de fabrication depuis la config Supabase (namespace=configurateur)
+   * et l'affiche dans l'element #config-delay-estimate du configurateur.
+   */
+  function loadDelaiFabrication() {
+    var el = document.getElementById('config-delay-estimate');
+    if (!el) return;
+
+    var fallback = 'Délai de fabrication : 4 à 6 semaines';
+    var data = typeof MistralSync !== 'undefined'
+      ? MistralSync.getData('mistral_tarifs_publics')
+      : null;
+
+    if (data && data.delai_fabrication != null) {
+      var semaines = parseInt(data.delai_fabrication, 10);
+      if (semaines > 0) {
+        el.textContent = 'Délai de fabrication : environ ' + semaines + ' semaines';
+        return;
+      }
+    }
+    el.textContent = fallback;
+  }
 
 })(window);

@@ -641,6 +641,15 @@
       if (liExpedition) liExpedition.textContent = 'Délai : 8-12 semaines';
     }
 
+    // Masquer les lignes de delai pour le stock (disponibilite immediate)
+    var delayRows = ['summary-deposit-delay-row', 'summary-full-delay-row'];
+    delayRows.forEach(function(id) {
+      var row = document.getElementById(id);
+      if (row) row.style.display = stock ? 'none' : '';
+    });
+    var delayEstimate = document.getElementById('delay-estimate');
+    if (delayEstimate) delayEstimate.style.display = stock ? 'none' : '';
+
     // Étape header
     const eyebrow = document.querySelector('.order-header .eyebrow');
     if (eyebrow) {
@@ -2347,18 +2356,34 @@
    * et publie dans la table `configuration`. Fallback : "4 à 6 semaines".
    */
   function loadDelaiFabrication() {
-    var el = document.getElementById('delay-estimate');
-    if (!el) return;
+    // Tous les elements de delai a mettre a jour
+    var targets = [
+      document.getElementById('delay-estimate'),
+      document.getElementById('summary-deposit-delay'),
+      document.getElementById('summary-full-delay')
+    ].filter(Boolean);
 
-    // Attendre que Supabase soit disponible
+    if (targets.length === 0) return;
+
+    var fallback = '4 à 6 semaines';
+
+    function updateAll(text) {
+      targets.forEach(function(el) {
+        // L'element #delay-estimate a un prefixe "Delai : "
+        el.textContent = el.id === 'delay-estimate'
+          ? 'Délai : ' + text
+          : text;
+      });
+    }
+
     function fetchDelai() {
       if (!window.MistralDB) {
-        el.textContent = 'Délai : 4 à 6 semaines';
+        updateAll(fallback);
         return;
       }
       var client = MistralDB.getClient();
       if (!client) {
-        el.textContent = 'Délai : 4 à 6 semaines';
+        updateAll(fallback);
         return;
       }
 
@@ -2373,25 +2398,24 @@
             var semaines = parseInt(typeof result.data.value === 'string'
               ? JSON.parse(result.data.value) : result.data.value, 10);
             if (semaines && semaines > 0) {
-              el.textContent = 'Délai : environ ' + semaines + ' semaines';
+              updateAll('environ ' + semaines + ' semaines');
               return;
             }
           }
-          el.textContent = 'Délai : 4 à 6 semaines';
+          updateAll(fallback);
         })
         .catch(function() {
-          el.textContent = 'Délai : 4 à 6 semaines';
+          updateAll(fallback);
         });
     }
 
-    // MistralDB peut ne pas etre encore charge (dynamique via main.js)
     if (window.MistralDB) {
       fetchDelai();
     } else {
       window.addEventListener('mistral-sync-complete', fetchDelai, { once: true });
-      // Fallback si sync ne se declenche pas (timeout 5s)
       setTimeout(function() {
-        if (el.textContent.indexOf('en cours') !== -1) {
+        var el = document.getElementById('delay-estimate');
+        if (el && el.textContent.indexOf('en cours') !== -1) {
           fetchDelai();
         }
       }, 5000);
