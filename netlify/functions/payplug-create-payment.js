@@ -293,8 +293,10 @@ async function validateStockPrice(amountCents, instrumentId, paymentType) {
     const instrument = instruments[0];
 
     // Vérifier que l'instrument est toujours disponible
-    if (instrument.statut !== 'en_stock' && instrument.statut !== 'disponible') {
-      return { valid: false, reason: 'Cet instrument n\'est plus disponible' };
+    // Statuts valides : 'en_ligne' (visible en boutique), 'disponible' (en stock interne), 'en_stock' (legacy)
+    const validStatuts = ['en_ligne', 'disponible', 'en_stock'];
+    if (!validStatuts.includes(instrument.statut)) {
+      return { valid: false, reason: 'Cet instrument n\'est plus disponible (statut: ' + instrument.statut + ')' };
     }
 
     // Appliquer la promo si applicable (même formule que cart.js: arrondi à 5€ inf.)
