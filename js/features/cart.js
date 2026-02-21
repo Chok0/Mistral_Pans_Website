@@ -110,14 +110,41 @@
     const existing = cart.find(function(item) {
       return item.type === 'instrument' && item.sourceId === instrument.id;
     });
-    if (existing) return existing.id;
+    if (existing) {
+      // Mettre à jour les options (housse) si elles ont changé
+      if (options && options.housse) {
+        existing.options = existing.options.filter(function(o) { return o.type !== 'housse'; });
+        existing.options.push({
+          type: 'housse',
+          id: options.housse.id,
+          nom: options.housse.nom,
+          prix: options.housse.prix || 0
+        });
+        save();
+      } else if (options && !options.housse) {
+        // L'utilisateur a retiré la housse
+        var hadHousse = existing.options.some(function(o) { return o.type === 'housse'; });
+        if (hadHousse) {
+          existing.options = existing.options.filter(function(o) { return o.type !== 'housse'; });
+          save();
+        }
+      }
+      return existing.id;
+    }
+
+    // Appliquer la promo si applicable (arrondi à 5 EUR inf.)
+    const promoPercent = instrument.promo_percent || 0;
+    const rawPrice = instrument.prix_vente || 0;
+    const finalPrice = promoPercent > 0
+      ? Math.floor(rawPrice * (1 - promoPercent / 100) / 5) * 5
+      : rawPrice;
 
     const item = {
       id: generateId(),
       type: 'instrument',
       sourceId: instrument.id,
       nom: instrument.nom || ((instrument.tonalite || '') + ' ' + (instrument.gamme || '')).trim() || 'Instrument',
-      prix: instrument.prix_vente || 0,
+      prix: finalPrice,
       quantite: 1,
       image: (instrument.images && instrument.images.length > 0) ? instrument.images[0] : null,
       details: {
@@ -167,12 +194,19 @@
       return existing.id;
     }
 
+    // Appliquer la promo si applicable (arrondi à 5 EUR inf.)
+    const accPromoPercent = accessoire.promo_percent || 0;
+    const accRawPrice = accessoire.prix || 0;
+    const accFinalPrice = accPromoPercent > 0
+      ? Math.floor(accRawPrice * (1 - accPromoPercent / 100) / 5) * 5
+      : accRawPrice;
+
     const item = {
       id: generateId(),
       type: 'accessoire',
       sourceId: accessoire.id,
       nom: accessoire.nom || 'Accessoire',
-      prix: accessoire.prix || 0,
+      prix: accFinalPrice,
       quantite: 1,
       image: accessoire.image || null,
       details: {

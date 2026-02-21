@@ -517,7 +517,7 @@
       accessoires = MistralSync.getData(ACCESSOIRES_KEY);
     }
     const housses = accessoires.filter(function(a) {
-      return a.statut === 'actif' &&
+      return a.statut === 'en_ligne' &&
         a.visible_configurateur === true &&
         a.tailles_compatibles &&
         a.tailles_compatibles.includes(taille);
@@ -542,11 +542,15 @@
 
   // ── Keyboard ──
 
+  function keyboardHandler(e) {
+    if (e.key === 'ArrowLeft') navigateGallery(-1);
+    else if (e.key === 'ArrowRight') navigateGallery(1);
+  }
+
   function initKeyboard() {
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'ArrowLeft') navigateGallery(-1);
-      else if (e.key === 'ArrowRight') navigateGallery(1);
-    });
+    // Retirer l'ancien listener pour eviter l'empilement sur re-render
+    document.removeEventListener('keydown', keyboardHandler);
+    document.addEventListener('keydown', keyboardHandler);
   }
 
   // ── Prix ──

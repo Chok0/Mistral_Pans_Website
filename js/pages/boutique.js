@@ -33,6 +33,7 @@
   // - F#/Gb depends on scale preference
   function updateTonalityChipsLabels() {
     const scaleData = getScaleDataUnified(state.scale);
+    if (!scaleData) return;
     const isFrench = MistralScales.getNotationMode() === 'french';
 
     document.querySelectorAll('#chips-tonality .chip').forEach(chip => {
@@ -370,6 +371,7 @@
 
   function getTransposition() {
     const scaleData = getScaleDataUnified(state.scale);
+    if (!scaleData) return 0;
     const baseNote = scaleData.baseRoot;
     const baseOctave = scaleData.baseOctave;
 
@@ -387,6 +389,7 @@
 
   function getCurrentNotes() {
     const scaleData = getScaleDataUnified(state.scale);
+    if (!scaleData || !scaleData.patterns) return [];
     const pattern = scaleData.patterns[state.notes];
     if (!pattern) return [];
 
@@ -398,6 +401,7 @@
   function renderPlayer() {
     const notes = getCurrentNotes();
     const scaleData = getScaleDataUnified(state.scale);
+    if (!scaleData) return;
     const useFlats = shouldUseFlats(state.tonality, scaleData);
     const size = 900;
     const center = size / 2;
@@ -624,6 +628,7 @@
   // ===== UPDATE DISPLAY =====
   function updateDisplay() {
     const scaleData = getScaleDataUnified(state.scale);
+    if (!scaleData) return;
     // Music theory rules: Eb/Ab/Bb/Db roots use flats, F# depends on scale, natural roots use scale preference
     const useFlats = shouldUseFlats(state.tonality, scaleData);
     const notes = getCurrentNotes();
@@ -956,6 +961,7 @@
         state.scale = chip.dataset.value;
 
         const scaleData = getScaleDataUnified(state.scale);
+        if (!scaleData) return;
         state.tonality = scaleData.baseRoot + scaleData.baseOctave;
         document.querySelectorAll('#chips-tonality .chip').forEach(c => {
           c.classList.toggle('active', c.dataset.value === state.tonality);
@@ -974,11 +980,7 @@
     }
   }
 
-  // Re-render scale chips when gammes change (lot publish/unpublish, etc.)
-  window.addEventListener('gammesUpdated', function() {
-    renderScaleChips();
-    updateDisplay();
-  });
+  // gammesUpdated listener is registered in DOMContentLoaded block below (single registration)
 
   // ===== RENDER SIZE CARDS =====
   function renderSizeCards() {
