@@ -21,7 +21,9 @@
       locations: 'mistral_gestion_locations',
       commandes: 'mistral_gestion_commandes',
       factures: 'mistral_gestion_factures',
-      config: 'mistral_gestion_config'
+      config: 'mistral_gestion_config',
+      initiations: 'mistral_initiations',
+      initiations_reservations: 'mistral_initiations_reservations'
     },
     
     // Configuration entreprise par défaut
@@ -1446,6 +1448,82 @@
   };
 
   // ============================================================================
+  // CRUD: INITIATIONS
+  // ============================================================================
+
+  const Initiations = {
+    list() {
+      return getData('initiations');
+    },
+
+    get(id) {
+      return this.list().find(i => i.id === id);
+    },
+
+    listActive() {
+      const today = new Date().toISOString().slice(0, 10);
+      return this.list()
+        .filter(i => i.statut === 'active' && i.date >= today)
+        .sort((a, b) => a.date.localeCompare(b.date));
+    },
+
+    create(data) {
+      if (!data.date) throw new Error('La date est requise');
+      const initiations = this.list();
+      const initiation = {
+        id: generateUUID(),
+        date: data.date,
+        horaire_debut: data.horaire_debut || '13:00',
+        horaire_fin: data.horaire_fin || '18:00',
+        description: data.description || '',
+        places_reservees: 0,
+        statut: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      initiations.push(initiation);
+      setData('initiations', initiations);
+      return initiation;
+    },
+
+    update(id, data) {
+      const initiations = this.list();
+      const index = initiations.findIndex(i => i.id === id);
+      if (index === -1) return null;
+      initiations[index] = {
+        ...initiations[index],
+        ...data,
+        id,
+        updated_at: new Date().toISOString()
+      };
+      setData('initiations', initiations);
+      return initiations[index];
+    },
+
+    delete(id) {
+      const initiations = this.list();
+      const filtered = initiations.filter(i => i.id !== id);
+      if (filtered.length === initiations.length) return false;
+      setData('initiations', filtered);
+      deleteRemote('initiations', id);
+      return true;
+    },
+
+    getReservations(initiationId) {
+      const reservations = getData('initiations_reservations');
+      return reservations.filter(r => r.initiation_id === initiationId && r.statut !== 'cancelled');
+    },
+
+    getPlacesRestantes(id) {
+      const initiation = this.get(id);
+      if (!initiation) return 0;
+      const config = getConfig();
+      const placesMax = config.initiations_places || 5;
+      return Math.max(0, placesMax - (initiation.places_reservees || 0));
+    }
+  };
+
+  // ============================================================================
   // API PUBLIQUE
   // ============================================================================
   
@@ -1480,6 +1558,7 @@
     Locations,
     Commandes,
     Factures,
+    Initiations,
 
     // Data management
     DataManager,

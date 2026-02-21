@@ -291,10 +291,18 @@
       <!-- PROFESSEURS -->
       <section class="gestion-section" id="section-professeurs">
         <div class="section-header"><h2 class="section-title">Gestion des professeurs</h2></div>
-        <div class="admin-tabs" role="tablist"><button class="admin-tab active" data-subtab="pending">Demandes <span class="admin-tab__badge" id="pending-count">0</span></button><button class="admin-tab" data-subtab="active">Actifs</button><button class="admin-tab" data-subtab="add">Ajouter</button></div>
+        <div class="admin-tabs" role="tablist"><button class="admin-tab active" data-subtab="pending">Demandes <span class="admin-tab__badge" id="pending-count">0</span></button><button class="admin-tab" data-subtab="active">Actifs</button><button class="admin-tab" data-subtab="add">Ajouter</button><button class="admin-tab" data-subtab="initiations">Initiations</button></div>
         <div id="subtab-pending"><div class="admin-list" id="pending-teachers-list"></div><div class="admin-empty" id="empty-pending" style="display:none;"><div class="admin-empty__title">Aucune demande</div></div></div>
         <div id="subtab-active" style="display:none;"><div class="admin-list" id="active-teachers-list"></div><div class="admin-empty" id="empty-teachers" style="display:none;"><div class="admin-empty__title">Aucun professeur</div></div></div>
         <div id="subtab-add" style="display:none;"><div class="admin-card" style="max-width:700px; background:#fff; color:#333;"><div id="add-teacher-form-container"></div><div style="margin-top: 1.5rem;"><button type="button" class="admin-btn admin-btn--primary" data-action="submit-add-teacher-form">Ajouter le professeur</button></div></div></div>
+        <div id="subtab-initiations" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <p style="color:var(--admin-text-muted); font-size:0.875rem;">Ateliers d'initiation au handpan affichés sur la page Apprendre.</p>
+            <button class="admin-btn admin-btn--primary admin-btn--sm" data-action="show-modal" data-param="initiation">+ Nouvelle date</button>
+          </div>
+          <div class="admin-list" id="initiations-list"></div>
+          <div class="admin-empty" id="empty-initiations" style="display:none;"><div class="admin-empty__title">Aucune initiation programmée</div></div>
+        </div>
       </section>
       
       <!-- GALERIE -->
@@ -1219,6 +1227,56 @@
       <div class="admin-modal__footer">
         <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="professeur">Annuler</button>
         <button class="admin-btn admin-btn--primary" data-action="save-teacher">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Initiation -->
+  <div class="admin-modal-overlay admin-modal--small" id="modal-initiation">
+    <div class="admin-modal">
+      <div class="admin-modal__header">
+        <h3 class="admin-modal__title" id="modal-initiation-title">Nouvelle initiation</h3>
+        <button class="admin-modal__close" data-action="close-modal" data-param="initiation">&#10005;</button>
+      </div>
+      <div class="admin-modal__body">
+        <input type="hidden" id="initiation-id">
+        <div class="admin-form__group">
+          <label class="admin-form__label">Date *</label>
+          <input type="date" class="admin-form__input" id="initiation-date">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+          <div class="admin-form__group">
+            <label class="admin-form__label">Heure de début</label>
+            <input type="time" class="admin-form__input" id="initiation-heure-debut" value="13:00">
+          </div>
+          <div class="admin-form__group">
+            <label class="admin-form__label">Heure de fin</label>
+            <input type="time" class="admin-form__input" id="initiation-heure-fin" value="18:00">
+          </div>
+        </div>
+        <div class="admin-form__group">
+          <label class="admin-form__label">Description (optionnel)</label>
+          <textarea class="admin-form__textarea" id="initiation-description" rows="3" placeholder="Détails supplémentaires pour cette session..."></textarea>
+        </div>
+      </div>
+      <div class="admin-modal__footer">
+        <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="initiation">Annuler</button>
+        <button class="admin-btn admin-btn--primary" data-action="save-initiation">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Réservations Initiation -->
+  <div class="admin-modal-overlay admin-modal--medium" id="modal-initiation-reservations">
+    <div class="admin-modal">
+      <div class="admin-modal__header">
+        <h3 class="admin-modal__title" id="modal-initiation-reservations-title">Réservations</h3>
+        <button class="admin-modal__close" data-action="close-modal" data-param="initiation-reservations">&#10005;</button>
+      </div>
+      <div class="admin-modal__body" id="initiation-reservations-content">
+      </div>
+      <div class="admin-modal__footer">
+        <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="initiation-reservations">Fermer</button>
       </div>
     </div>
   </div>

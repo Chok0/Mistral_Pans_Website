@@ -1210,6 +1210,53 @@
     </div>
   </section>
   
+  <!-- ========== INITIATIONS ========== -->
+  <section id="initiations" class="section" style="background: var(--color-bg);">
+    <div class="container">
+      <div class="text-center" style="margin-bottom: var(--space-2xl);">
+        <p class="eyebrow">Ateliers</p>
+        <h2>Initiations au handpan</h2>
+        <p style="color: var(--color-text-light); max-width: 600px; margin: var(--space-md) auto 0;">
+          Une après-midi de découverte : visite de l'atelier, premiers pas sur l'instrument
+          et temps de jeu collectif, accompagné par un artiste professeur.
+        </p>
+      </div>
+      <div class="initiations-grid" id="initiations-grid">
+        <div style="text-align:center; padding:2rem; color:var(--color-text-muted);">Chargement des dates...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal réservation initiation -->
+  <div class="modal-overlay" id="initiation-booking-modal">
+    <div class="modal" style="max-width:480px;">
+      <button class="modal__close" id="close-booking-modal" aria-label="Fermer">&times;</button>
+      <h3 style="margin:0 0 0.5rem 0;">Réserver une initiation</h3>
+      <p id="booking-modal-date" style="color:var(--color-text-light); margin-bottom:1.5rem;"></p>
+      <form id="booking-form" novalidate>
+        <input type="hidden" id="booking-initiation-id">
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label for="booking-nom" style="display:block; font-weight:500; margin-bottom:0.25rem;">Nom complet *</label>
+          <input type="text" id="booking-nom" class="form-input" required autocomplete="name" style="width:100%; padding:0.75rem; border:1px solid var(--color-border); border-radius:8px;">
+        </div>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label for="booking-email" style="display:block; font-weight:500; margin-bottom:0.25rem;">Email *</label>
+          <input type="email" id="booking-email" class="form-input" required autocomplete="email" style="width:100%; padding:0.75rem; border:1px solid var(--color-border); border-radius:8px;">
+        </div>
+        <div class="form-group" style="margin-bottom:1.5rem;">
+          <label for="booking-telephone" style="display:block; font-weight:500; margin-bottom:0.25rem;">Téléphone *</label>
+          <input type="tel" id="booking-telephone" class="form-input" required autocomplete="tel" style="width:100%; padding:0.75rem; border:1px solid var(--color-border); border-radius:8px;">
+        </div>
+        <button type="submit" class="btn btn--primary btn--lg" id="booking-submit-btn" style="width:100%;">
+          Réserver et payer (60 €)
+        </button>
+        <p style="font-size:0.8rem; color:var(--color-text-muted); margin-top:0.75rem; text-align:center;">
+          Paiement sécurisé par carte bancaire via Payplug.
+        </p>
+      </form>
+    </div>
+  </div>
+
   <!-- ========== PARTNER BENEFITS ========== -->
   <section class="section" style="background: var(--color-bg-warm);">
     <div class="container container--narrow">
@@ -1506,6 +1553,9 @@
 
 
   <!-- Ancien script inline supprimé - fonctionnalités migrées vers apprendre-admin.js -->
+
+  <!-- Payplug (initiations booking) -->
+  <script src="js/services/payplug-client.js?v=3.5.3" defer></script>
 
   <!-- Admin Scripts -->
   <script src="js/admin/admin-core.js?v=3.5.3" defer></script>

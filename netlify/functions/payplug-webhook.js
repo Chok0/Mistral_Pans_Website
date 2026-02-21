@@ -570,6 +570,95 @@ async function generateInvoice(payment, metadata) {
 }
 
 // ============================================================================
+// INITIATION RESERVATION
+// ============================================================================
+
+async function createInitiationReservation(payment, metadata) {
+  const sb = getSupabaseConfig();
+  const initiationId = metadata.initiation_id;
+  const orderReference = metadata.order_reference || '';
+
+  // 1. Create reservation record
+  const reservation = {
+    initiation_id: initiationId,
+    nom: metadata.customer_name || `${payment.billing?.first_name || ''} ${payment.billing?.last_name || ''}`.trim(),
+    email: metadata.customer_email || payment.billing?.email || '',
+    telephone: metadata.customer_phone || payment.billing?.mobile_phone_number || '',
+    statut: 'confirmed',
+    payment_id: payment.id,
+    reference: orderReference,
+    montant: payment.amount / 100,
+    created_at: new Date().toISOString()
+  };
+
+  const createResp = await fetch(`${sb.url}/rest/v1/initiations_reservations`, {
+    method: 'POST',
+    headers: { ...sb.headers, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(reservation)
+  });
+
+  if (!createResp.ok) {
+    const errText = await createResp.text();
+    console.error('Erreur creation reservation initiation:', errText);
+  }
+
+  // 2. Increment places_reservees on the initiation
+  const getResp = await fetch(
+    `${sb.url}/rest/v1/initiations?id=eq.${initiationId}&select=places_reservees`,
+    { headers: sb.headers }
+  );
+
+  if (getResp.ok) {
+    const rows = await getResp.json();
+    const current = (rows[0]?.places_reservees || 0) + 1;
+    await fetch(`${sb.url}/rest/v1/initiations?id=eq.${initiationId}`, {
+      method: 'PATCH',
+      headers: { ...sb.headers, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ places_reservees: current, updated_at: new Date().toISOString() })
+    });
+  }
+
+  console.log('Reservation initiation creee:', initiationId, reservation.nom);
+
+  // 3. Send confirmation email via send-email function
+  try {
+    const initResp = await fetch(
+      `${sb.url}/rest/v1/initiations?id=eq.${initiationId}&select=date,horaire_debut,horaire_fin`,
+      { headers: sb.headers }
+    );
+    let dateLabel = metadata.initiation_date || '';
+    let horaire = '13h — 18h';
+    if (initResp.ok) {
+      const initRows = await initResp.json();
+      if (initRows.length > 0) {
+        const row = initRows[0];
+        const d = new Date(row.date + 'T12:00:00');
+        dateLabel = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        dateLabel = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1);
+        horaire = (row.horaire_debut || '13:00').replace(':', 'h') + ' — ' + (row.horaire_fin || '18:00').replace(':', 'h');
+      }
+    }
+
+    const baseUrl = process.env.URL || 'https://mistralpans.fr';
+    await fetch(`${baseUrl}/.netlify/functions/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        emailType: 'initiation_confirmation',
+        email: reservation.email,
+        nom: reservation.nom,
+        dateLabel: dateLabel,
+        horaire: horaire,
+        reference: orderReference,
+        prix: payment.amount / 100
+      })
+    });
+  } catch (emailErr) {
+    console.error('Erreur envoi email initiation:', emailErr.message || emailErr);
+  }
+}
+
+// ============================================================================
 // EMAILS
 // ============================================================================
 
@@ -1234,6 +1323,15 @@ async function handlePaymentNotification(paymentId, secretKey, headers) {
 
     // 6. Auto-générer la facture (séquentiel — nécessite la commande créée ci-dessus)
     await generateInvoice(payment, metadata);
+
+    // 7. Créer la réservation initiation si applicable
+    if (metadata.source === 'initiation' && metadata.initiation_id) {
+      try {
+        await createInitiationReservation(payment, metadata);
+      } catch (err) {
+        console.error('Erreur création réservation initiation:', err.message || err);
+      }
+    }
 
     return {
       statusCode: 200,

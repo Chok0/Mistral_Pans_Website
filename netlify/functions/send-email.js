@@ -814,6 +814,47 @@ function buildShippingNotificationEmail(data) {
 /**
  * Template : Email de livraison finale avec carnet d'entretien en PJ
  */
+function buildInitiationConfirmationEmail(data) {
+  const nom = sanitize(data.nom);
+  const dateLabel = sanitize(data.dateLabel || data.date || '');
+  const horaire = sanitize(data.horaire || '13h — 18h');
+  const reference = sanitize(data.reference || '');
+  const prix = data.prix || 60;
+
+  return {
+    to: [{ email: data.email, name: nom }],
+    subject: `Confirmation de votre initiation handpan — ${dateLabel}`,
+    htmlContent: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:#f5f5f5;">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;">
+<tr><td style="background:#0D7377;padding:2rem;text-align:center;">
+<h1 style="color:#ffffff;margin:0;font-size:1.5rem;">Initiation confirmée</h1>
+</td></tr>
+<tr><td style="padding:2rem;">
+<p style="font-size:1rem;line-height:1.6;">Bonjour <strong>${nom}</strong>,</p>
+<p style="font-size:1rem;line-height:1.6;">Votre inscription à l'atelier d'initiation au handpan est confirmée !</p>
+<table width="100%" cellpadding="12" cellspacing="0" style="background:#f8f8f8;border-radius:8px;margin:1.5rem 0;">
+<tr><td style="border-bottom:1px solid #eee;"><strong>Date</strong></td><td style="border-bottom:1px solid #eee;">${dateLabel}</td></tr>
+<tr><td style="border-bottom:1px solid #eee;"><strong>Horaire</strong></td><td style="border-bottom:1px solid #eee;">${horaire}</td></tr>
+<tr><td style="border-bottom:1px solid #eee;"><strong>Lieu</strong></td><td style="border-bottom:1px solid #eee;">Atelier Mistral Pans — 105 rue du bas val Mary, 95630 Mériel</td></tr>
+<tr><td style="border-bottom:1px solid #eee;"><strong>Montant</strong></td><td style="border-bottom:1px solid #eee;">${prix} €</td></tr>
+${reference ? `<tr><td><strong>Référence</strong></td><td>${reference}</td></tr>` : ''}
+</table>
+<h3 style="margin:1.5rem 0 0.5rem;">Au programme</h3>
+<ul style="line-height:1.8;color:#555;">
+<li>Visite de l'atelier de fabrication</li>
+<li>Présentation de l'instrument et premiers pas</li>
+<li>Temps de jeu collectif accompagné</li>
+</ul>
+<p style="font-size:0.9rem;color:#666;margin-top:1.5rem;">Pour toute question, répondez directement à cet email.</p>
+</td></tr>
+<tr><td style="background:#1A1815;padding:1.5rem;text-align:center;">
+<p style="color:#a8a5a0;font-size:0.8rem;margin:0;">Mistral Pans — Artisan handpan en Île-de-France</p>
+<p style="color:#a8a5a0;font-size:0.8rem;margin:0.5rem 0 0;"><a href="https://mistralpans.fr" style="color:#0D7377;">mistralpans.fr</a></p>
+</td></tr>
+</table></body></html>`
+  };
+}
+
 function buildDeliveryEmail(data) {
   const { client, order, instrument, carnetPdfBase64 } = data;
   const gamme = sanitize(instrument?.gamme || order.productName || 'Sur mesure');
@@ -1349,6 +1390,17 @@ exports.handler = async (event, context) => {
           };
         }
         emailData = buildDeliveryEmail(data);
+        break;
+
+      case 'initiation_confirmation':
+        if (!data.email || !data.nom) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Email et nom requis pour la confirmation d\'initiation' })
+          };
+        }
+        emailData = buildInitiationConfirmationEmail(data);
         break;
 
       case 'contact':

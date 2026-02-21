@@ -45,6 +45,8 @@
       { local: 'mistral_accessoires', remote: 'accessoires', idField: 'id' },
       { local: 'mistral_tailles', remote: 'tailles', idField: 'id' },
       { local: 'mistral_gammes_data', remote: 'gammes', idField: 'id' },
+      { local: 'mistral_initiations', remote: 'initiations', idField: 'id' },
+      { local: 'mistral_initiations_reservations', remote: 'initiations_reservations', idField: 'id' },
       { local: 'mistral_gestion_config', remote: 'configuration', idField: 'id', isKeyValue: true },
       { local: 'mistral_compta_config', remote: 'configuration', idField: 'id', isKeyValue: true, configNamespace: 'compta' },
       { local: 'mistral_email_automations', remote: 'configuration', idField: 'id', isKeyValue: true, configNamespace: 'email_automations' },
@@ -58,7 +60,7 @@
     publicPageTables: {
       'boutique':  ['instruments', 'accessoires', 'tailles', 'gammes', 'configuration'],
       'annonce':   ['instruments', 'accessoires', 'tailles'],
-      'apprendre': ['professeurs'],
+      'apprendre': ['professeurs', 'initiations', 'configuration'],
       'galerie':   ['galerie'],
       'blog':      ['articles'],
       'article':   ['articles'],
@@ -114,7 +116,8 @@
     'mistral_teachers',
     'mistral_pending_teachers',
     'mistral_gallery',
-    'mistral_blog_articles'
+    'mistral_blog_articles',
+    'mistral_initiations'
   ]);
 
   function writeCache(key, data) {
