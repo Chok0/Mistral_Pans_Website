@@ -13,6 +13,36 @@
 
   const { Auth, FAB, Modal, Toast, Confirm, Teachers, Consent, utils } = MistralAdmin;
 
+  // Icônes SVG pour les tags professeurs
+  const TAG_ICONS = {
+    domicile:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+    studio:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 3h-8l-2 4h12z"/></svg>',
+    distance:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+    solo:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    groupe:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    instrument:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg>'
+  };
+
+  const TAG_LABELS = {
+    domicile: 'À domicile',
+    studio: 'En studio',
+    distance: 'À distance',
+    solo: 'Cours individuels',
+    groupe: 'Cours collectifs',
+    instrument: 'Instrument fourni'
+  };
+
+  function getTeacherTags(teacher) {
+    const tags = [];
+    if (teacher.courseTypes?.includes('domicile')) tags.push('domicile');
+    if (teacher.courseTypes?.includes('studio')) tags.push('studio');
+    if (teacher.courseTypes?.includes('distance')) tags.push('distance');
+    if (teacher.courseFormats?.includes('solo')) tags.push('solo');
+    if (teacher.courseFormats?.includes('groupe')) tags.push('groupe');
+    if (teacher.instrumentAvailable) tags.push('instrument');
+    return tags;
+  }
+
   // ============================================================================
   // CONFIGURATION LEAFLET
   // ============================================================================
@@ -287,11 +317,19 @@
       const firstName = t.name ? t.name.split(' ')[0] : 'ce professeur';
       const phoneClean = t.phone ? t.phone.replace(/\s/g, '') : '';
 
+      const cardTags = getTeacherTags(t);
+      const cardTagsHtml = cardTags.length > 0
+        ? `<div class="teacher-card__tags" style="display:flex;flex-wrap:wrap;gap:0.375rem;margin-bottom:var(--space-md);">${cardTags.map(key =>
+            `<span class="teacher-tag teacher-tag--compact" title="${TAG_LABELS[key]}">${TAG_ICONS[key]}</span>`
+          ).join('')}</div>`
+        : '';
+
       return `
         <div class="teacher-card" data-id="${t.id}" data-lat="${t.lat || ''}" data-lng="${t.lng || ''}" data-action="open-teacher-profile" style="cursor:pointer;">
           <h4 class="teacher-card__name">${utils.escapeHtml(t.name)}</h4>
           <p class="teacher-card__location">📍 ${utils.escapeHtml(t.location || t.city || '')}</p>
           ${t.bio ? `<p style="font-size: 0.875rem; color: var(--color-text-light); margin-bottom: var(--space-md);">${utils.escapeHtml(t.bio).substring(0, 100)}${t.bio.length > 100 ? '...' : ''}</p>` : ''}
+          ${cardTagsHtml}
           <div class="teacher-card__actions">
             ${window.matchMedia('(max-width: 768px)').matches
               ? `<a href="mailto:${t.email}" class="teacher-card__btn teacher-card__btn--email" data-action="stop-propagation">
@@ -1098,16 +1136,9 @@
         </svg>`;
 
     // Tags
-    const tags = [];
-    if (teacher.courseTypes?.includes('domicile')) tags.push('À domicile');
-    if (teacher.courseTypes?.includes('studio')) tags.push('En studio');
-    if (teacher.courseTypes?.includes('distance')) tags.push('À distance');
-    if (teacher.courseFormats?.includes('solo')) tags.push('Cours individuels');
-    if (teacher.courseFormats?.includes('groupe')) tags.push('Cours collectifs');
-    if (teacher.instrumentAvailable) tags.push('Instrument fourni');
-
-    const tagsHtml = tags.map(t =>
-      `<span class="tag ${t === 'Instrument fourni' ? 'tag--accent' : ''}">${t}</span>`
+    const tags = getTeacherTags(teacher);
+    const tagsHtml = tags.map(key =>
+      `<span class="teacher-tag ${key === 'instrument' ? 'teacher-tag--accent' : ''}">${TAG_ICONS[key]}${TAG_LABELS[key]}</span>`
     ).join('');
 
     // Réseaux sociaux
