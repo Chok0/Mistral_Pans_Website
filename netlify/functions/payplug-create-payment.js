@@ -668,28 +668,38 @@ exports.handler = async (event, context) => {
         cancel_url: cancelUrl || `${baseUrl}/commander.html?status=cancelled&ref=${reference}`
       },
       notification_url: `${baseUrl}/.netlify/functions/payplug-webhook`,
-      metadata: cleanMetadata(metadata?.cartMode ? {
-        // Mode panier multi-items
-        order_reference: reference,
-        payment_type: paymentType || 'full',
-        source: metadata?.source || 'mixed',
-        cart_mode: 'true',
-        items: JSON.stringify((metadata?.items || []).map(item => ({
+      metadata: cleanMetadata(metadata?.cartMode ? (() => {
+        // Mode panier multi-items — construire items JSON avec garde taille (PayPlug limite ~500 chars/valeur)
+        const itemsData = (metadata?.items || []).map(item => ({
           type: item.type,
           sourceId: item.sourceId,
-          nom: sanitize(item.nom, 60),
+          nom: sanitize(item.nom, 40),
           prix: item.prix,
           quantite: item.quantite || 1,
           total: item.total,
           gamme: item.details?.gamme || item.gamme || null,
-          taille: item.details?.taille || item.taille || null,
-          notes: item.details?.notes || null,
-          options: item.options || []
-        }))),
-        product_name: sanitize(metadata?.productName, 100),
-        total_price_cents: metadata?.totalPrice ? String(metadata.totalPrice * 100) : String(amount),
-        instrument_id: metadata?.instrumentId
-      } : {
+          taille: item.details?.taille || item.taille || null
+        }));
+        let itemsJson = JSON.stringify(itemsData);
+        // Si > 500 chars, simplifier en ne gardant que type/sourceId/prix
+        if (itemsJson.length > 500) {
+          itemsJson = JSON.stringify((metadata?.items || []).map(item => ({
+            type: item.type,
+            sourceId: item.sourceId,
+            prix: item.prix
+          })));
+        }
+        return {
+          order_reference: reference,
+          payment_type: paymentType || 'full',
+          source: metadata?.source || 'mixed',
+          cart_mode: 'true',
+          items: itemsJson,
+          product_name: sanitize(metadata?.productName, 100),
+          total_price_cents: metadata?.totalPrice ? String(metadata.totalPrice * 100) : String(amount),
+          instrument_id: metadata?.instrumentId
+        };
+      })() : {
         // Mode legacy single item
         order_reference: reference,
         payment_type: paymentType || 'full',
@@ -804,12 +814,18 @@ exports.handler = async (event, context) => {
     if (!response.ok) {
       console.error('Erreur Payplug:', JSON.stringify(result));
       // Extraire un message lisible depuis la réponse PayPlug
-      const ppMessage = result?.message || result?.details?.message || '';
+      const ppMessage = result?.message || '';
+      // PayPlug renvoie les détails des champs invalides dans result.details (objet)
+      // Ex: { billing: ["address1 is required"], metadata: ["items value too long"] }
+      const ppDetails = result?.details && typeof result.details === 'object'
+        ? result.details
+        : null;
       return {
         statusCode: response.status,
         headers,
         body: JSON.stringify({
-          error: 'Erreur création paiement' + (ppMessage ? ' : ' + ppMessage : '')
+          error: 'Erreur création paiement' + (ppMessage ? ' : ' + ppMessage : ''),
+          details: ppDetails
         })
       };
     }

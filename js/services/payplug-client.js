@@ -231,7 +231,11 @@
         }
 
         if (!response.ok || !result.success) {
-          throw new Error(result.error || result.details || 'Erreur création paiement');
+          // Afficher les détails PayPlug en console pour le debug
+          if (result.details) {
+            console.error('[MistralPayplug] Détails PayPlug:', result.details);
+          }
+          throw new Error(result.error || 'Erreur création paiement');
         }
 
         return {
