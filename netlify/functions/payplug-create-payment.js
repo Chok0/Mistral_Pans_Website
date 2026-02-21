@@ -663,10 +663,12 @@ exports.handler = async (event, context) => {
       currency: 'EUR',
       billing,
       shipping,
-      hosted_payment: {
-        return_url: returnUrl || `${baseUrl}/commander.html?status=success&ref=${reference}`,
-        cancel_url: cancelUrl || `${baseUrl}/commander.html?status=cancelled&ref=${reference}`
-      },
+      hosted_payment: integrated && !isOney
+        ? { return_url: returnUrl || `${baseUrl}/commander.html?status=success&ref=${reference}` }
+        : {
+            return_url: returnUrl || `${baseUrl}/commander.html?status=success&ref=${reference}`,
+            cancel_url: cancelUrl || `${baseUrl}/commander.html?status=cancelled&ref=${reference}`
+          },
       notification_url: `${baseUrl}/.netlify/functions/payplug-webhook`,
       metadata: cleanMetadata(metadata?.cartMode ? (() => {
         // Mode panier multi-items — construire items JSON avec garde taille (PayPlug limite ~500 chars/valeur)
