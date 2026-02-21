@@ -147,21 +147,24 @@
       });
     });
 
-    // Delegated event listeners for data-action cart buttons
-    container.addEventListener('click', function(e) {
-      var btn = e.target.closest('[data-action]');
-      if (!btn) return;
+    // Delegated event listener for cart buttons (bind once on container)
+    if (!container._cartListenerBound) {
+      container._cartListenerBound = true;
+      container.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn) return;
 
-      e.stopPropagation();
-      var action = btn.dataset.action;
-      var id = btn.dataset.id;
+        e.stopPropagation();
+        var action = btn.dataset.action;
+        var id = btn.dataset.id;
 
-      if (action === 'add-to-cart-instrument') {
-        BoutiqueAdmin.addInstrumentToCart(id, btn);
-      } else if (action === 'add-to-cart-accessoire') {
-        BoutiqueAdmin.addAccessoireToCart(id, btn);
-      }
-    });
+        if (action === 'add-to-cart-instrument') {
+          BoutiqueAdmin.addInstrumentToCart(id, btn);
+        } else if (action === 'add-to-cart-accessoire') {
+          BoutiqueAdmin.addAccessoireToCart(id, btn);
+        }
+      });
+    }
   }
 
   function renderInstrumentCard(instrument) {

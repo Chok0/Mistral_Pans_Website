@@ -112,6 +112,11 @@
       currentGalleryIndex = 0;
       updateMeta(instrument);
       renderInstrument(container, instrument);
+      // Bind CTA buttons (CSP-safe, pas de onclick inline)
+      var cartBtn = document.getElementById('annonce-cart-btn');
+      if (cartBtn) cartBtn.addEventListener('click', function() { window.addInstrumentToCart(); });
+      var orderBtn = document.getElementById('annonce-order-btn');
+      if (orderBtn) orderBtn.addEventListener('click', function() { window.orderInstrumentDirectly(); });
       bindNotationToggle();
       const hasPlayerSlide = initVirtualPlayer(instrument);
       initGallery(instrument.images || [], hasPlayerSlide);
@@ -128,6 +133,9 @@
       currentGalleryIndex = 0;
       updateMetaAccessoire(accessoire);
       renderAccessoire(container, accessoire);
+      // Bind CTA button (CSP-safe, pas de onclick inline)
+      var accCartBtn = document.getElementById('annonce-add-cart-btn');
+      if (accCartBtn) accCartBtn.addEventListener('click', function() { window.addAccessoireToCart(); });
       initGalleryAccessoire(accessoire);
       initKeyboard();
     }
@@ -318,8 +326,8 @@
       '</div>' +
     '</div>';
 
-    const ctaHtml = '<button class="annonce-cta" id="annonce-cart-btn" onclick="addInstrumentToCart()" style="margin-bottom:0.5rem;">Ajouter au panier</button>' +
-      '<button class="annonce-cta" id="annonce-order-btn" onclick="orderInstrumentDirectly()" style="background:transparent;color:var(--color-accent);border:2px solid var(--color-accent);cursor:pointer;">Commander directement</button>' +
+    const ctaHtml = '<button class="annonce-cta" id="annonce-cart-btn" style="margin-bottom:0.5rem;">Ajouter au panier</button>' +
+      '<button class="annonce-cta" id="annonce-order-btn" style="background:transparent;color:var(--color-accent);border:2px solid var(--color-accent);cursor:pointer;">Commander directement</button>' +
       '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
 
     const promoBadgeHtml = instrument.promo_percent > 0
@@ -715,7 +723,7 @@
 
     const canBuy = stock === null || stock === undefined || stock === -1 || stock > 0;
     let ctaHtml = canBuy
-      ? '<button class="annonce-cta" id="annonce-add-cart-btn" onclick="addAccessoireToCart()">Ajouter au panier</button>'
+      ? '<button class="annonce-cta" id="annonce-add-cart-btn">Ajouter au panier</button>'
       : '<button class="annonce-cta" disabled style="opacity:0.5;cursor:not-allowed;">Rupture de stock</button>';
     ctaHtml += '<p class="annonce-contact-note">Des questions ? <a href="#" data-modal="contact">Contactez-moi</a></p>';
 
@@ -755,7 +763,7 @@
     // Accessoire n'a qu'une seule image, pas de galerie à initialiser
   }
 
-  // ── Ajouter instrument au panier (global pour onclick) ──
+  // ── Ajouter instrument au panier ──
 
   window.addInstrumentToCart = function() {
     if (!currentInstrument || typeof MistralCart === 'undefined') return;
@@ -790,7 +798,7 @@
     }
   };
 
-  // ── Ajouter accessoire au panier (global pour onclick) ──
+  // ── Ajouter accessoire au panier ──
 
   window.addAccessoireToCart = function() {
     if (!currentAccessoire || typeof MistralCart === 'undefined') return;

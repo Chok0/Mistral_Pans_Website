@@ -410,7 +410,7 @@
     results.forEach(function(r) {
       const statusClass = r.score >= 80 ? 'seo-page--good' : r.score >= 60 ? 'seo-page--medium' : 'seo-page--poor';
       let html = '<div class="seo-section seo-page ' + statusClass + '">' +
-        '<div class="seo-page__header" onclick="this.parentElement.classList.toggle(\'seo-page--open\')">' +
+        '<div class="seo-page__header">' +
           '<div class="seo-page__info">' +
             '<h3>' + escapeHtml(r.page.label) + '</h3>' +
             '<span class="seo-page__url">' + escapeHtml(r.page.url) + '</span>' +
@@ -442,6 +442,13 @@
 
       html += '</div>';
       container.insertAdjacentHTML('beforeend', html);
+    });
+
+    // Bind toggle headers (CSP-safe, pas de onclick inline)
+    container.querySelectorAll('.seo-page__header').forEach(function(header) {
+      header.addEventListener('click', function() {
+        header.parentElement.classList.toggle('seo-page--open');
+      });
     });
   }
 
