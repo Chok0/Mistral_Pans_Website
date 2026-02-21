@@ -313,6 +313,15 @@
         window.selectOption('deposit');
       });
     }
+
+    // Lien discret RDV (sous la grille)
+    var appointmentLink = document.querySelector('.link-appointment[data-option="appointment"]');
+    if (appointmentLink) {
+      appointmentLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        window.selectOption('appointment');
+      });
+    }
   }
 
   /**
@@ -612,17 +621,10 @@
       if (badgeDeposit) badgeDeposit.textContent = 'Populaire';
     }
 
-    // Adapter la grille selon le nombre d'options visibles
+    // Grille : 1 seule option principale (full ou deposit)
+    // RDV déplacé en lien discret sous la grille, Oney masqué
     if (grid) {
-      if (stock) {
-        // Stock: full + rdv = 2 options (Oney masqué en attente validation)
-        grid.classList.remove('order-options--four', 'order-options--three');
-        grid.classList.add('order-options--two');
-      } else {
-        // Sur-mesure: deposit + rdv = 2 options
-        grid.classList.remove('order-options--four', 'order-options--three');
-        grid.classList.add('order-options--two');
-      }
+      grid.classList.remove('order-options--four', 'order-options--three', 'order-options--two');
     }
 
     // Adapter le texte de l'acompte pour stock
