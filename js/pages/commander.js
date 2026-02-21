@@ -595,10 +595,11 @@
       depositOption.style.display = stock ? 'none' : '';
     }
 
-    // Afficher/masquer l'option Oney (stock uniquement)
+    // Masquer l'option Oney (en attente de validation PayPlug)
+    // TODO: Réactiver quand Oney sera validé — remettre : oneyOption.style.display = stock ? '' : 'none';
     const oneyOption = document.querySelector('[data-option="oney"]');
     if (oneyOption) {
-      oneyOption.style.display = stock ? '' : 'none';
+      oneyOption.style.display = 'none';
     }
 
     // Adapter les badges
@@ -614,9 +615,9 @@
     // Adapter la grille selon le nombre d'options visibles
     if (grid) {
       if (stock) {
-        // Stock: full + oney + rdv = 3 options
-        grid.classList.remove('order-options--four');
-        grid.classList.add('order-options--three');
+        // Stock: full + rdv = 2 options (Oney masqué en attente validation)
+        grid.classList.remove('order-options--four', 'order-options--three');
+        grid.classList.add('order-options--two');
       } else {
         // Sur-mesure: deposit + rdv = 2 options
         grid.classList.remove('order-options--four', 'order-options--three');
