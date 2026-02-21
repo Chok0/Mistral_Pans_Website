@@ -878,45 +878,6 @@
   }
 
   /**
-   * Charge l'iframe Calendly dans un conteneur, avec fallback RGPD.
-   *
-   * Si les cookies Calendly sont acceptes (via MistralCookies), charge
-   * l'iframe directement. Sinon, affiche un lien externe avec un message
-   * invitant l'utilisateur a accepter les cookies.
-   *
-   * Le flag dataset.loaded empeche le rechargement multiple.
-   *
-   * @param {string} containerId - ID du conteneur HTML pour l'embed Calendly
-   */
-  function loadCalendlyEmbed(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container || container.dataset.loaded) return;
-
-    const calendlyUrl = 'https://calendly.com/adrien-santamaria/30min';
-    const allowed = typeof MistralCookies !== 'undefined' && MistralCookies.isServiceAllowed('calendly');
-
-    if (allowed) {
-      container.innerHTML =
-        '<iframe src="' + calendlyUrl + '" ' +
-        'width="100%" height="650" frameborder="0" ' +
-        'title="Calendrier de rendez-vous" loading="lazy" ' +
-        'style="border:0;border-radius:var(--radius-md);min-height:650px;"></iframe>';
-    } else {
-      container.innerHTML =
-        '<div class="calendly-fallback">' +
-        '<p>Pour planifier votre rendez-vous :</p>' +
-        '<a href="' + calendlyUrl + '" target="_blank" rel="noopener" class="btn btn--primary">' +
-        'Ouvrir le calendrier' +
-        '</a>' +
-        '<p class="text-sm text-muted" style="margin-top:var(--space-sm);">' +
-        'Activez les cookies &laquo; Rendez-vous &raquo; pour afficher le calendrier ici.' +
-        '</p>' +
-        '</div>';
-    }
-    container.dataset.loaded = '1';
-  }
-
-  /**
    * Met a jour l'affichage d'une ligne de livraison dans un resume de commande.
    * Affiche la ligne si un mode de livraison est selectionne, la masque sinon.
    *
@@ -2060,6 +2021,24 @@
       nextSteps = '<p>Votre acompte a bien été enregistré. Nous vous contacterons pour le solde quand votre instrument sera prêt.</p>';
     }
 
+    // Bloc retrait atelier : lien pour planifier le RDV
+    const isRetrait = pendingOrder?.shippingMethod === 'retrait';
+    const calendlyUrl = 'https://calendly.com/adrien-santamaria/30min';
+    let retraitBlock = '';
+    if (isRetrait) {
+      retraitBlock =
+        '<div class="payment-result__retrait">' +
+          '<h3>Retrait à l\'atelier</h3>' +
+          '<p>Planifiez un créneau pour venir récupérer votre instrument :</p>' +
+          '<a href="' + calendlyUrl + '" target="_blank" rel="noopener" class="btn btn--accent">' +
+            'Planifier le retrait' +
+          '</a>' +
+          '<p class="text-sm text-muted" style="margin-top:var(--space-sm);">' +
+            'Ce lien est également disponible dans votre email de confirmation.' +
+          '</p>' +
+        '</div>';
+    }
+
     // Remplacement complet du contenu de la page
     container.innerHTML =
       '<div class="payment-result payment-result--success">' +
@@ -2072,6 +2051,7 @@
           amountDetail +
         '</div>' +
         nextSteps +
+        retraitBlock +
         '<p>Un email de confirmation vous a été envoyé.</p>' +
         '<div class="payment-result__actions">' +
           '<a href="index.html" class="btn btn--primary">Retour à l\'accueil</a>' +
@@ -2231,17 +2211,6 @@
     // Masquer l'erreur
     const error = document.getElementById('shipping-error');
     if (error) error.style.display = 'none';
-
-    // Afficher/masquer le bloc Calendly retrait
-    const calendlyBlock = document.getElementById('calendly-retrait');
-    if (calendlyBlock) {
-      if (method === 'retrait') {
-        calendlyBlock.style.display = '';
-        loadCalendlyEmbed('calendly-commander-container');
-      } else {
-        calendlyBlock.style.display = 'none';
-      }
-    }
 
     // Adapter les champs adresse
     updateAddressFields();

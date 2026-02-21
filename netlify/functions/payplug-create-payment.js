@@ -733,7 +733,8 @@ exports.handler = async (event, context) => {
           items: itemsJson,
           product_name: sanitize(metadata?.productName, 100),
           total_price_cents: metadata?.totalPrice ? String(metadata.totalPrice * 100) : String(amount),
-          instrument_id: metadata?.instrumentId
+          instrument_id: metadata?.instrumentId,
+          shipping_method: shippingMethod
         };
       })() : {
         // Mode legacy single item
@@ -752,6 +753,7 @@ exports.handler = async (event, context) => {
         housse_nom: sanitize(metadata?.housseNom, 50),
         housse_prix: metadata?.houssePrix,
         livraison: metadata?.livraison ? 'true' : undefined,
+        shipping_method: shippingMethod,
         // Initiation-specific fields
         initiation_id: metadata?.initiation_id,
         initiation_date: metadata?.initiation_date,
