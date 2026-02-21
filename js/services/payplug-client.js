@@ -221,7 +221,14 @@
           })
         });
 
-        const result = await response.json();
+        let result;
+        const responseText = await response.text();
+        try {
+          result = JSON.parse(responseText);
+        } catch {
+          console.error('[MistralPayplug] Réponse non-JSON:', response.status, responseText.substring(0, 200));
+          throw new Error('Le service de paiement est temporairement indisponible');
+        }
 
         if (!response.ok || !result.success) {
           throw new Error(result.error || result.details || 'Erreur création paiement');

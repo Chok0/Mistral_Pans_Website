@@ -496,16 +496,20 @@ exports.handler = async (event, context) => {
     // Validation initiation : prix fixe depuis config
     if (metadata?.source === 'initiation') {
       let initiationPrix = 60; // default
-      try {
-        const configResp = await fetch(
-          `${SUPABASE_URL}/rest/v1/configuration?namespace=eq.gestion&key=eq.initiations_prix&select=value`,
-          { headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}` } }
-        );
-        if (configResp.ok) {
-          const rows = await configResp.json();
-          if (rows.length > 0) initiationPrix = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value;
-        }
-      } catch (e) { /* use default */ }
+      const sbUrl = process.env.SUPABASE_URL;
+      const sbKey = process.env.SUPABASE_SERVICE_KEY;
+      if (sbUrl && sbKey) {
+        try {
+          const configResp = await fetch(
+            `${sbUrl}/rest/v1/configuration?namespace=eq.gestion&key=eq.initiations_prix&select=value`,
+            { headers: { 'apikey': sbKey, 'Authorization': `Bearer ${sbKey}` } }
+          );
+          if (configResp.ok) {
+            const rows = await configResp.json();
+            if (rows.length > 0) initiationPrix = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value;
+          }
+        } catch (e) { /* use default */ }
+      }
       const expectedCents = initiationPrix * 100;
       if (amount !== expectedCents) {
         console.error('Prix initiation invalide:', amount, 'attendu:', expectedCents);
@@ -640,7 +644,7 @@ exports.handler = async (event, context) => {
         customer_id: metadata?.customerId || null,
         instrument_id: metadata?.instrumentId || null,
         order_id: metadata?.orderId || null,
-        product_name: sanitize(metadata?.productName, 100) || null,
+        product_name: sanitize(metadata?.product_name || metadata?.productName, 100) || null,
         gamme: sanitize(metadata?.gamme, 50) || null,
         taille: sanitize(metadata?.taille, 20) || null,
         notes: metadata?.notes || null,
@@ -648,7 +652,13 @@ exports.handler = async (event, context) => {
         housse_id: metadata?.housseId || null,
         housse_nom: sanitize(metadata?.housseNom, 50) || null,
         housse_prix: metadata?.houssePrix || null,
-        livraison: metadata?.livraison || false
+        livraison: metadata?.livraison || false,
+        // Initiation-specific fields
+        initiation_id: metadata?.initiation_id || null,
+        initiation_date: metadata?.initiation_date || null,
+        customer_name: sanitize(metadata?.customer_name, 100) || null,
+        customer_email: metadata?.customer_email || null,
+        customer_phone: sanitize(metadata?.customer_phone, 20) || null
       }
     };
 

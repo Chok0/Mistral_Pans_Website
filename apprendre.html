@@ -1199,14 +1199,6 @@
         </div>
       </div>
 
-      <div class="text-center" style="margin-top: var(--space-2xl);">
-        <p style="color: var(--color-text-light); margin-bottom: var(--space-md);">
-          Vous enseignez le handpan ? Rejoignez notre réseau de professeurs partenaires.
-        </p>
-        <a href="#" class="btn btn--accent btn--lg" data-modal="teacher-signup">
-          Rejoindre le réseau
-        </a>
-      </div>
     </div>
   </section>
   
@@ -1228,32 +1220,36 @@
   </section>
 
   <!-- Modal réservation initiation -->
-  <div class="modal-overlay" id="initiation-booking-modal">
-    <div class="modal" style="max-width:480px;">
-      <button class="modal__close" id="close-booking-modal" aria-label="Fermer">&times;</button>
-      <h3 style="margin:0 0 0.5rem 0;">Réserver une initiation</h3>
-      <p id="booking-modal-date" style="color:var(--color-text-light); margin-bottom:1.5rem;"></p>
-      <form id="booking-form" novalidate>
-        <input type="hidden" id="booking-initiation-id">
-        <div class="form-group" style="margin-bottom:1rem;">
-          <label for="booking-nom" style="display:block; font-weight:500; margin-bottom:0.25rem;">Nom complet *</label>
-          <input type="text" id="booking-nom" class="form-input" required autocomplete="name" style="width:100%; padding:0.75rem; border:1px solid var(--color-border); border-radius:8px;">
-        </div>
-        <div class="form-group" style="margin-bottom:1rem;">
-          <label for="booking-email" style="display:block; font-weight:500; margin-bottom:0.25rem;">Email *</label>
-          <input type="email" id="booking-email" class="form-input" required autocomplete="email" style="width:100%; padding:0.75rem; border:1px solid var(--color-border); border-radius:8px;">
-        </div>
-        <div class="form-group" style="margin-bottom:1.5rem;">
-          <label for="booking-telephone" style="display:block; font-weight:500; margin-bottom:0.25rem;">Téléphone *</label>
-          <input type="tel" id="booking-telephone" class="form-input" required autocomplete="tel" style="width:100%; padding:0.75rem; border:1px solid var(--color-border); border-radius:8px;">
-        </div>
-        <button type="submit" class="btn btn--primary btn--lg" id="booking-submit-btn" style="width:100%;">
-          Réserver et payer (60 €)
-        </button>
-        <p style="font-size:0.8rem; color:var(--color-text-muted); margin-top:0.75rem; text-align:center;">
-          Paiement sécurisé par carte bancaire via Payplug.
-        </p>
-      </form>
+  <div class="modal-overlay" id="initiation-booking-modal" role="dialog" aria-modal="true" aria-label="Réservation initiation">
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal__header">
+        <h3 class="modal__title">Réserver une initiation</h3>
+        <button class="modal__close" id="close-booking-modal" aria-label="Fermer">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p id="booking-modal-date" style="color: var(--color-accent); font-weight: 500; margin-bottom: var(--space-lg);"></p>
+        <form id="booking-form" novalidate>
+          <input type="hidden" id="booking-initiation-id">
+          <div class="form-group" style="margin-bottom: var(--space-md);">
+            <label class="form-label" for="booking-nom">Nom complet *</label>
+            <input type="text" id="booking-nom" class="form-input" required autocomplete="name">
+          </div>
+          <div class="form-group" style="margin-bottom: var(--space-md);">
+            <label class="form-label" for="booking-email">Email *</label>
+            <input type="email" id="booking-email" class="form-input" required autocomplete="email">
+          </div>
+          <div class="form-group" style="margin-bottom: var(--space-xl);">
+            <label class="form-label" for="booking-telephone">Téléphone *</label>
+            <input type="tel" id="booking-telephone" class="form-input" required autocomplete="tel">
+          </div>
+          <button type="submit" class="btn btn--primary btn--lg" id="booking-submit-btn" style="width: 100%;">
+            Réserver et payer (60 €)
+          </button>
+          <p style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: var(--space-md); text-align: center;">
+            Paiement sécurisé par carte bancaire via Payplug.
+          </p>
+        </form>
+      </div>
     </div>
   </div>
 

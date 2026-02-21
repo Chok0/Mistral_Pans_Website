@@ -1520,6 +1520,53 @@
       const config = getConfig();
       const placesMax = config.initiations_places || 5;
       return Math.max(0, placesMax - (initiation.places_reservees || 0));
+    },
+
+    addManualReservation(initiationId, data) {
+      if (!data.nom) throw new Error('Le nom est requis');
+      const initiation = this.get(initiationId);
+      if (!initiation) throw new Error('Initiation introuvable');
+
+      const reservation = {
+        id: generateUUID(),
+        initiation_id: initiationId,
+        nom: data.nom,
+        email: data.email || '',
+        telephone: data.telephone || '',
+        statut: 'confirmed',
+        payment_id: null,
+        reference: 'MANUAL',
+        montant: 0,
+        created_at: new Date().toISOString()
+      };
+
+      const reservations = getData('initiations_reservations');
+      reservations.push(reservation);
+      setData('initiations_reservations', reservations);
+
+      this.update(initiationId, {
+        places_reservees: (initiation.places_reservees || 0) + 1
+      });
+
+      return reservation;
+    },
+
+    cancelReservation(initiationId, reservationId) {
+      const reservations = getData('initiations_reservations');
+      const index = reservations.findIndex(r => r.id === reservationId);
+      if (index === -1) return false;
+
+      reservations[index].statut = 'cancelled';
+      setData('initiations_reservations', reservations);
+
+      const initiation = this.get(initiationId);
+      if (initiation && (initiation.places_reservees || 0) > 0) {
+        this.update(initiationId, {
+          places_reservees: initiation.places_reservees - 1
+        });
+      }
+
+      return true;
     }
   };
 
