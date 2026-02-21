@@ -57,7 +57,7 @@ async function fetchPublishedArticles(sb) {
 async function fetchAvailableInstruments(sb) {
   try {
     const response = await fetch(
-      `${sb.url}/rest/v1/instruments?statut=eq.en_stock&select=id,updated_at`,
+      `${sb.url}/rest/v1/instruments?statut=eq.en_ligne&select=id,updated_at`,
       { method: 'GET', headers: sb.headers }
     );
     if (!response.ok) return [];
