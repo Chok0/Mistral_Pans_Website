@@ -1255,25 +1255,14 @@
       return null;
     }
 
-    // Adresse complete requise (sauf retrait atelier)
-    if (orderData.shippingMethod === 'retrait') {
-      // En retrait, remplacer les placeholders par l'adresse de l'atelier
-      // (PayPlug exige des valeurs valides pour billing/shipping PSD2)
-      customer.address = {
-        line1: 'Retrait atelier Mistral Pans',
-        postalCode: '75000',
-        city: 'Paris',
-        country: 'FR'
-      };
-    } else {
-      if (!customer.address.line1 || !customer.address.postalCode || !customer.address.city) {
-        showMessage('Veuillez entrer une adresse complète (rue, code postal, ville)', 'error');
-        return null;
-      }
-      if (!/^\d{5}$/.test(customer.address.postalCode)) {
-        showMessage('Veuillez entrer un code postal valide (5 chiffres)', 'error');
-        return null;
-      }
+    // Adresse toujours requise (fiche client + facturation)
+    if (!customer.address.line1 || !customer.address.postalCode || !customer.address.city) {
+      showMessage('Veuillez entrer votre adresse complète (rue, code postal, ville)', 'error');
+      return null;
+    }
+    if (!/^\d{5}$/.test(customer.address.postalCode)) {
+      showMessage('Veuillez entrer un code postal valide (5 chiffres)', 'error');
+      return null;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -2266,62 +2255,31 @@
   }
 
   /**
-   * Adapte les champs d'adresse des formulaires selon le mode de livraison.
-   *
-   * En mode retrait atelier :
-   *   - Pre-remplit le champ avec "Retrait a l'atelier"
-   *   - Passe le champ en lecture seule avec opacite reduite
-   *
-   * En mode Colissimo :
-   *   - Efface le texte de retrait si present
-   *   - Reactive le champ en ecriture normale
-   *
-   * Applique aux formulaires deposit et full (identifies par prefix-address).
+   * Adapte le label d'adresse selon le mode de livraison.
+   * Les champs restent toujours editables (necessaires pour fiche client + facturation).
    */
   function updateAddressFields() {
     const isRetrait = orderData.shippingMethod === 'retrait';
 
-    // Formulaires deposit et full : adapter les champs adresse, CP, ville
     ['deposit', 'full'].forEach(function(prefix) {
       const addressField = document.getElementById(prefix + '-address');
-      const postalField = document.getElementById(prefix + '-postalcode');
-      const cityField = document.getElementById(prefix + '-city');
       if (!addressField) return;
 
-      if (isRetrait) {
-        addressField.value = 'Retrait à l\'atelier';
-        addressField.readOnly = true;
-        addressField.style.opacity = '0.6';
-        if (postalField) {
-          postalField.value = '—';
-          postalField.readOnly = true;
-          postalField.style.opacity = '0.6';
-          postalField.removeAttribute('required');
-        }
-        if (cityField) {
-          cityField.value = '—';
-          cityField.readOnly = true;
-          cityField.style.opacity = '0.6';
-          cityField.removeAttribute('required');
-        }
-      } else {
-        if (addressField.value === 'Retrait à l\'atelier') {
-          addressField.value = '';
-        }
+      // Mettre a jour le label
+      var label = addressField.closest('.form-group')?.querySelector('.form-label');
+      if (label) {
+        label.textContent = isRetrait ? 'Adresse (facturation) *' : 'Adresse *';
+      }
+
+      // Si on passe de retrait a colissimo, nettoyer les anciennes valeurs placeholder
+      if (!isRetrait && addressField.readOnly) {
+        addressField.value = '';
         addressField.readOnly = false;
         addressField.style.opacity = '';
-        if (postalField) {
-          if (postalField.value === '—') postalField.value = '';
-          postalField.readOnly = false;
-          postalField.style.opacity = '';
-          postalField.setAttribute('required', '');
-        }
-        if (cityField) {
-          if (cityField.value === '—') cityField.value = '';
-          cityField.readOnly = false;
-          cityField.style.opacity = '';
-          cityField.setAttribute('required', '');
-        }
+        var postalField = document.getElementById(prefix + '-postalcode');
+        var cityField = document.getElementById(prefix + '-city');
+        if (postalField && postalField.value === '—') { postalField.value = ''; postalField.readOnly = false; postalField.style.opacity = ''; }
+        if (cityField && cityField.value === '—') { cityField.value = ''; cityField.readOnly = false; cityField.style.opacity = ''; }
       }
     });
   }

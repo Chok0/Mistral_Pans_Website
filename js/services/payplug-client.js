@@ -233,7 +233,7 @@
         if (!response.ok || !result.success) {
           // Afficher les détails PayPlug en console pour le debug
           if (result.details) {
-            console.error('[MistralPayplug] Détails PayPlug:', result.details);
+            console.error('[MistralPayplug] Détails PayPlug:', JSON.stringify(result.details, null, 2));
           }
           throw new Error(result.error || 'Erreur création paiement');
         }
