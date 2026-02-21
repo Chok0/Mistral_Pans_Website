@@ -48,6 +48,20 @@ function cleanObject(obj) {
 }
 
 /**
+ * Nettoie un objet metadata pour l'API PayPlug.
+ * PayPlug exige que toutes les valeurs metadata soient des strings.
+ * Supprime les clés null/undefined et convertit les valeurs en strings.
+ */
+function cleanMetadata(obj) {
+  const cleaned = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined || value === null || value === '') continue;
+    cleaned[key] = String(value);
+  }
+  return cleaned;
+}
+
+/**
  * Récupère la configuration de tarification depuis Supabase (namespace=configurateur ou gestion).
  * Retourne les paramètres de pricing ou les defaults.
  */
@@ -474,7 +488,10 @@ exports.handler = async (event, context) => {
       }
     } else if (metadata?.source === 'custom') {
       // Mode legacy single custom configuration
-      const totalEur = amount / 100;
+      // Pour un acompte, amount = 30% du total → utiliser totalPrice pour valider le prix instrument
+      const totalEur = (paymentType === 'acompte' && metadata?.totalPrice)
+        ? metadata.totalPrice
+        : amount / 100;
       const customItem = {
         prix: totalEur - (metadata?.houssePrix || 0) - (metadata?.shippingCost || 0),
         details: {
@@ -615,12 +632,12 @@ exports.handler = async (event, context) => {
         cancel_url: cancelUrl || `${baseUrl}/commander.html?status=cancelled&ref=${reference}`
       },
       notification_url: `${baseUrl}/.netlify/functions/payplug-webhook`,
-      metadata: metadata?.cartMode ? {
+      metadata: cleanMetadata(metadata?.cartMode ? {
         // Mode panier multi-items
         order_reference: reference,
         payment_type: paymentType || 'full',
         source: metadata?.source || 'mixed',
-        cart_mode: true,
+        cart_mode: 'true',
         items: JSON.stringify((metadata?.items || []).map(item => ({
           type: item.type,
           sourceId: item.sourceId,
@@ -633,33 +650,33 @@ exports.handler = async (event, context) => {
           notes: item.details?.notes || null,
           options: item.options || []
         }))),
-        product_name: sanitize(metadata?.productName, 100) || null,
-        total_price_cents: metadata?.totalPrice ? metadata.totalPrice * 100 : amount,
-        instrument_id: metadata?.instrumentId || null
+        product_name: sanitize(metadata?.productName, 100),
+        total_price_cents: metadata?.totalPrice ? String(metadata.totalPrice * 100) : String(amount),
+        instrument_id: metadata?.instrumentId
       } : {
         // Mode legacy single item
         order_reference: reference,
         payment_type: paymentType || 'full',
         source: metadata?.source || 'custom',
-        customer_id: metadata?.customerId || null,
-        instrument_id: metadata?.instrumentId || null,
-        order_id: metadata?.orderId || null,
-        product_name: sanitize(metadata?.product_name || metadata?.productName, 100) || null,
-        gamme: sanitize(metadata?.gamme, 50) || null,
-        taille: sanitize(metadata?.taille, 20) || null,
-        notes: metadata?.notes || null,
-        total_price_cents: metadata?.totalPrice ? metadata.totalPrice * 100 : amount,
-        housse_id: metadata?.housseId || null,
-        housse_nom: sanitize(metadata?.housseNom, 50) || null,
-        housse_prix: metadata?.houssePrix || null,
-        livraison: metadata?.livraison || false,
+        customer_id: metadata?.customerId,
+        instrument_id: metadata?.instrumentId,
+        order_id: metadata?.orderId,
+        product_name: sanitize(metadata?.product_name || metadata?.productName, 100),
+        gamme: sanitize(metadata?.gamme, 50),
+        taille: sanitize(metadata?.taille, 20),
+        notes: metadata?.notes,
+        total_price_cents: metadata?.totalPrice ? String(metadata.totalPrice * 100) : String(amount),
+        housse_id: metadata?.housseId,
+        housse_nom: sanitize(metadata?.housseNom, 50),
+        housse_prix: metadata?.houssePrix,
+        livraison: metadata?.livraison ? 'true' : undefined,
         // Initiation-specific fields
-        initiation_id: metadata?.initiation_id || null,
-        initiation_date: metadata?.initiation_date || null,
-        customer_name: sanitize(metadata?.customer_name, 100) || null,
-        customer_email: metadata?.customer_email || null,
-        customer_phone: sanitize(metadata?.customer_phone, 20) || null
-      }
+        initiation_id: metadata?.initiation_id,
+        initiation_date: metadata?.initiation_date,
+        customer_name: sanitize(metadata?.customer_name, 100),
+        customer_email: metadata?.customer_email,
+        customer_phone: sanitize(metadata?.customer_phone, 20)
+      })
     };
 
     // Description à la racine du payload (max 80 caractères, visible par le client)
@@ -746,11 +763,13 @@ exports.handler = async (event, context) => {
 
     if (!response.ok) {
       console.error('Erreur Payplug:', JSON.stringify(result));
+      // Extraire un message lisible depuis la réponse PayPlug
+      const ppMessage = result?.message || result?.details?.message || '';
       return {
         statusCode: response.status,
         headers,
         body: JSON.stringify({
-          error: 'Erreur création paiement'
+          error: 'Erreur création paiement' + (ppMessage ? ' : ' + ppMessage : '')
         })
       };
     }

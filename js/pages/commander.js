@@ -519,11 +519,18 @@
           (optionsStr ? '<div class="cart-item__options">' + escapeHtml(optionsStr) + '</div>' : '') +
         '</div>' +
         '<div class="cart-item__price">' + formatPrice(item.total) + '</div>' +
-        '<button class="cart-item__remove" onclick="removeCartItem(\'' + escapeHtml(item.id) + '\')" title="Retirer">&times;</button>' +
+        '<button class="cart-item__remove" data-remove-id="' + escapeHtml(item.id) + '" title="Retirer">&times;</button>' +
       '</div>';
     });
 
     listEl.innerHTML = html;
+
+    // Attacher les listeners de suppression (CSP interdit onclick inline)
+    listEl.querySelectorAll('[data-remove-id]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        window.removeCartItem(btn.dataset.removeId);
+      });
+    });
 
     const totalEl = document.getElementById('cart-items-total-price');
     if (totalEl) totalEl.textContent = formatPrice(getTotalWithShipping());
@@ -2151,7 +2158,7 @@
   function validateShipping() {
     if (!orderData.shippingMethod) {
       const error = document.getElementById('shipping-error');
-      if (error) error.style.display = '';
+      if (error) error.style.display = 'block';
       const selector = document.getElementById('shipping-selector');
       if (selector) selector.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return false;
