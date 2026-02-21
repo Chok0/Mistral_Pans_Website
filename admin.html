@@ -1275,8 +1275,21 @@
       </div>
       <div class="admin-modal__body" id="initiation-reservations-content">
       </div>
+      <div id="initiation-manual-reservation" style="display:none; padding:1rem 1.5rem; border-top:1px solid var(--admin-border, #333);">
+        <p style="font-weight:500; margin-bottom:0.75rem;">Réservation manuelle</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem;">
+          <input type="text" id="manual-resa-nom" class="admin-form__input" placeholder="Nom *" required>
+          <input type="email" id="manual-resa-email" class="admin-form__input" placeholder="Email">
+          <input type="tel" id="manual-resa-telephone" class="admin-form__input" placeholder="Téléphone">
+        </div>
+        <div style="display:flex; gap:0.5rem; margin-top:0.75rem; justify-content:flex-end;">
+          <button class="admin-btn admin-btn--secondary admin-btn--sm" data-action="toggle-manual-reservation">Annuler</button>
+          <button class="admin-btn admin-btn--primary admin-btn--sm" data-action="save-manual-reservation">Confirmer</button>
+        </div>
+      </div>
       <div class="admin-modal__footer">
         <button class="admin-btn admin-btn--secondary" data-action="close-modal" data-param="initiation-reservations">Fermer</button>
+        <button class="admin-btn admin-btn--primary" id="btn-add-manual-reservation" data-action="toggle-manual-reservation">+ Ajouter manuellement</button>
       </div>
     </div>
   </div>

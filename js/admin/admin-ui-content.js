@@ -225,19 +225,36 @@
     Toast.success('Initiation supprimée');
   }
 
+  // Current initiation ID for reservation modal context
+  let _currentReservationInitiationId = null;
+
   function viewInitiationReservations(id) {
     if (typeof MistralGestion === 'undefined') return;
     const init = MistralGestion.Initiations.get(id);
     if (!init) return;
 
+    _currentReservationInitiationId = id;
     const reservations = MistralGestion.Initiations.getReservations(id);
     const dateLabel = formatDate(init.date);
 
     const content = $('#initiation-reservations-content');
     if (!content) return;
 
+    // Hide manual form when opening
+    const manualForm = $('#initiation-manual-reservation');
+    if (manualForm) manualForm.style.display = 'none';
+
     $('#modal-initiation-reservations-title').textContent = `Réservations — ${dateLabel}`;
     AdminUI.showModal('initiation-reservations');
+
+    _renderReservationsTable(id);
+  }
+
+  function _renderReservationsTable(initiationId) {
+    const content = $('#initiation-reservations-content');
+    if (!content) return;
+
+    const reservations = MistralGestion.Initiations.getReservations(initiationId);
 
     if (!reservations.length) {
       content.innerHTML = '<p style="text-align:center; color:var(--admin-text-muted); padding:2rem;">Aucune réservation pour cette date.</p>';
@@ -246,20 +263,73 @@
 
     content.innerHTML = `
       <table class="admin-table" style="width:100%;">
-        <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Statut</th><th>Date</th></tr></thead>
+        <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Type</th><th>Statut</th><th></th></tr></thead>
         <tbody>
           ${reservations.map(r => `
             <tr>
               <td>${escapeHtml(r.nom || '')}</td>
               <td>${escapeHtml(r.email || '')}</td>
               <td>${escapeHtml(r.telephone || '')}</td>
+              <td>${r.reference === 'MANUAL' ? '<span style="font-size:0.8rem; color:var(--admin-text-muted);">Manuel</span>' : '<span style="font-size:0.8rem; color:var(--admin-text-muted);">En ligne</span>'}</td>
               <td><span class="admin-badge admin-badge--${r.statut === 'confirmed' ? 'success' : 'neutral'}">${r.statut === 'confirmed' ? 'Confirmé' : 'En attente'}</span></td>
-              <td>${r.created_at ? formatDate(r.created_at.slice(0, 10)) : ''}</td>
+              <td><button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="cancel-reservation" data-id="${r.id}" style="color:var(--color-error, #e74c3c);">Annuler</button></td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     `;
+  }
+
+  function toggleManualReservation() {
+    const form = $('#initiation-manual-reservation');
+    if (!form) return;
+    const visible = form.style.display !== 'none';
+    form.style.display = visible ? 'none' : 'block';
+    if (!visible) {
+      $('#manual-resa-nom').value = '';
+      $('#manual-resa-email').value = '';
+      $('#manual-resa-telephone').value = '';
+      $('#manual-resa-nom').focus();
+    }
+  }
+
+  function saveManualReservation() {
+    if (!_currentReservationInitiationId) return;
+    const nom = ($('#manual-resa-nom')?.value || '').trim();
+    if (!nom) {
+      Toast.error('Le nom est requis');
+      return;
+    }
+
+    try {
+      MistralGestion.Initiations.addManualReservation(_currentReservationInitiationId, {
+        nom: nom,
+        email: ($('#manual-resa-email')?.value || '').trim(),
+        telephone: ($('#manual-resa-telephone')?.value || '').trim()
+      });
+      Toast.success('Réservation ajoutée');
+      toggleManualReservation();
+      _renderReservationsTable(_currentReservationInitiationId);
+      renderInitiations();
+    } catch (err) {
+      Toast.error(err.message || 'Erreur');
+    }
+  }
+
+  async function cancelReservation(reservationId) {
+    if (!_currentReservationInitiationId) return;
+    const ok = await AdminUI.confirm({
+      title: 'Annuler cette réservation',
+      message: 'La place sera libérée. Continuer ?',
+      confirmText: 'Annuler la réservation',
+      danger: true
+    });
+    if (!ok) return;
+
+    MistralGestion.Initiations.cancelReservation(_currentReservationInitiationId, reservationId);
+    Toast.success('Réservation annulée');
+    _renderReservationsTable(_currentReservationInitiationId);
+    renderInitiations();
   }
 
   // ============================================================================
@@ -1096,7 +1166,10 @@
     newInitiation,
     cancelInitiation,
     deleteInitiation,
-    viewInitiationReservations
+    viewInitiationReservations,
+    toggleManualReservation,
+    saveManualReservation,
+    cancelReservation
   });
 
 })(window);
