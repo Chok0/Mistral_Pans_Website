@@ -207,9 +207,20 @@
           
           <div class="form-group">
             <label class="form-label" for="deposit-address">Adresse de livraison *</label>
-            <textarea id="deposit-address" name="address" class="form-textarea" rows="3" placeholder="Adresse complète de livraison" required></textarea>
+            <textarea id="deposit-address" name="address" class="form-textarea" rows="2" placeholder="Numéro et nom de rue" required></textarea>
           </div>
-          
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="deposit-postalcode">Code postal *</label>
+              <input type="text" id="deposit-postalcode" name="postalcode" class="form-input" placeholder="75000" pattern="\d{5}" maxlength="5" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="deposit-city">Ville *</label>
+              <input type="text" id="deposit-city" name="city" class="form-input" placeholder="Paris" required>
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label" for="deposit-message">Message (optionnel)</label>
             <textarea id="deposit-message" name="message" class="form-textarea" rows="2" placeholder="Précisions, questions..."></textarea>
@@ -334,7 +345,18 @@
 
           <div class="form-group">
             <label class="form-label" for="full-address">Adresse de livraison *</label>
-            <textarea id="full-address" name="address" class="form-textarea" rows="3" placeholder="Adresse complète de livraison" required></textarea>
+            <textarea id="full-address" name="address" class="form-textarea" rows="2" placeholder="Numéro et nom de rue" required></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="full-postalcode">Code postal *</label>
+              <input type="text" id="full-postalcode" name="postalcode" class="form-input" placeholder="75000" pattern="\d{5}" maxlength="5" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="full-city">Ville *</label>
+              <input type="text" id="full-city" name="city" class="form-input" placeholder="Paris" required>
+            </div>
           </div>
 
           <div class="form-group">
@@ -354,6 +376,9 @@
               <span>J'accepte que mes donnees soient utilisees pour traiter ma commande. <a href="mentions-legales.html" target="_blank">Politique de confidentialite</a> *</span>
             </label>
           </div>
+
+          <!-- Integrated Payment : formulaire de carte embarqué (déplacé ici par JS si intégré disponible) -->
+          <div id="card-form-full-placeholder"></div>
 
           <button type="submit" class="btn btn--primary btn--lg btn--full" id="full-submit-btn">
             Payer <span id="full-btn-amount">1 400 €</span>
@@ -546,8 +571,8 @@
                 <span>Téléphone</span>
               </label>
               <label class="form-radio">
-                <input type="radio" name="contact_preference" value="visio">
-                <span>Visio</span>
+                <input type="radio" name="contact_preference" value="mail">
+                <span>Mail</span>
               </label>
               <label class="form-radio">
                 <input type="radio" name="contact_preference" value="atelier">

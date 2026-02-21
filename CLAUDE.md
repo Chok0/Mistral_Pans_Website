@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide for Mistral Pans Website
 
-> **Last Updated:** February 2026 (v3.5)
+> **Last Updated:** February 2026 (v3.5.4)
 > **Project:** Mistral Pans - Premium Handpan Artisan Website
 > **Stack:** Vanilla JS + HTML/CSS + Supabase + Netlify Functions
 
@@ -180,7 +180,7 @@ This is a **static-first, progressively-enhanced** website for Mistral Pans, an 
 Versions tracked in `js/vendor/versions.json`. Update via `./scripts/update-vendor.sh`.
 
 ### External CDN (not self-hostable)
-- **PayPlug SDK** - Payment (PCI-DSS requirement, commander.html only)
+- **PayPlug SDK** - Payment (PCI-DSS requirement, commander.html only). Requires relaxed CSP (`'unsafe-inline'` in `script-src`, PayPlug domains in `connect-src`) — see `netlify.toml` page-specific headers.
 
 ### Anti-Spam
 - **Honeypot** - Invisible form field (no external dependency, RGPD friendly)
@@ -441,6 +441,13 @@ The site uses `fetch()` for partials. **Will not work with `file://` protocol.**
 - `js/vendor/versions.json` tracks installed versions
 - PayPlug SDK is the only external CDN (PCI-DSS requirement)
 
+### CSP (Content Security Policy)
+
+- **Global CSP** (`/*`): Strict — no `'unsafe-inline'` in `script-src`. Applied to all pages.
+- **commander.html CSP** (page-specific override): Adds `'unsafe-inline'` to `script-src` and PayPlug domains (`secure.payplug.com`, `api.payplug.com`) to `connect-src`. Required by the PayPlug Integrated Payment SDK which injects inline handlers for card form validation and 3DS lightbox.
+- Both rules are in `netlify.toml`. Netlify applies the most specific match, so `commander.html` gets its own CSP.
+- **Do not remove `'unsafe-inline'` from commander.html** unless PayPlug releases a CSP-compatible SDK version.
+
 ### Cloudflare Consideration
 If hosted behind Cloudflare, disable "Email Address Obfuscation" in Security settings.
 
@@ -552,6 +559,13 @@ npm run test:watch # Watch mode
 - Verify RLS policies allow the operation
 - Data is in-memory only (not localStorage) -- check `MistralSync.getData(key)` in console
 - Check `MistralSync.isReady()` and `MistralSync.getLastSync()` for sync status
+
+### Payment issues (PayPlug)
+- **CSP violations on commander.html**: The PayPlug Integrated Payment SDK requires `'unsafe-inline'` in `script-src`. Verify the page-specific CSP in `netlify.toml` is present.
+- **PayPlug 400 errors**: Check the Netlify function logs (`payplug-create-payment`). Common causes: missing `billing.address1`/`postcode`/`city`, invalid amount, or metadata values not strings.
+- **Integrated form not showing**: Falls back to hosted (redirect) mode silently. Check `MistralPayplug.isIntegratedAvailable()` in console. SDK may fail to load if CSP blocks it.
+- **delivery_type**: Set dynamically from `metadata.shippingMethod` — `CARRIER` for Colissimo, `SHIP_TO_STORE` for retrait. Important for PSD2 compliance.
+- **Oney 3x/4x**: Code is present but option is hidden in UI (pending PayPlug validation). To re-enable, remove `style="display:none;"` from the Oney `.order-option` in `commander.html` and uncomment any visibility logic in `adaptUIForSource()`.
 
 ### Audio not playing
 - Check file exists in `ressources/audio/`
