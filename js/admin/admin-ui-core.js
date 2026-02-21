@@ -337,6 +337,7 @@
         break;
       case 'professeurs':
         if (window.AdminUI.renderProfesseurs) window.AdminUI.renderProfesseurs();
+        if (window.AdminUI.renderInitiations) window.AdminUI.renderInitiations();
         if (window.AdminUI.initAddTeacherForm) window.AdminUI.initAddTeacherForm();
         break;
       case 'galerie':

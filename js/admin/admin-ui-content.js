@@ -78,6 +78,191 @@
   }
 
   // ============================================================================
+  // RENDER: INITIATIONS
+  // ============================================================================
+
+  function renderInitiations() {
+    const list = $('#initiations-list');
+    const empty = $('#empty-initiations');
+    if (!list) return;
+
+    const initiations = Storage.get('mistral_initiations', []);
+    // Sort by date descending (upcoming first)
+    const sorted = [...initiations].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    if (!sorted.length) {
+      list.innerHTML = '';
+      if (empty) empty.style.display = 'block';
+      return;
+    }
+
+    if (empty) empty.style.display = 'none';
+    const today = new Date().toISOString().slice(0, 10);
+    const config = (typeof MistralGestion !== 'undefined') ? MistralGestion.getConfig() : {};
+    const placesMax = config.initiations_places || 5;
+    const prix = config.initiations_prix || 60;
+
+    list.innerHTML = sorted.map(init => {
+      const isPast = init.date < today;
+      const isCancelled = init.statut === 'annulee';
+      const places = init.places_reservees || 0;
+      const restantes = Math.max(0, placesMax - places);
+      const dateLabel = formatDate(init.date);
+      const hDebut = init.horaire_debut || '13:00';
+      const hFin = init.horaire_fin || '18:00';
+
+      let statusBadge = '';
+      if (isCancelled) statusBadge = '<span class="admin-badge admin-badge--danger">Annulée</span>';
+      else if (isPast) statusBadge = '<span class="admin-badge admin-badge--neutral">Passée</span>';
+      else if (restantes === 0) statusBadge = '<span class="admin-badge admin-badge--warning">Complet</span>';
+      else statusBadge = '<span class="admin-badge admin-badge--success">Active</span>';
+
+      return `
+        <div class="dashboard__card" style="margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div>
+              <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.25rem;">
+                <strong>${escapeHtml(dateLabel)}</strong>
+                <span style="font-size:0.8rem; color:var(--admin-text-muted);">${escapeHtml(hDebut)} - ${escapeHtml(hFin)}</span>
+                ${statusBadge}
+              </div>
+              <div style="font-size:0.875rem; color:var(--admin-text-muted);">
+                ${places}/${placesMax} réservations · ${escapeHtml(String(prix))} €
+                ${init.description ? ' · ' + escapeHtml(init.description.substring(0, 60)) : ''}
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-shrink:0;">
+              <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="view-initiation-reservations" data-id="${init.id}">Réservations</button>
+              <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="edit-initiation" data-id="${init.id}">Modifier</button>
+              ${!isCancelled && !isPast ? `<button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="cancel-initiation" data-id="${init.id}">Annuler</button>` : ''}
+              <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="delete-initiation" data-id="${init.id}">Supprimer</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function editInitiation(id) {
+    const initiations = Storage.get('mistral_initiations', []);
+    const init = initiations.find(i => i.id === id);
+    if (!init) return;
+
+    $('#modal-initiation-title').textContent = 'Modifier l\'initiation';
+    AdminUI.showModal('initiation');
+    $('#initiation-id').value = init.id;
+    $('#initiation-date').value = init.date || '';
+    $('#initiation-heure-debut').value = init.horaire_debut || '13:00';
+    $('#initiation-heure-fin').value = init.horaire_fin || '18:00';
+    $('#initiation-description').value = init.description || '';
+  }
+
+  function saveInitiation() {
+    const id = $('#initiation-id')?.value;
+    const date = $('#initiation-date')?.value;
+    if (!date) { Toast.error('Date requise'); return; }
+
+    const data = {
+      date: date,
+      horaire_debut: $('#initiation-heure-debut')?.value || '13:00',
+      horaire_fin: $('#initiation-heure-fin')?.value || '18:00',
+      description: $('#initiation-description')?.value?.trim() || ''
+    };
+
+    if (typeof MistralGestion !== 'undefined') {
+      if (id) {
+        MistralGestion.Initiations.update(id, data);
+        Toast.success('Initiation modifiée');
+      } else {
+        MistralGestion.Initiations.create(data);
+        Toast.success('Initiation créée');
+      }
+    }
+
+    AdminUI.closeModal('initiation');
+    renderInitiations();
+  }
+
+  function newInitiation() {
+    $('#modal-initiation-title').textContent = 'Nouvelle initiation';
+    AdminUI.showModal('initiation');
+    $('#initiation-id').value = '';
+    $('#initiation-date').value = '';
+    $('#initiation-heure-debut').value = '13:00';
+    $('#initiation-heure-fin').value = '18:00';
+    $('#initiation-description').value = '';
+  }
+
+  async function cancelInitiation(id) {
+    const confirmed = await Confirm.show({
+      title: 'Annuler cette initiation',
+      message: 'Les participants déjà inscrits ne seront pas remboursés automatiquement.',
+      confirmText: 'Annuler l\'initiation',
+      type: 'warning'
+    });
+    if (!confirmed) return;
+
+    if (typeof MistralGestion !== 'undefined') {
+      MistralGestion.Initiations.update(id, { statut: 'annulee' });
+    }
+    renderInitiations();
+    Toast.success('Initiation annulée');
+  }
+
+  async function deleteInitiation(id) {
+    const confirmed = await Confirm.show({
+      title: 'Supprimer cette initiation',
+      message: 'Cette action est irréversible.',
+      confirmText: 'Supprimer',
+      type: 'danger'
+    });
+    if (!confirmed) return;
+
+    if (typeof MistralGestion !== 'undefined') {
+      MistralGestion.Initiations.delete(id);
+    }
+    renderInitiations();
+    Toast.success('Initiation supprimée');
+  }
+
+  function viewInitiationReservations(id) {
+    if (typeof MistralGestion === 'undefined') return;
+    const init = MistralGestion.Initiations.get(id);
+    if (!init) return;
+
+    const reservations = MistralGestion.Initiations.getReservations(id);
+    const dateLabel = formatDate(init.date);
+
+    const content = $('#initiation-reservations-content');
+    if (!content) return;
+
+    $('#modal-initiation-reservations-title').textContent = `Réservations — ${dateLabel}`;
+    AdminUI.showModal('initiation-reservations');
+
+    if (!reservations.length) {
+      content.innerHTML = '<p style="text-align:center; color:var(--admin-text-muted); padding:2rem;">Aucune réservation pour cette date.</p>';
+      return;
+    }
+
+    content.innerHTML = `
+      <table class="admin-table" style="width:100%;">
+        <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Statut</th><th>Date</th></tr></thead>
+        <tbody>
+          ${reservations.map(r => `
+            <tr>
+              <td>${escapeHtml(r.nom || '')}</td>
+              <td>${escapeHtml(r.email || '')}</td>
+              <td>${escapeHtml(r.telephone || '')}</td>
+              <td><span class="admin-badge admin-badge--${r.statut === 'confirmed' ? 'success' : 'neutral'}">${r.statut === 'confirmed' ? 'Confirmé' : 'En attente'}</span></td>
+              <td>${r.created_at ? formatDate(r.created_at.slice(0, 10)) : ''}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  // ============================================================================
   // RENDER: GALERIE (placeholder)
   // ============================================================================
 
@@ -904,7 +1089,14 @@
     toggleArticleStatut,
     deleteArticle,
     removeArticleImage,
-    renderAnalytics
+    renderAnalytics,
+    renderInitiations,
+    editInitiation,
+    saveInitiation,
+    newInitiation,
+    cancelInitiation,
+    deleteInitiation,
+    viewInitiationReservations
   });
 
 })(window);

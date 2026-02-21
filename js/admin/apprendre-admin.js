@@ -1288,10 +1288,265 @@
     });
   }
 
+  // ============================================================================
+  // INITIATIONS — PUBLIC RENDERING + BOOKING
+  // ============================================================================
+
+  function renderPublicInitiations() {
+    const grid = document.getElementById('initiations-grid');
+    if (!grid) return;
+
+    var initiations = [];
+    if (window.MistralSync && MistralSync.hasKey('mistral_initiations')) {
+      initiations = MistralSync.getData('mistral_initiations') || [];
+    } else if (window.MistralGestion) {
+      initiations = MistralGestion.Initiations.listActive();
+    }
+
+    var config = {};
+    if (window.MistralGestion) config = MistralGestion.getConfig();
+    var placesMax = config.initiations_places || 5;
+    var prix = config.initiations_prix || 60;
+
+    // Filter active + future dates
+    var today = new Date().toISOString().slice(0, 10);
+    var upcoming = initiations
+      .filter(function(i) { return i.statut === 'active' && i.date >= today; })
+      .sort(function(a, b) { return a.date.localeCompare(b.date); });
+
+    if (!upcoming.length) {
+      grid.innerHTML = '<p style="text-align:center; color:var(--color-text-muted); padding:2rem;">Aucune date d\'initiation programmée pour le moment. Revenez bientôt !</p>';
+      // Hide section entirely if no dates
+      var section = document.getElementById('initiations');
+      if (section) section.style.display = 'none';
+      return;
+    }
+
+    var section = document.getElementById('initiations');
+    if (section) section.style.display = '';
+
+    grid.innerHTML = upcoming.map(function(init) {
+      var places = init.places_reservees || 0;
+      var restantes = Math.max(0, placesMax - places);
+      var complet = restantes === 0;
+
+      var dateObj = new Date(init.date + 'T12:00:00');
+      var jourSemaine = dateObj.toLocaleDateString('fr-FR', { weekday: 'long' });
+      var jourNum = dateObj.getDate();
+      var mois = dateObj.toLocaleDateString('fr-FR', { month: 'long' });
+      var annee = dateObj.getFullYear();
+
+      var hDebut = init.horaire_debut || '13:00';
+      var hFin = init.horaire_fin || '18:00';
+
+      return '<div class="initiation-card' + (complet ? ' initiation-card--complet' : '') + '">' +
+        '<div class="initiation-card__date">' +
+          '<span class="initiation-card__jour">' + jourSemaine.charAt(0).toUpperCase() + jourSemaine.slice(1) + '</span>' +
+          '<span class="initiation-card__num">' + jourNum + '</span>' +
+          '<span class="initiation-card__mois">' + mois + ' ' + annee + '</span>' +
+        '</div>' +
+        '<div class="initiation-card__body">' +
+          '<div class="initiation-card__horaire">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
+            hDebut + ' — ' + hFin +
+          '</div>' +
+          (init.description ? '<p class="initiation-card__desc">' + MistralUtils.escapeHtml(init.description) + '</p>' : '') +
+          '<div class="initiation-card__info">' +
+            '<span class="initiation-card__prix">' + prix + ' €</span>' +
+            '<span class="initiation-card__places">' + (complet ? 'Complet' : restantes + ' place' + (restantes > 1 ? 's' : '') + ' restante' + (restantes > 1 ? 's' : '')) + '</span>' +
+          '</div>' +
+          (complet
+            ? '<button class="btn btn--secondary btn--lg" disabled style="width:100%; opacity:0.5; cursor:not-allowed;">Complet</button>'
+            : '<button class="btn btn--accent btn--lg initiation-book-btn" data-initiation-id="' + init.id + '" style="width:100%;">Réserver</button>') +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function initBookingModal() {
+    var modal = document.getElementById('initiation-booking-modal');
+    var closeBtn = document.getElementById('close-booking-modal');
+    var form = document.getElementById('booking-form');
+    if (!modal) return;
+
+    // Close
+    if (closeBtn) closeBtn.addEventListener('click', function() {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    });
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+    });
+
+    // Open via delegation
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('.initiation-book-btn');
+      if (!btn) return;
+      e.preventDefault();
+      var id = btn.dataset.initiationId;
+      if (!id) return;
+
+      var initiation = null;
+      if (window.MistralSync && MistralSync.hasKey('mistral_initiations')) {
+        var all = MistralSync.getData('mistral_initiations') || [];
+        initiation = all.find(function(i) { return i.id === id; });
+      } else if (window.MistralGestion) {
+        initiation = MistralGestion.Initiations.get(id);
+      }
+      if (!initiation) return;
+
+      var config = window.MistralGestion ? MistralGestion.getConfig() : {};
+      var prix = config.initiations_prix || 60;
+
+      var dateObj = new Date(initiation.date + 'T12:00:00');
+      var dateLabel = dateObj.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      var hDebut = initiation.horaire_debut || '13:00';
+      var hFin = initiation.horaire_fin || '18:00';
+
+      document.getElementById('booking-modal-date').textContent = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1) + ' · ' + hDebut + ' - ' + hFin;
+      document.getElementById('booking-initiation-id').value = id;
+      document.getElementById('booking-submit-btn').textContent = 'Réserver et payer (' + prix + ' €)';
+      form.reset();
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      document.getElementById('booking-nom').focus();
+    });
+
+    // Submit booking
+    if (form) form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var nom = document.getElementById('booking-nom').value.trim();
+      var email = document.getElementById('booking-email').value.trim();
+      var telephone = document.getElementById('booking-telephone').value.trim();
+      var initiationId = document.getElementById('booking-initiation-id').value;
+
+      if (!nom || !email || !telephone) {
+        alert('Veuillez remplir tous les champs.');
+        return;
+      }
+
+      var submitBtn = document.getElementById('booking-submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Redirection vers le paiement...';
+
+      try {
+        if (typeof MistralPayplug === 'undefined') {
+          throw new Error('Module de paiement non disponible');
+        }
+
+        var initiation = null;
+        if (window.MistralSync && MistralSync.hasKey('mistral_initiations')) {
+          var all = MistralSync.getData('mistral_initiations') || [];
+          initiation = all.find(function(i) { return i.id === initiationId; });
+        }
+
+        var config = window.MistralGestion ? MistralGestion.getConfig() : {};
+        var prix = config.initiations_prix || 60;
+
+        var dateLabel = '';
+        if (initiation) {
+          var d = new Date(initiation.date + 'T12:00:00');
+          dateLabel = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        var nameParts = nom.split(' ');
+        var firstName = nameParts[0] || nom;
+        var lastName = nameParts.slice(1).join(' ') || nom;
+
+        var result = await MistralPayplug.createFullPayment(
+          { email: email, firstName: firstName, lastName: lastName, phone: telephone },
+          { reference: null, source: 'initiation' },
+          prix * 100,
+          {
+            metadata: {
+              source: 'initiation',
+              initiation_id: initiationId,
+              initiation_date: initiation ? initiation.date : '',
+              product_name: 'Initiation handpan' + (dateLabel ? ' — ' + dateLabel : ''),
+              customer_name: nom,
+              customer_email: email,
+              customer_phone: telephone
+            }
+          }
+        );
+
+        if (result.success && result.paymentUrl) {
+          window.location.href = result.paymentUrl;
+        } else {
+          throw new Error(result.error || 'Erreur lors de la création du paiement');
+        }
+      } catch (err) {
+        console.error('[Initiation] Erreur paiement:', err);
+        alert('Erreur : ' + err.message);
+        var config2 = window.MistralGestion ? MistralGestion.getConfig() : {};
+        submitBtn.textContent = 'Réserver et payer (' + (config2.initiations_prix || 60) + ' €)';
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  function checkInitiationPaymentReturn() {
+    var params = new URLSearchParams(window.location.search);
+    var status = params.get('status');
+    var ref = params.get('ref');
+    if (!status) return;
+
+    // Clean URL
+    var cleanUrl = window.location.pathname + window.location.hash;
+    window.history.replaceState({}, '', cleanUrl);
+
+    var section = document.getElementById('initiations');
+    if (!section) return;
+
+    var banner = document.createElement('div');
+    banner.style.cssText = 'max-width:700px; margin:0 auto var(--space-xl); padding:1.5rem 2rem; border-radius:12px; text-align:center;';
+
+    if (status === 'success') {
+      banner.style.background = 'var(--color-success-bg, #E8F5E9)';
+      banner.style.border = '1px solid var(--color-success, #3D6B4A)';
+      banner.innerHTML = '<h3 style="margin:0 0 0.5rem; color:var(--color-success, #3D6B4A);">Réservation confirmée !</h3>' +
+        '<p style="margin:0; color:var(--color-text);">Merci pour votre inscription. Vous recevrez un email de confirmation avec tous les détails.' +
+        (ref ? ' Référence : <strong>' + MistralUtils.escapeHtml(ref) + '</strong>' : '') + '</p>';
+    } else {
+      banner.style.background = '#FEF3CD';
+      banner.style.border = '1px solid #F0D77B';
+      banner.innerHTML = '<h3 style="margin:0 0 0.5rem; color:#92610C;">Paiement annulé</h3>' +
+        '<p style="margin:0; color:var(--color-text);">Votre réservation n\'a pas été finalisée. Vous pouvez réessayer ci-dessous.</p>';
+    }
+
+    section.insertBefore(banner, section.querySelector('.container'));
+  }
+
+  // ============================================================================
+  // INIT
+  // ============================================================================
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
+  }
+
+  // Init initiations on data ready
+  function initInitiations() {
+    renderPublicInitiations();
+    initBookingModal();
+    checkInitiationPaymentReturn();
+  }
+
+  if (window.MistralSync) {
+    if (MistralSync.isReady && MistralSync.isReady()) {
+      initInitiations();
+    } else {
+      window.addEventListener('mistral-sync-complete', initInitiations, { once: true });
+    }
+  } else {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(initInitiations, 500);
+    });
   }
 
 })();

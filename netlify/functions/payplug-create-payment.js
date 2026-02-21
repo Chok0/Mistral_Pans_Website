@@ -493,6 +493,30 @@ exports.handler = async (event, context) => {
       }
     }
 
+    // Validation initiation : prix fixe depuis config
+    if (metadata?.source === 'initiation') {
+      let initiationPrix = 60; // default
+      try {
+        const configResp = await fetch(
+          `${SUPABASE_URL}/rest/v1/configuration?namespace=eq.gestion&key=eq.initiations_prix&select=value`,
+          { headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}` } }
+        );
+        if (configResp.ok) {
+          const rows = await configResp.json();
+          if (rows.length > 0) initiationPrix = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value;
+        }
+      } catch (e) { /* use default */ }
+      const expectedCents = initiationPrix * 100;
+      if (amount !== expectedCents) {
+        console.error('Prix initiation invalide:', amount, 'attendu:', expectedCents);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Montant invalide pour l\'initiation' })
+        };
+      }
+    }
+
     // Valider les accessoires legacy (housse en mode single)
     if (metadata?.housseId && metadata?.houssePrix !== undefined) {
       const housseCheck = await validateAccessoirePrice(metadata.housseId, metadata.houssePrix);

@@ -184,8 +184,9 @@
 
       // Construire les URLs de retour
       const baseUrl = window.location.origin;
-      const returnUrl = `${baseUrl}/commander.html?status=success&ref=${orderReference || 'new'}`;
-      const cancelUrl = `${baseUrl}/commander.html?status=cancelled&ref=${orderReference || 'new'}`;
+      const returnPage = (metadata && metadata.source === 'initiation') ? 'apprendre.html' : 'commander.html';
+      const returnUrl = `${baseUrl}/${returnPage}?status=success&ref=${orderReference || 'new'}`;
+      const cancelUrl = `${baseUrl}/${returnPage}?status=cancelled&ref=${orderReference || 'new'}`;
 
       try {
         const response = await fetch(PAYPLUG_API_URL, {
