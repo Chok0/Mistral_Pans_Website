@@ -609,6 +609,10 @@ exports.handler = async (event, context) => {
       language: 'fr'
     });
 
+    // delivery_type PSD2 : SHIP_TO_STORE si retrait, CARRIER si expédition
+    const shippingMethod = metadata?.shippingMethod || 'retrait';
+    const deliveryType = shippingMethod === 'colissimo' ? 'CARRIER' : 'SHIP_TO_STORE';
+
     // Construire l'objet shipping
     const shipping = cleanObject({
       first_name: sanitize(customer.firstName, 100),
@@ -619,7 +623,7 @@ exports.handler = async (event, context) => {
       city: sanitize(customer.address?.city, 100),
       country: customer.address?.country || 'FR',
       language: 'fr',
-      delivery_type: 'SHIP_TO_STORE' // Retrait en atelier
+      delivery_type: deliveryType
     });
 
     // Construire le payload de base
@@ -715,14 +719,18 @@ exports.handler = async (event, context) => {
       paymentPayload.shipping.company_name = 'Mistral Pans';
 
       // payment_context requis pour Oney
+      const oneyDeliveryType = shippingMethod === 'colissimo' ? 'carrier' : 'storepickup';
+      const oneyDeliveryLabel = shippingMethod === 'colissimo'
+        ? 'Livraison Colissimo'
+        : 'Retrait atelier Mistral Pans';
       const oneyCartItems = [];
       if (metadata?.cartMode && metadata?.items) {
         metadata.items.forEach((item, idx) => {
           oneyCartItems.push({
             brand: 'Mistral Pans',
             expected_delivery_date: getExpectedDeliveryDate(),
-            delivery_label: 'Retrait atelier Mistral Pans',
-            delivery_type: 'storepickup',
+            delivery_label: oneyDeliveryLabel,
+            delivery_type: oneyDeliveryType,
             merchant_item_id: item.sourceId || (reference + '-' + idx),
             name: sanitize(item.nom, 50) || 'Article',
             price: Math.round((item.total || item.prix) * 100),
@@ -734,8 +742,8 @@ exports.handler = async (event, context) => {
         oneyCartItems.push({
           brand: 'Mistral Pans',
           expected_delivery_date: getExpectedDeliveryDate(),
-          delivery_label: 'Retrait atelier Mistral Pans',
-          delivery_type: 'storepickup',
+          delivery_label: oneyDeliveryLabel,
+          delivery_type: oneyDeliveryType,
           merchant_item_id: reference,
           name: metadata?.gamme || 'Handpan sur mesure',
           price: Math.round(amount),
