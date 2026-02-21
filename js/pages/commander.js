@@ -2151,7 +2151,7 @@
   function validateShipping() {
     if (!orderData.shippingMethod) {
       const error = document.getElementById('shipping-error');
-      if (error) error.style.display = '';
+      if (error) error.style.display = 'block';
       const selector = document.getElementById('shipping-selector');
       if (selector) selector.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return false;
