@@ -21,6 +21,28 @@
    * - BNC (34% abattement) : prestations intellectuelles (modélisation 3D, design, formation)
    * - AVOIR : notes de crédit (déduites de la catégorie d'origine via classification_origine)
    */
+  const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+
+  async function ensureJsPdfLoaded() {
+    if (typeof window.jspdf !== 'undefined') return true;
+    try {
+      const loadScript = (typeof MistralUtils !== 'undefined' && MistralUtils.loadScript)
+        ? MistralUtils.loadScript
+        : function(src) {
+            return new Promise(function(resolve, reject) {
+              var s = document.createElement('script');
+              s.src = src; s.onload = resolve; s.onerror = reject;
+              document.head.appendChild(s);
+            });
+          };
+      await loadScript(JSPDF_CDN);
+      return typeof window.jspdf !== 'undefined';
+    } catch (err) {
+      console.warn('[Compta] Echec chargement jsPDF:', err);
+      return false;
+    }
+  }
+
   const TYPE_CLASSIFICATION = {
     'vente': 'BIC_VENTES',
     'acompte': 'BIC_VENTES',
@@ -61,9 +83,17 @@
     renderComptabilite();
   }
   
+  let _comptaInitialized = false;
+
   function renderComptabilite() {
     if (typeof MistralGestion === 'undefined') return;
-    
+
+    if (!_comptaInitialized) {
+      initComptabilite();
+      _comptaInitialized = true;
+      return; // initComptabilite calls renderComptabilite at the end
+    }
+
     const moisSelect = $('#compta-mois');
     const mois = moisSelect?.value || new Date().toISOString().slice(0, 7);
     
@@ -181,7 +211,7 @@
     });
   }
 
-  function genererRapportMensuel() {
+  async function genererRapportMensuel() {
     const moisSelect = $('#compta-mois');
     const mois = moisSelect?.value || new Date().toISOString().slice(0, 7);
 
@@ -191,9 +221,10 @@
       return;
     }
 
-    // Générer le PDF avec jsPDF
-    if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
-      Toast.error('Module PDF non chargé');
+    // Lazy-load jsPDF si necessaire
+    const loaded = await ensureJsPdfLoaded();
+    if (!loaded) {
+      Toast.error('Impossible de charger le module PDF');
       return;
     }
 
@@ -438,12 +469,7 @@
     let pdfBase64 = null;
     if (comptaConfig.includePdf !== false) {
       try {
-        // Lazy-load jsPDF si necessaire
-        if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
-          if (typeof MistralUtils !== 'undefined' && MistralUtils.loadScript) {
-            await MistralUtils.loadScript('js/vendor/jspdf.umd.min.js');
-          }
-        }
+        await ensureJsPdfLoaded();
         pdfBase64 = genererRapportPdfBase64(donnees);
       } catch (err) {
         console.warn('[Compta] Erreur generation PDF:', err);

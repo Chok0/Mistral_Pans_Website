@@ -390,7 +390,7 @@
       doGenerate();
     } else {
       var chain = Promise.resolve();
-      if (needJsPDF) chain = chain.then(function() { return loadScript('js/vendor/jspdf.umd.min.js'); });
+      if (needJsPDF) chain = chain.then(function() { return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); });
       if (needCarnet) chain = chain.then(function() { return loadScript('js/admin/carnet-entretien-pdf.js'); });
       chain.then(doGenerate).catch(function(err) {
         console.error('[Carnet] Erreur chargement:', err);
