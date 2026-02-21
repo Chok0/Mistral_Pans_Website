@@ -16,7 +16,7 @@
  *
  * Modes de paiement supportes :
  *   - Acompte 30% (sur mesure) : via PayPlug (integre ou heberge)
- *   - Paiement integral (stock) : via PayPlug redirection
+ *   - Paiement integral (stock) : via PayPlug (integre ou heberge)
  *   - Oney 3x/4x (stock, 100-3000 EUR) : via PayPlug redirection
  *   - Rendez-vous a l'atelier : formulaire de contact (email Brevo)
  *   - Fallback email : si PayPlug est indisponible, envoi par email
@@ -1240,13 +1240,28 @@
       email: (formData.get('email') || '').trim(),
       phone: (formData.get('phone') || '').trim(),
       address: {
-        line1: (formData.get('address') || '').trim()
+        line1: (formData.get('address') || '').trim(),
+        postalCode: (formData.get('postalcode') || '').trim(),
+        city: (formData.get('city') || '').trim(),
+        country: 'FR'
       }
     };
 
     if (!customer.firstName || !customer.lastName || !customer.email || !customer.phone) {
       showMessage('Veuillez remplir tous les champs obligatoires', 'error');
       return null;
+    }
+
+    // Adresse complete requise (sauf retrait atelier)
+    if (orderData.shippingMethod !== 'retrait') {
+      if (!customer.address.line1 || !customer.address.postalCode || !customer.address.city) {
+        showMessage('Veuillez entrer une adresse complète (rue, code postal, ville)', 'error');
+        return null;
+      }
+      if (!/^\d{5}$/.test(customer.address.postalCode)) {
+        showMessage('Veuillez entrer un code postal valide (5 chiffres)', 'error');
+        return null;
+      }
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1280,12 +1295,9 @@
    * Flux :
    *   1. Validation du mode de livraison
    *   2. Validation des champs client
-   *   3. Creation du paiement via MistralPayplug.createFullPayment()
-   *   4. Sauvegarde de la commande en attente (localStorage)
-   *   5. Redirection vers la page de paiement PayPlug
-   *
-   * En cas d'erreur PayPlug ou si le SDK n'est pas charge,
-   * bascule sur l'envoi par email (fallback).
+   *   3. Si paiement integre disponible : paiement via iFrame CB
+   *   4. Sinon : creation du paiement heberge + redirection PayPlug
+   *   5. Fallback email si PayPlug indisponible
    *
    * @param {Event} e - Evenement submit du formulaire
    * @returns {Promise<void>}
@@ -1309,23 +1321,10 @@
         return;
       }
 
-      const totalCents = getTotalWithShipping() * 100;
-      const order = buildOrderObject();
-      const metadata = buildOrderMetadata();
-
-      const result = await MistralPayplug.createFullPayment(customer, order, totalCents, {
-        metadata: metadata
-      });
-
-      if (result.success && result.paymentUrl) {
-        savePendingOrder(result.reference, customer, 'full', getTotalWithShipping());
-
-        showMessage('Redirection vers la page de paiement...', 'info');
-        setTimeout(function() {
-          MistralPayplug.redirectToPayment(result.paymentUrl);
-        }, 1000);
+      if (integratedFormReady) {
+        await handleIntegratedFullPayment(customer, submitBtn);
       } else {
-        throw new Error(result.error || 'Impossible de créer le paiement');
+        await handleHostedFullPayment(customer);
       }
 
     } catch (error) {
@@ -1334,6 +1333,83 @@
       await sendOrderByEmail(customer, new FormData(form), 'full');
     } finally {
       resetButton(submitBtn);
+    }
+  }
+
+  /**
+   * Gere le paiement integral en mode integre (iFrame CB dans la page).
+   *
+   * @param {Object}          customer   - Donnees client validees
+   * @param {HTMLButtonElement} submitBtn - Bouton de soumission
+   * @returns {Promise<void>}
+   */
+  async function handleIntegratedFullPayment(customer, submitBtn) {
+    var totalCents = Math.round(getTotalWithShipping() * 100);
+    var metadata = buildOrderMetadata();
+
+    if (!pendingPaymentId) {
+      setButtonLoading(submitBtn, 'Création du paiement...');
+
+      var result = await MistralPayplug.createFullPayment(customer, buildOrderObject(), totalCents, {
+        integrated: true,
+        metadata: metadata
+      });
+
+      if (!result.success || !result.paymentId) {
+        throw new Error(result.error || 'Impossible de créer le paiement');
+      }
+
+      pendingPaymentId = result.paymentId;
+      savePendingOrder(result.reference, customer, 'full', getTotalWithShipping());
+    }
+
+    setButtonLoading(submitBtn, 'Paiement en cours...');
+
+    var loading = document.getElementById('card-form-loading');
+    if (loading) loading.classList.add('active');
+
+    try {
+      var payResult = await MistralPayplug.payIntegrated(pendingPaymentId);
+
+      if (payResult.success) {
+        var pendingOrder = JSON.parse(localStorage.getItem('mistral_pending_order') || 'null');
+        var reference = pendingOrder?.reference || '';
+
+        showPaymentSuccess(reference, pendingOrder);
+        localStorage.removeItem('mistral_pending_order');
+        pendingPaymentId = null;
+      }
+    } catch (payError) {
+      showMessage(payError.message || 'Erreur de paiement. Veuillez réessayer.', 'error');
+      resetButton(submitBtn);
+    } finally {
+      if (loading) loading.classList.remove('active');
+    }
+  }
+
+  /**
+   * Gere le paiement integral en mode heberge (redirection PayPlug).
+   *
+   * @param {Object} customer - Donnees client validees
+   * @returns {Promise<void>}
+   */
+  async function handleHostedFullPayment(customer) {
+    var totalCents = Math.round(getTotalWithShipping() * 100);
+    var metadata = buildOrderMetadata();
+
+    var result = await MistralPayplug.createFullPayment(customer, buildOrderObject(), totalCents, {
+      metadata: metadata
+    });
+
+    if (result.success && result.paymentUrl) {
+      savePendingOrder(result.reference, customer, 'full', getTotalWithShipping());
+
+      showMessage('Redirection vers la page de paiement...', 'info');
+      setTimeout(function() {
+        MistralPayplug.redirectToPayment(result.paymentUrl);
+      }, 1000);
+    } else {
+      throw new Error(result.error || 'Impossible de créer le paiement');
     }
   }
 
@@ -1740,12 +1816,14 @@
       }
     }
 
-    // Adresse et message
+    // Adresse et message (postalcode pour deposit/full, postcode pour oney)
+    var postalCode = formData.get('postalcode') || formData.get('postcode') || '';
+    var city = formData.get('city') || '';
     lines.push(
       '',
       'Adresse: ' + (formData.get('address') || 'Non renseignée'),
-      formData.get('postcode') ? 'Code postal: ' + formData.get('postcode') : '',
-      formData.get('city') ? 'Ville: ' + formData.get('city') : '',
+      postalCode ? 'Code postal: ' + postalCode : '',
+      city ? 'Ville: ' + city : '',
       'Message: ' + (formData.get('message') || 'Aucun')
     );
 
@@ -2191,21 +2269,47 @@
   function updateAddressFields() {
     const isRetrait = orderData.shippingMethod === 'retrait';
 
-    // Formulaires deposit et full : adapter le champ adresse
+    // Formulaires deposit et full : adapter les champs adresse, CP, ville
     ['deposit', 'full'].forEach(function(prefix) {
       const addressField = document.getElementById(prefix + '-address');
+      const postalField = document.getElementById(prefix + '-postalcode');
+      const cityField = document.getElementById(prefix + '-city');
       if (!addressField) return;
 
       if (isRetrait) {
         addressField.value = 'Retrait à l\'atelier';
         addressField.readOnly = true;
         addressField.style.opacity = '0.6';
+        if (postalField) {
+          postalField.value = '—';
+          postalField.readOnly = true;
+          postalField.style.opacity = '0.6';
+          postalField.removeAttribute('required');
+        }
+        if (cityField) {
+          cityField.value = '—';
+          cityField.readOnly = true;
+          cityField.style.opacity = '0.6';
+          cityField.removeAttribute('required');
+        }
       } else {
         if (addressField.value === 'Retrait à l\'atelier') {
           addressField.value = '';
         }
         addressField.readOnly = false;
         addressField.style.opacity = '';
+        if (postalField) {
+          if (postalField.value === '—') postalField.value = '';
+          postalField.readOnly = false;
+          postalField.style.opacity = '';
+          postalField.setAttribute('required', '');
+        }
+        if (cityField) {
+          if (cityField.value === '—') cityField.value = '';
+          cityField.readOnly = false;
+          cityField.style.opacity = '';
+          cityField.setAttribute('required', '');
+        }
       }
     });
   }
@@ -2255,6 +2359,26 @@
       const firstInput = targetForm.querySelector('input:not([type="hidden"])');
       if (firstInput) {
         setTimeout(function() { firstInput.focus(); }, 100);
+      }
+    }
+
+    // Deplacer le formulaire de carte integre vers le formulaire actif (deposit ou full)
+    var cardForm = document.getElementById('card-form');
+    if (cardForm && integratedFormReady) {
+      if (option === 'deposit' || option === 'full') {
+        var activeForm = document.querySelector('#form-' + option + ' form');
+        if (activeForm) {
+          var submitBtn = activeForm.querySelector('button[type="submit"]');
+          var placeholder = activeForm.querySelector('[id$="-placeholder"]');
+          if (placeholder) {
+            placeholder.parentNode.insertBefore(cardForm, placeholder);
+          } else if (submitBtn) {
+            activeForm.insertBefore(cardForm, submitBtn);
+          }
+          cardForm.style.display = '';
+        }
+      } else {
+        cardForm.style.display = 'none';
       }
     }
   };
