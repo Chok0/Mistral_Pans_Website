@@ -1177,6 +1177,7 @@
   // ============================================================================
   
   window.MistralPDF = {
+    LOGO_BASE64,
     generateFacturePDF,
     generateContratPDF,
     generateContratLocationPublic,
