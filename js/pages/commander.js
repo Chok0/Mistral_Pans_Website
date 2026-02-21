@@ -1106,7 +1106,7 @@
    * En cas d'erreur d'initialisation, le formulaire integre reste masque
    * et le mode heberge (redirection) sera utilise comme fallback.
    */
-  function initIntegratedPaymentForm() {
+  async function initIntegratedPaymentForm() {
     if (typeof MistralPayplug === 'undefined' || !MistralPayplug.isIntegratedAvailable()) {
       return;
     }
@@ -1124,7 +1124,19 @@
     }
 
     try {
-      MistralPayplug.initIntegratedForm(containers, { testMode: false });
+      // Detecter le mode test/live depuis le serveur (basé sur la clé API)
+      var testMode = false;
+      try {
+        var modeResp = await fetch('/.netlify/functions/payplug-create-payment');
+        if (modeResp.ok) {
+          var modeData = await modeResp.json();
+          testMode = modeData.testMode === true;
+        }
+      } catch (e) {
+        console.warn('[Commander] Impossible de detecter le mode PayPlug, fallback live');
+      }
+
+      MistralPayplug.initIntegratedForm(containers, { testMode: testMode });
 
       // Afficher les logos des reseaux de cartes supportes
       const schemesContainer = document.getElementById('card-schemes');
@@ -1145,6 +1157,7 @@
 
       cardForm.style.display = '';
       integratedFormReady = true;
+      if (testMode) console.info('[Commander] PayPlug SDK initialisé en mode TEST');
     } catch (error) {
       console.warn('[Commander] Erreur init Integrated Payment:', error.message);
     }

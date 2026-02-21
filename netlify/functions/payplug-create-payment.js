@@ -390,13 +390,27 @@ exports.handler = async (event, context) => {
       headers: {
         'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
       },
       body: ''
     };
   }
 
-  // Autoriser seulement POST
+  // GET = retourner le mode (test/live) pour init SDK côté client
+  if (event.httpMethod === 'GET') {
+    const isTest = (process.env.PAYPLUG_SECRET_KEY || '').startsWith('sk_test_');
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Cache-Control': 'public, max-age=300'
+      },
+      body: JSON.stringify({ testMode: isTest })
+    };
+  }
+
+  // Autoriser seulement POST (et GET ci-dessus)
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
