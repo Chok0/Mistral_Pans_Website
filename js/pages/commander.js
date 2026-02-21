@@ -470,27 +470,28 @@
 
       // Assemblage des details selon le type d'article
       const detailParts = [];
+      const details = item.details || {};
       if (item.type === 'custom' || item.type === 'instrument') {
         // Nombre de notes (custom: details.notes, instrument: details.nombre_notes)
-        var nbNotes = item.details.notes || item.details.nombre_notes;
+        var nbNotes = details.notes || details.nombre_notes;
         if (nbNotes) detailParts.push(nbNotes + ' notes');
         // Taille
-        if (item.details.taille) detailParts.push(item.details.taille + ' cm');
+        if (details.taille) detailParts.push(details.taille + ' cm');
         // Materiau (label lisible si MistralMateriaux dispo, sinon code)
-        if (item.details.materiau) {
+        if (details.materiau) {
           var matLabel = (typeof MistralMateriaux !== 'undefined' && MistralMateriaux.getLabel)
-            ? MistralMateriaux.getLabel(item.details.materiau)
-            : item.details.materiau;
+            ? MistralMateriaux.getLabel(details.materiau)
+            : details.materiau;
           detailParts.push(matLabel);
         }
         // Accordage (affiché seulement si non-standard)
-        if (item.details.accordage && item.details.accordage !== '440') {
-          detailParts.push(item.details.accordage + ' Hz');
+        if (details.accordage && details.accordage !== '440') {
+          detailParts.push(details.accordage + ' Hz');
         }
       } else {
         // Accessoire : categorie + taille
-        if (item.details.categorie) detailParts.push(item.details.categorie);
-        if (item.details.taille) detailParts.push(item.details.taille + ' cm');
+        if (details.categorie) detailParts.push(details.categorie);
+        if (details.taille) detailParts.push(details.taille + ' cm');
       }
       const detailStr = detailParts.join(' · ');
 
@@ -1555,9 +1556,13 @@
       return;
     }
 
-    const cgvCheckbox = form.querySelector('input[type="checkbox"][required]');
-    if (cgvCheckbox && !cgvCheckbox.checked) {
-      showMessage('Veuillez accepter les conditions générales de vente', 'error');
+    const requiredCheckboxes = form.querySelectorAll('input[type="checkbox"][required]');
+    var allChecked = true;
+    requiredCheckboxes.forEach(function(cb) {
+      if (!cb.checked) allChecked = false;
+    });
+    if (!allChecked) {
+      showMessage('Veuillez accepter les conditions générales de vente et le traitement des données', 'error');
       return;
     }
 
@@ -1805,6 +1810,10 @@
     const form = e.target;
     const submitBtn = form.querySelector('button[type="submit"]');
     const formData = new FormData(form);
+
+    // Honeypot anti-spam
+    var honeypotField = form.querySelector('[name="website"]');
+    if (honeypotField && honeypotField.value) return;
 
     setButtonLoading(submitBtn, 'Envoi en cours...');
 
