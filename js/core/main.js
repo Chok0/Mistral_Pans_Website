@@ -1198,13 +1198,21 @@ document.addEventListener('click', function(e) {
       MistralFocusTrap.activate(modal);
 
       // Pré-remplir le message si demande de suppression RGPD
+      var rgpdNotice = document.getElementById('contact-rgpd-notice');
       if (trigger.hasAttribute('data-rgpd-delete')) {
+        var modalTitle = modal.querySelector('.modal__title');
+        if (modalTitle) modalTitle.textContent = 'Suppression de données';
+        if (rgpdNotice) rgpdNotice.style.display = '';
         setTimeout(function() {
           var messageField = document.getElementById('contact-message');
           if (messageField) {
             messageField.value = 'Bonjour,\n\nJe souhaite exercer mon droit à l\'effacement de mes données personnelles conformément à l\'article 17 du RGPD.\n\nMerci de bien vouloir supprimer l\'ensemble des données me concernant.\n\nCordialement';
           }
         }, 150);
+      } else {
+        var modalTitle = modal.querySelector('.modal__title');
+        if (modalTitle) modalTitle.textContent = 'Contact';
+        if (rgpdNotice) rgpdNotice.style.display = 'none';
       }
     }
   }
