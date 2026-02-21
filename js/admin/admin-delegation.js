@@ -344,6 +344,63 @@
     if (id && window.openTeacherProfile) window.openTeacherProfile(id);
   });
 
+  // Carnet d'entretien (modal instrument)
+  registerAction('generate-carnet', function() {
+    var idEl = document.getElementById('instrument-id');
+    if (!idEl || !idEl.value || !window.MistralGestion) return;
+    var instrument = window.MistralGestion.Instruments.get(idEl.value);
+    if (!instrument) return;
+
+    // Lazy-load jsPDF + carnet module
+    function doGenerate() {
+      if (!window.MistralPDF || !window.MistralPDF.generateCarnetEntretien) {
+        if (window.MistralAdmin && window.MistralAdmin.Toast) {
+          window.MistralAdmin.Toast.error('Module carnet non chargé');
+        }
+        return;
+      }
+      if (!instrument.notes_layout) {
+        if (window.MistralAdmin && window.MistralAdmin.Toast) {
+          window.MistralAdmin.Toast.warning('Cet instrument n\'a pas de notes_layout');
+        }
+      }
+      window.MistralPDF.generateCarnetEntretien(instrument, {
+        download: true,
+        filename: 'Carnet_entretien_' + (instrument.reference || instrument.id) + '.pdf'
+      });
+      if (window.MistralAdmin && window.MistralAdmin.Toast) {
+        window.MistralAdmin.Toast.success('Carnet d\'entretien généré');
+      }
+    }
+
+    var utils = window.MistralUtils || {};
+    var loadScript = utils.loadScript || function(src) {
+      return new Promise(function(resolve, reject) {
+        var s = document.createElement('script');
+        s.src = src; s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    };
+
+    // Charger les dépendances si nécessaire
+    var needJsPDF = (typeof jspdf === 'undefined' && typeof jsPDF === 'undefined');
+    var needCarnet = !window.MistralPDF || !window.MistralPDF.generateCarnetEntretien;
+
+    if (!needJsPDF && !needCarnet) {
+      doGenerate();
+    } else {
+      var chain = Promise.resolve();
+      if (needJsPDF) chain = chain.then(function() { return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'); });
+      if (needCarnet) chain = chain.then(function() { return loadScript('js/admin/carnet-entretien-pdf.js'); });
+      chain.then(doGenerate).catch(function(err) {
+        console.error('[Carnet] Erreur chargement:', err);
+        if (window.MistralAdmin && window.MistralAdmin.Toast) {
+          window.MistralAdmin.Toast.error('Erreur lors du chargement du module PDF');
+        }
+      });
+    }
+  });
+
   // ============================================================================
   // EXPORT
   // ============================================================================

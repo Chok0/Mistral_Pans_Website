@@ -35,6 +35,7 @@
                 <div style="font-size: 0.875rem; color: var(--admin-text-muted);">${escapeHtml(t.location || '')}</div>
               </div>
               <div style="display: flex; gap: 0.5rem;">
+                <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="open-teacher-profile" data-id="${t.id}">Voir</button>
                 <button class="admin-btn admin-btn--primary admin-btn--sm" data-action="approve-teacher" data-id="${t.id}">Approuver</button>
                 <button class="admin-btn admin-btn--ghost admin-btn--sm" data-action="reject-teacher" data-id="${t.id}">Rejeter</button>
               </div>

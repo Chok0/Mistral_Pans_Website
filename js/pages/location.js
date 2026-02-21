@@ -336,7 +336,7 @@ const LocationRental = (function() {
       // 1. Lazy-load jsPDF + gestion-pdf si necessaire
       // =====================================================================
       if (typeof jspdf === 'undefined' && typeof jsPDF === 'undefined') {
-        await MistralUtils.loadScript('js/vendor/jspdf.umd.min.js?v=3.5.3');
+        await MistralUtils.loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
       }
       if (typeof MistralPDF === 'undefined' || !MistralPDF.generateContratLocationPublic) {
         await MistralUtils.loadScript('js/admin/gestion-pdf.js?v=3.5.3');

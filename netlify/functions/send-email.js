@@ -812,6 +812,69 @@ function buildShippingNotificationEmail(data) {
 }
 
 /**
+ * Template : Email de livraison finale avec carnet d'entretien en PJ
+ */
+function buildDeliveryEmail(data) {
+  const { client, order, instrument, carnetPdfBase64 } = data;
+  const gamme = sanitize(instrument?.gamme || order.productName || 'Sur mesure');
+  const ref = sanitize(order.reference);
+  const prenom = sanitize(client.prenom || 'cher client');
+
+  const emailData = {
+    to: [{ email: client.email, name: `${sanitize(client.prenom)} ${sanitize(client.nom)}` }],
+    bcc: [{ email: 'contact@mistralpans.fr' }],
+    replyTo: { email: 'contact@mistralpans.fr', name: 'Mistral Pans' },
+    subject: `Votre handpan est prêt ! — ${ref} — Mistral Pans`,
+    htmlContent: `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head><meta charset="UTF-8"></head>
+      <body style="font-family: Inter, system-ui, sans-serif; color: #2C2825; max-width: 600px; margin: 0 auto; padding: 20px;">
+
+        <div style="background: #0D7377; color: white; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">Votre handpan est prêt !</h1>
+          <p style="margin: 8px 0 0; opacity: 0.9;">Commande ${ref}</p>
+        </div>
+
+        <div style="background: #f8f8f8; padding: 24px; border: 1px solid #e5e5e5;">
+          <p>Bonjour ${prenom},</p>
+
+          <p>Votre handpan <strong>${gamme}</strong> est terminé et vous attend !</p>
+
+          <div style="background: #f0fafa; border-left: 4px solid #0D7377; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+            <p style="margin: 0;">Vous trouverez en pièce jointe le <strong>carnet d'entretien</strong> de votre instrument, avec toutes les informations sur sa gamme, ses notes, et les conseils pour en prendre soin.</p>
+          </div>
+
+          <p>Nous vous contacterons très prochainement pour organiser la livraison ou le retrait de votre instrument.</p>
+
+          <p style="margin-top: 24px;">Au plaisir de vous voir jouer,</p>
+          <p><strong>Mistral Pans</strong></p>
+        </div>
+
+        <div style="background: #1A1815; color: #9CA3AF; padding: 20px; border-radius: 0 0 12px 12px; text-align: center; font-size: 0.8125rem;">
+          <p style="margin: 0;">Mistral Pans — Handpans artisanaux, Île-de-France</p>
+          <p style="margin: 8px 0 0;"><a href="mailto:contact@mistralpans.fr" style="color: #0D7377;">contact@mistralpans.fr</a></p>
+        </div>
+
+      </body>
+      </html>
+    `
+  };
+
+  // Carnet d'entretien en PJ
+  if (carnetPdfBase64 && carnetPdfBase64.length <= MAX_PDF_BASE64_LENGTH) {
+    const filename = `Carnet_entretien_${(instrument?.gamme || 'Handpan').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+    emailData.attachment = [{
+      content: carnetPdfBase64,
+      name: filename,
+      type: 'application/pdf'
+    }];
+  }
+
+  return emailData;
+}
+
+/**
  * Construit l'email de notification artisan pour une nouvelle commande
  */
 function buildNewOrderNotificationEmail(data) {
@@ -1268,6 +1331,24 @@ exports.handler = async (event, context) => {
           };
         }
         emailData = buildMonthlyReportEmail(data);
+        break;
+
+      case 'delivery':
+        if (!data.client?.email || !data.order?.reference) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Données livraison manquantes' })
+          };
+        }
+        if (!isValidEmail(data.client.email)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Email client invalide' })
+          };
+        }
+        emailData = buildDeliveryEmail(data);
         break;
 
       case 'contact':
