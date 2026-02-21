@@ -304,6 +304,17 @@ async function validateStockPrice(amountCents, instrumentId, paymentType) {
       : instrument.prix_vente;
     const dbPriceCents = effectivePrice * 100;
 
+    console.log('[validateStockPrice]', {
+      instrumentId,
+      paymentType,
+      amountCents,
+      dbPrixVente: instrument.prix_vente,
+      promoPercent,
+      effectivePrice,
+      dbPriceCents,
+      statut: instrument.statut
+    });
+
     // Pour un acompte (30%), le montant doit être >= 30% du prix effectif
     if (paymentType === 'acompte') {
       const expectedDeposit = Math.round(dbPriceCents * 0.30);
@@ -422,6 +433,20 @@ exports.handler = async (event, context) => {
     // ── Validation prix côté serveur ──
     if (metadata?.cartMode && metadata?.items) {
       // Mode panier multi-items : valider chaque item
+      console.log('[PayPlug] Validation panier:', {
+        paymentType,
+        totalAmount: amount,
+        itemCount: metadata.items.length,
+        items: metadata.items.map(i => ({
+          type: i.type,
+          nom: i.nom,
+          sourceId: i.sourceId,
+          prix: i.prix,
+          total: i.total,
+          quantite: i.quantite,
+          options: i.options?.length || 0
+        }))
+      });
       for (const item of metadata.items) {
         // 1. Instruments en stock : vérifier prix DB
         if (item.type === 'instrument' && item.sourceId) {
